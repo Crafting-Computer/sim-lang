@@ -25,7 +25,7 @@ type Def
 
 type Expr
   = Binding (Located String)
-  | Call (Located String) (List (Located String))
+  | Call (Located String) (List Expr)
 
 
 type alias Param =
@@ -48,6 +48,8 @@ type Problem
   | ExpectingStartOfLineComment
   | ExpectingStartOfMultiLineComment
   | ExpectingEndOfMultiLineComment
+  | ExpectingLeftParen
+  | ExpectingRightParen
 
 
 type Context
@@ -151,8 +153,23 @@ locals =
 expr : HdlParser Expr
 expr =
   oneOf
-    [ bindingOrCall
+    [ group
+    , bindingOrCall
     ]
+
+
+group : HdlParser Expr
+group =
+  succeed identity
+    |. token (Token "(" ExpectingLeftParen)
+    |= lazy (\_ -> expr)
+    |. token (Token ")" ExpectingRightParen)
+
+
+binding : HdlParser Expr
+binding =
+  succeed Binding
+    |= name
 
 
 bindingOrCall : HdlParser Expr
@@ -164,25 +181,27 @@ bindingOrCall =
         _ = Debug.log "AL -> args" <| args
       in
       case args of
-        Nothing ->
+        [] ->
           Binding callee
-        Just argList ->
-          Call callee argList
+        list ->
+          Call callee list
     )
     |= name
     |. sps
-    |= (optional <|
-      loop [] <| \revNames ->
-        let
-          _ = Debug.log "AL -> revNames" <| revNames
-        in
-        oneOf
-          [ succeed (\n -> Loop (n :: revNames))
-            |= name
-            |. sps
-          , succeed ()
-            |> map (\_ -> Done (List.reverse revNames))
-          ]
+    |= ( loop [] <| \revExprs ->
+      let
+        _ = Debug.log "AL -> revExprs" <| revExprs
+      in
+      oneOf
+        [ succeed (\n -> Loop (n :: revExprs))
+          |= oneOf
+            [ binding
+            , group
+            ]
+          |. sps
+        , succeed ()
+          |> map (\_ -> Done (List.reverse revExprs))
+        ]
     )
 
 
