@@ -4541,12 +4541,22 @@ var $author$project$HdlParser$ExpectingEOF = {$: 'ExpectingEOF'};
 var $author$project$HdlParser$BindingDef = function (a) {
 	return {$: 'BindingDef', a: a};
 };
+var $author$project$HdlParser$BindingName = function (a) {
+	return {$: 'BindingName', a: a};
+};
+var $author$project$HdlParser$BindingRecord = function (a) {
+	return {$: 'BindingRecord', a: a};
+};
 var $elm$parser$Parser$Advanced$Done = function (a) {
 	return {$: 'Done', a: a};
 };
+var $author$project$HdlParser$ExpectingComma = {$: 'ExpectingComma'};
 var $author$project$HdlParser$ExpectingEqual = {$: 'ExpectingEqual'};
 var $author$project$HdlParser$ExpectingIn = {$: 'ExpectingIn'};
+var $author$project$HdlParser$ExpectingLeftBrace = {$: 'ExpectingLeftBrace'};
 var $author$project$HdlParser$ExpectingLet = {$: 'ExpectingLet'};
+var $author$project$HdlParser$ExpectingRightBrace = {$: 'ExpectingRightBrace'};
+var $elm$parser$Parser$Advanced$Forbidden = {$: 'Forbidden'};
 var $author$project$HdlParser$FuncDef = function (a) {
 	return {$: 'FuncDef', a: a};
 };
@@ -4570,6 +4580,21 @@ var $elm$core$Basics$identity = function (x) {
 };
 var $elm$parser$Parser$Advanced$Parser = function (a) {
 	return {$: 'Parser', a: a};
+};
+var $elm$parser$Parser$Advanced$backtrackable = function (_v0) {
+	var parse = _v0.a;
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s0) {
+			var _v1 = parse(s0);
+			if (_v1.$ === 'Bad') {
+				var x = _v1.b;
+				return A2($elm$parser$Parser$Advanced$Bad, false, x);
+			} else {
+				var a = _v1.b;
+				var s1 = _v1.c;
+				return A3($elm$parser$Parser$Advanced$Good, false, a, s1);
+			}
+		});
 };
 var $elm$parser$Parser$Advanced$andThen = F2(
 	function (callback, _v0) {
@@ -4696,6 +4721,11 @@ var $author$project$HdlParser$checkIndent = A2(
 					})),
 			$elm$parser$Parser$Advanced$getIndent),
 		$elm$parser$Parser$Advanced$getCol));
+var $elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
 var $author$project$HdlParser$Binding = function (a) {
 	return {$: 'Binding', a: a};
 };
@@ -4709,6 +4739,9 @@ var $author$project$HdlParser$Indexing = F2(
 	function (a, b) {
 		return {$: 'Indexing', a: a, b: b};
 	});
+var $author$project$HdlParser$Record = function (a) {
+	return {$: 'Record', a: a};
+};
 var $elm$core$Basics$always = F2(
 	function (a, _v0) {
 		return a;
@@ -5211,8 +5244,8 @@ var $author$project$HdlParser$indexing = A2(
 			A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))));
 var $author$project$HdlParser$ExpectingName = {$: 'ExpectingName'};
 var $author$project$HdlParser$Located = F3(
-	function (start, value, end) {
-		return {end: end, start: start, value: value};
+	function (from, value, to) {
+		return {from: from, to: to, value: value};
 	});
 var $elm$parser$Parser$Advanced$getPosition = $elm$parser$Parser$Advanced$Parser(
 	function (s) {
@@ -5503,6 +5536,424 @@ var $author$project$HdlParser$binding = A2(
 			$author$project$HdlParser$checkIndent),
 		$author$project$HdlParser$name),
 	$author$project$HdlParser$optional($author$project$HdlParser$indexing));
+var $pzp1997$assoc_list$AssocList$D = function (a) {
+	return {$: 'D', a: a};
+};
+var $elm$core$List$foldrHelper = F4(
+	function (fn, acc, ctr, ls) {
+		if (!ls.b) {
+			return acc;
+		} else {
+			var a = ls.a;
+			var r1 = ls.b;
+			if (!r1.b) {
+				return A2(fn, a, acc);
+			} else {
+				var b = r1.a;
+				var r2 = r1.b;
+				if (!r2.b) {
+					return A2(
+						fn,
+						a,
+						A2(fn, b, acc));
+				} else {
+					var c = r2.a;
+					var r3 = r2.b;
+					if (!r3.b) {
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(fn, c, acc)));
+					} else {
+						var d = r3.a;
+						var r4 = r3.b;
+						var res = (ctr > 500) ? A3(
+							$elm$core$List$foldl,
+							fn,
+							acc,
+							$elm$core$List$reverse(r4)) : A4($elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(
+									fn,
+									c,
+									A2(fn, d, res))));
+					}
+				}
+			}
+		}
+	});
+var $elm$core$List$foldr = F3(
+	function (fn, acc, ls) {
+		return A4($elm$core$List$foldrHelper, fn, acc, 0, ls);
+	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $pzp1997$assoc_list$AssocList$remove = F2(
+	function (targetKey, _v0) {
+		var alist = _v0.a;
+		return $pzp1997$assoc_list$AssocList$D(
+			A2(
+				$elm$core$List$filter,
+				function (_v1) {
+					var key = _v1.a;
+					return !_Utils_eq(key, targetKey);
+				},
+				alist));
+	});
+var $pzp1997$assoc_list$AssocList$insert = F3(
+	function (key, value, dict) {
+		var _v0 = A2($pzp1997$assoc_list$AssocList$remove, key, dict);
+		var alteredAlist = _v0.a;
+		return $pzp1997$assoc_list$AssocList$D(
+			A2(
+				$elm$core$List$cons,
+				_Utils_Tuple2(key, value),
+				alteredAlist));
+	});
+var $pzp1997$assoc_list$AssocList$fromList = function (alist) {
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (_v0, result) {
+				var key = _v0.a;
+				var value = _v0.b;
+				return A3($pzp1997$assoc_list$AssocList$insert, key, value, result);
+			}),
+		$pzp1997$assoc_list$AssocList$D(_List_Nil),
+		alist);
+};
+var $elm$parser$Parser$Advanced$lazy = function (thunk) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			var _v0 = thunk(_Utils_Tuple0);
+			var parse = _v0.a;
+			return parse(s);
+		});
+};
+var $elm$parser$Parser$Advanced$sequenceEndForbidden = F5(
+	function (ender, ws, parseItem, sep, revItems) {
+		var chompRest = function (item) {
+			return A5(
+				$elm$parser$Parser$Advanced$sequenceEndForbidden,
+				ender,
+				ws,
+				parseItem,
+				sep,
+				A2($elm$core$List$cons, item, revItems));
+		};
+		return A2(
+			$elm$parser$Parser$Advanced$skip,
+			ws,
+			$elm$parser$Parser$Advanced$oneOf(
+				_List_fromArray(
+					[
+						A2(
+						$elm$parser$Parser$Advanced$skip,
+						sep,
+						A2(
+							$elm$parser$Parser$Advanced$skip,
+							ws,
+							A2(
+								$elm$parser$Parser$Advanced$map,
+								function (item) {
+									return $elm$parser$Parser$Advanced$Loop(
+										A2($elm$core$List$cons, item, revItems));
+								},
+								parseItem))),
+						A2(
+						$elm$parser$Parser$Advanced$map,
+						function (_v0) {
+							return $elm$parser$Parser$Advanced$Done(
+								$elm$core$List$reverse(revItems));
+						},
+						ender)
+					])));
+	});
+var $elm$parser$Parser$Advanced$sequenceEndMandatory = F4(
+	function (ws, parseItem, sep, revItems) {
+		return $elm$parser$Parser$Advanced$oneOf(
+			_List_fromArray(
+				[
+					A2(
+					$elm$parser$Parser$Advanced$map,
+					function (item) {
+						return $elm$parser$Parser$Advanced$Loop(
+							A2($elm$core$List$cons, item, revItems));
+					},
+					A2(
+						$elm$parser$Parser$Advanced$ignorer,
+						parseItem,
+						A2(
+							$elm$parser$Parser$Advanced$ignorer,
+							ws,
+							A2($elm$parser$Parser$Advanced$ignorer, sep, ws)))),
+					A2(
+					$elm$parser$Parser$Advanced$map,
+					function (_v0) {
+						return $elm$parser$Parser$Advanced$Done(
+							$elm$core$List$reverse(revItems));
+					},
+					$elm$parser$Parser$Advanced$succeed(_Utils_Tuple0))
+				]));
+	});
+var $elm$parser$Parser$Advanced$sequenceEndOptional = F5(
+	function (ender, ws, parseItem, sep, revItems) {
+		var parseEnd = A2(
+			$elm$parser$Parser$Advanced$map,
+			function (_v0) {
+				return $elm$parser$Parser$Advanced$Done(
+					$elm$core$List$reverse(revItems));
+			},
+			ender);
+		return A2(
+			$elm$parser$Parser$Advanced$skip,
+			ws,
+			$elm$parser$Parser$Advanced$oneOf(
+				_List_fromArray(
+					[
+						A2(
+						$elm$parser$Parser$Advanced$skip,
+						sep,
+						A2(
+							$elm$parser$Parser$Advanced$skip,
+							ws,
+							$elm$parser$Parser$Advanced$oneOf(
+								_List_fromArray(
+									[
+										A2(
+										$elm$parser$Parser$Advanced$map,
+										function (item) {
+											return $elm$parser$Parser$Advanced$Loop(
+												A2($elm$core$List$cons, item, revItems));
+										},
+										parseItem),
+										parseEnd
+									])))),
+						parseEnd
+					])));
+	});
+var $elm$parser$Parser$Advanced$sequenceEnd = F5(
+	function (ender, ws, parseItem, sep, trailing) {
+		var chompRest = function (item) {
+			switch (trailing.$) {
+				case 'Forbidden':
+					return A2(
+						$elm$parser$Parser$Advanced$loop,
+						_List_fromArray(
+							[item]),
+						A4($elm$parser$Parser$Advanced$sequenceEndForbidden, ender, ws, parseItem, sep));
+				case 'Optional':
+					return A2(
+						$elm$parser$Parser$Advanced$loop,
+						_List_fromArray(
+							[item]),
+						A4($elm$parser$Parser$Advanced$sequenceEndOptional, ender, ws, parseItem, sep));
+				default:
+					return A2(
+						$elm$parser$Parser$Advanced$ignorer,
+						A2(
+							$elm$parser$Parser$Advanced$skip,
+							ws,
+							A2(
+								$elm$parser$Parser$Advanced$skip,
+								sep,
+								A2(
+									$elm$parser$Parser$Advanced$skip,
+									ws,
+									A2(
+										$elm$parser$Parser$Advanced$loop,
+										_List_fromArray(
+											[item]),
+										A3($elm$parser$Parser$Advanced$sequenceEndMandatory, ws, parseItem, sep))))),
+						ender);
+			}
+		};
+		return $elm$parser$Parser$Advanced$oneOf(
+			_List_fromArray(
+				[
+					A2($elm$parser$Parser$Advanced$andThen, chompRest, parseItem),
+					A2(
+					$elm$parser$Parser$Advanced$map,
+					function (_v0) {
+						return _List_Nil;
+					},
+					ender)
+				]));
+	});
+var $elm$parser$Parser$Advanced$sequence = function (i) {
+	return A2(
+		$elm$parser$Parser$Advanced$skip,
+		$elm$parser$Parser$Advanced$token(i.start),
+		A2(
+			$elm$parser$Parser$Advanced$skip,
+			i.spaces,
+			A5(
+				$elm$parser$Parser$Advanced$sequenceEnd,
+				$elm$parser$Parser$Advanced$token(i.end),
+				i.spaces,
+				i.item,
+				$elm$parser$Parser$Advanced$token(i.separator),
+				i.trailing)));
+};
+function $author$project$HdlParser$cyclic$expr() {
+	return $elm$parser$Parser$Advanced$oneOf(
+		_List_fromArray(
+			[
+				$author$project$HdlParser$cyclic$group(),
+				$author$project$HdlParser$cyclic$bindingOrCall(),
+				$author$project$HdlParser$cyclic$record()
+			]));
+}
+function $author$project$HdlParser$cyclic$bindingOrCall() {
+	return A2(
+		$elm$parser$Parser$Advanced$keeper,
+		A2(
+			$elm$parser$Parser$Advanced$keeper,
+			$elm$parser$Parser$Advanced$succeed(
+				F2(
+					function (callee, args) {
+						var _v3 = A2($elm$core$Debug$log, 'AL -> callee', callee);
+						var _v4 = A2($elm$core$Debug$log, 'AL -> args', args);
+						if (!args.b) {
+							return $author$project$HdlParser$Binding(callee);
+						} else {
+							var list = args;
+							return A2($author$project$HdlParser$Call, callee, list);
+						}
+					})),
+			A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps)),
+		A2(
+			$elm$parser$Parser$Advanced$loop,
+			_List_Nil,
+			function (revExprs) {
+				return $elm$parser$Parser$Advanced$oneOf(
+					_List_fromArray(
+						[
+							A2(
+							$elm$parser$Parser$Advanced$keeper,
+							$elm$parser$Parser$Advanced$succeed(
+								function (n) {
+									return $elm$parser$Parser$Advanced$Loop(
+										A2($elm$core$List$cons, n, revExprs));
+								}),
+							A2(
+								$elm$parser$Parser$Advanced$ignorer,
+								$elm$parser$Parser$Advanced$oneOf(
+									_List_fromArray(
+										[
+											$author$project$HdlParser$binding,
+											$author$project$HdlParser$cyclic$group()
+										])),
+								$author$project$HdlParser$sps)),
+							A2(
+							$elm$parser$Parser$Advanced$map,
+							function (_v6) {
+								return $elm$parser$Parser$Advanced$Done(
+									$elm$core$List$reverse(revExprs));
+							},
+							$elm$parser$Parser$Advanced$succeed(_Utils_Tuple0))
+						]));
+			}));
+}
+function $author$project$HdlParser$cyclic$group() {
+	return A2(
+		$elm$parser$Parser$Advanced$keeper,
+		A2(
+			$elm$parser$Parser$Advanced$keeper,
+			A2(
+				$elm$parser$Parser$Advanced$ignorer,
+				A2(
+					$elm$parser$Parser$Advanced$ignorer,
+					$elm$parser$Parser$Advanced$succeed(
+						F2(
+							function (g, i) {
+								if (i.$ === 'Just') {
+									var indexes = i.a;
+									return A2($author$project$HdlParser$Indexing, g, indexes);
+								} else {
+									return g;
+								}
+							})),
+					$author$project$HdlParser$checkIndent),
+				$elm$parser$Parser$Advanced$token(
+					A2($elm$parser$Parser$Advanced$Token, '(', $author$project$HdlParser$ExpectingLeftParen))),
+			A2(
+				$elm$parser$Parser$Advanced$ignorer,
+				$elm$parser$Parser$Advanced$lazy(
+					function (_v2) {
+						return $author$project$HdlParser$cyclic$expr();
+					}),
+				$elm$parser$Parser$Advanced$token(
+					A2($elm$parser$Parser$Advanced$Token, ')', $author$project$HdlParser$ExpectingRightParen)))),
+		$author$project$HdlParser$optional($author$project$HdlParser$indexing));
+}
+function $author$project$HdlParser$cyclic$record() {
+	return A2(
+		$elm$parser$Parser$Advanced$keeper,
+		$elm$parser$Parser$Advanced$succeed(
+			A2($elm$core$Basics$composeL, $author$project$HdlParser$Record, $pzp1997$assoc_list$AssocList$fromList)),
+		$elm$parser$Parser$Advanced$sequence(
+			{
+				end: A2($elm$parser$Parser$Advanced$Token, '}', $author$project$HdlParser$ExpectingRightBrace),
+				item: A2(
+					$elm$parser$Parser$Advanced$keeper,
+					A2(
+						$elm$parser$Parser$Advanced$keeper,
+						$elm$parser$Parser$Advanced$succeed($elm$core$Tuple$pair),
+						A2(
+							$elm$parser$Parser$Advanced$ignorer,
+							A2(
+								$elm$parser$Parser$Advanced$ignorer,
+								A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps),
+								$elm$parser$Parser$Advanced$token(
+									A2($elm$parser$Parser$Advanced$Token, '=', $author$project$HdlParser$ExpectingEqual))),
+							$author$project$HdlParser$sps)),
+					$elm$parser$Parser$Advanced$lazy(
+						function (_v0) {
+							return $author$project$HdlParser$cyclic$expr();
+						})),
+				separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
+				spaces: $author$project$HdlParser$sps,
+				start: A2($elm$parser$Parser$Advanced$Token, '{', $author$project$HdlParser$ExpectingLeftBrace),
+				trailing: $elm$parser$Parser$Advanced$Forbidden
+			}));
+}
+try {
+	var $author$project$HdlParser$expr = $author$project$HdlParser$cyclic$expr();
+	$author$project$HdlParser$cyclic$expr = function () {
+		return $author$project$HdlParser$expr;
+	};
+	var $author$project$HdlParser$bindingOrCall = $author$project$HdlParser$cyclic$bindingOrCall();
+	$author$project$HdlParser$cyclic$bindingOrCall = function () {
+		return $author$project$HdlParser$bindingOrCall;
+	};
+	var $author$project$HdlParser$group = $author$project$HdlParser$cyclic$group();
+	$author$project$HdlParser$cyclic$group = function () {
+		return $author$project$HdlParser$group;
+	};
+	var $author$project$HdlParser$record = $author$project$HdlParser$cyclic$record();
+	$author$project$HdlParser$cyclic$record = function () {
+		return $author$project$HdlParser$record;
+	};
+} catch ($) {
+	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    expr\n  │     ↓\n  │    bindingOrCall\n  │     ↓\n  │    group\n  │     ↓\n  │    record\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $elm$parser$Parser$Advanced$changeIndent = F2(
 	function (newIndent, s) {
 		return {col: s.col, context: s.context, indent: newIndent, offset: s.offset, row: s.row, src: s.src};
@@ -5545,122 +5996,6 @@ var $author$project$HdlParser$indent = function (parser) {
 				}),
 			$elm$parser$Parser$Advanced$getIndent));
 };
-var $elm$parser$Parser$Advanced$lazy = function (thunk) {
-	return $elm$parser$Parser$Advanced$Parser(
-		function (s) {
-			var _v0 = thunk(_Utils_Tuple0);
-			var parse = _v0.a;
-			return parse(s);
-		});
-};
-function $author$project$HdlParser$cyclic$expr() {
-	return $elm$parser$Parser$Advanced$oneOf(
-		_List_fromArray(
-			[
-				$author$project$HdlParser$cyclic$group(),
-				$author$project$HdlParser$cyclic$bindingOrCall()
-			]));
-}
-function $author$project$HdlParser$cyclic$bindingOrCall() {
-	return A2(
-		$elm$parser$Parser$Advanced$keeper,
-		A2(
-			$elm$parser$Parser$Advanced$keeper,
-			$elm$parser$Parser$Advanced$succeed(
-				F2(
-					function (callee, args) {
-						var _v2 = A2($elm$core$Debug$log, 'AL -> callee', callee);
-						var _v3 = A2($elm$core$Debug$log, 'AL -> args', args);
-						if (!args.b) {
-							return $author$project$HdlParser$Binding(callee);
-						} else {
-							var list = args;
-							return A2($author$project$HdlParser$Call, callee, list);
-						}
-					})),
-			A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps)),
-		$author$project$HdlParser$indent(
-			A2(
-				$elm$parser$Parser$Advanced$loop,
-				_List_Nil,
-				function (revExprs) {
-					var _v5 = A2($elm$core$Debug$log, 'AL -> revExprs', revExprs);
-					return $elm$parser$Parser$Advanced$oneOf(
-						_List_fromArray(
-							[
-								A2(
-								$elm$parser$Parser$Advanced$keeper,
-								$elm$parser$Parser$Advanced$succeed(
-									function (n) {
-										return $elm$parser$Parser$Advanced$Loop(
-											A2($elm$core$List$cons, n, revExprs));
-									}),
-								A2(
-									$elm$parser$Parser$Advanced$ignorer,
-									$elm$parser$Parser$Advanced$oneOf(
-										_List_fromArray(
-											[
-												$author$project$HdlParser$binding,
-												$author$project$HdlParser$cyclic$group()
-											])),
-									$author$project$HdlParser$sps)),
-								A2(
-								$elm$parser$Parser$Advanced$map,
-								function (_v6) {
-									return $elm$parser$Parser$Advanced$Done(
-										$elm$core$List$reverse(revExprs));
-								},
-								$elm$parser$Parser$Advanced$succeed(_Utils_Tuple0))
-							]));
-				})));
-}
-function $author$project$HdlParser$cyclic$group() {
-	return A2(
-		$elm$parser$Parser$Advanced$keeper,
-		A2(
-			$elm$parser$Parser$Advanced$keeper,
-			A2(
-				$elm$parser$Parser$Advanced$ignorer,
-				A2(
-					$elm$parser$Parser$Advanced$ignorer,
-					$elm$parser$Parser$Advanced$succeed(
-						F2(
-							function (g, i) {
-								if (i.$ === 'Just') {
-									var indexes = i.a;
-									return A2($author$project$HdlParser$Indexing, g, indexes);
-								} else {
-									return g;
-								}
-							})),
-					$author$project$HdlParser$checkIndent),
-				$elm$parser$Parser$Advanced$token(
-					A2($elm$parser$Parser$Advanced$Token, '(', $author$project$HdlParser$ExpectingLeftParen))),
-			A2(
-				$elm$parser$Parser$Advanced$ignorer,
-				$elm$parser$Parser$Advanced$lazy(
-					function (_v1) {
-						return $author$project$HdlParser$cyclic$expr();
-					}),
-				$elm$parser$Parser$Advanced$token(
-					A2($elm$parser$Parser$Advanced$Token, ')', $author$project$HdlParser$ExpectingRightParen)))),
-		$author$project$HdlParser$optional($author$project$HdlParser$indexing));
-}
-try {
-	var $author$project$HdlParser$expr = $author$project$HdlParser$cyclic$expr();
-	$author$project$HdlParser$cyclic$expr = function () {
-		return $author$project$HdlParser$expr;
-	};
-	var $author$project$HdlParser$bindingOrCall = $author$project$HdlParser$cyclic$bindingOrCall();
-	$author$project$HdlParser$cyclic$bindingOrCall = function () {
-		return $author$project$HdlParser$bindingOrCall;
-	};
-	var $author$project$HdlParser$group = $author$project$HdlParser$cyclic$group();
-	$author$project$HdlParser$cyclic$group = function () {
-		return $author$project$HdlParser$group;
-	};
-} catch ($) {
-	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    expr\n  │     ↓\n  │    bindingOrCall\n  │     ↓\n  │    group\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $elm$parser$Parser$Advanced$keyword = function (_v0) {
 	var kwd = _v0.a;
 	var expecting = _v0.b;
@@ -5693,6 +6028,43 @@ var $author$project$HdlParser$Param = F2(
 	function (name, size) {
 		return {name: name, size: size};
 	});
+var $author$project$HdlParser$param = A2(
+	$elm$parser$Parser$Advanced$keeper,
+	A2(
+		$elm$parser$Parser$Advanced$keeper,
+		$elm$parser$Parser$Advanced$succeed(
+			F2(
+				function (n, s) {
+					if (s.$ === 'Just') {
+						var size = s.a;
+						return A2($author$project$HdlParser$Param, n, size);
+					} else {
+						return A2(
+							$author$project$HdlParser$Param,
+							n,
+							{from: n.from, to: n.to, value: 1});
+					}
+				})),
+		$author$project$HdlParser$name),
+	$author$project$HdlParser$optional(
+		A2(
+			$elm$parser$Parser$Advanced$keeper,
+			A2(
+				$elm$parser$Parser$Advanced$ignorer,
+				A2(
+					$elm$parser$Parser$Advanced$ignorer,
+					$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+					$elm$parser$Parser$Advanced$token(
+						A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket))),
+				$author$project$HdlParser$sps),
+			A2(
+				$elm$parser$Parser$Advanced$ignorer,
+				A2(
+					$elm$parser$Parser$Advanced$ignorer,
+					$author$project$HdlParser$located($author$project$HdlParser$integer),
+					$author$project$HdlParser$sps),
+				$elm$parser$Parser$Advanced$token(
+					A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))))));
 var $author$project$HdlParser$params = A2(
 	$elm$parser$Parser$Advanced$loop,
 	_List_Nil,
@@ -5707,30 +6079,7 @@ var $author$project$HdlParser$params = A2(
 							return $elm$parser$Parser$Advanced$Loop(
 								A2($elm$core$List$cons, p, revParams));
 						}),
-					A2(
-						$elm$parser$Parser$Advanced$ignorer,
-						A2(
-							$elm$parser$Parser$Advanced$keeper,
-							A2(
-								$elm$parser$Parser$Advanced$keeper,
-								$elm$parser$Parser$Advanced$succeed($author$project$HdlParser$Param),
-								A2(
-									$elm$parser$Parser$Advanced$ignorer,
-									A2(
-										$elm$parser$Parser$Advanced$ignorer,
-										$author$project$HdlParser$name,
-										$elm$parser$Parser$Advanced$token(
-											A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket))),
-									$author$project$HdlParser$sps)),
-							A2(
-								$elm$parser$Parser$Advanced$ignorer,
-								A2(
-									$elm$parser$Parser$Advanced$ignorer,
-									$author$project$HdlParser$located($author$project$HdlParser$integer),
-									$author$project$HdlParser$sps),
-								$elm$parser$Parser$Advanced$token(
-									A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket)))),
-						$author$project$HdlParser$sps)),
+					A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$param, $author$project$HdlParser$sps)),
 					A2(
 					$elm$parser$Parser$Advanced$map,
 					function (_v0) {
@@ -5741,84 +6090,97 @@ var $author$project$HdlParser$params = A2(
 				]));
 	});
 var $author$project$HdlParser$ExpectingArrow = {$: 'ExpectingArrow'};
-var $author$project$HdlParser$retSize = A2(
-	$elm$parser$Parser$Advanced$keeper,
-	A2(
-		$elm$parser$Parser$Advanced$ignorer,
+var $author$project$HdlParser$retType = function () {
+	var singleRetType = A2(
+		$elm$parser$Parser$Advanced$keeper,
+		$elm$parser$Parser$Advanced$succeed(
+			function (p) {
+				return _List_fromArray(
+					[p]);
+			}),
+		$author$project$HdlParser$param);
+	var manyRetTypes = $elm$parser$Parser$Advanced$sequence(
+		{
+			end: A2($elm$parser$Parser$Advanced$Token, '}', $author$project$HdlParser$ExpectingRightBrace),
+			item: $author$project$HdlParser$param,
+			separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
+			spaces: $author$project$HdlParser$sps,
+			start: A2($elm$parser$Parser$Advanced$Token, '{', $author$project$HdlParser$ExpectingLeftBrace),
+			trailing: $elm$parser$Parser$Advanced$Forbidden
+		});
+	return A2(
+		$elm$parser$Parser$Advanced$keeper,
 		A2(
 			$elm$parser$Parser$Advanced$ignorer,
 			A2(
 				$elm$parser$Parser$Advanced$ignorer,
-				A2(
-					$elm$parser$Parser$Advanced$ignorer,
-					$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
-					$elm$parser$Parser$Advanced$token(
-						A2($elm$parser$Parser$Advanced$Token, '->', $author$project$HdlParser$ExpectingArrow))),
-				$author$project$HdlParser$sps),
-			$elm$parser$Parser$Advanced$token(
-				A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket))),
-		$author$project$HdlParser$sps),
-	A2(
-		$elm$parser$Parser$Advanced$ignorer,
-		A2(
-			$elm$parser$Parser$Advanced$ignorer,
-			$author$project$HdlParser$located($author$project$HdlParser$integer),
+				$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+				$elm$parser$Parser$Advanced$token(
+					A2($elm$parser$Parser$Advanced$Token, '->', $author$project$HdlParser$ExpectingArrow))),
 			$author$project$HdlParser$sps),
-		$elm$parser$Parser$Advanced$token(
-			A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))));
-function $author$project$HdlParser$cyclic$def() {
+		$elm$parser$Parser$Advanced$oneOf(
+			_List_fromArray(
+				[manyRetTypes, singleRetType])));
+}();
+function $author$project$HdlParser$cyclic$bindingDef() {
 	return A2(
 		$elm$parser$Parser$Advanced$keeper,
 		A2(
 			$elm$parser$Parser$Advanced$keeper,
 			A2(
-				$elm$parser$Parser$Advanced$keeper,
-				A2(
-					$elm$parser$Parser$Advanced$ignorer,
-					$elm$parser$Parser$Advanced$succeed(
-						F3(
-							function (defName, defHeader, _v3) {
-								var defLocals = _v3.a;
-								var defBody = _v3.b;
-								var _v4 = A2($elm$core$Debug$log, 'AL -> defName', defName);
-								if (defHeader.$ === 'Just') {
-									var _v6 = defHeader.a;
-									var defParams = _v6.a;
-									var defRetSize = _v6.b;
-									return $author$project$HdlParser$FuncDef(
-										{
-											body: defBody,
-											locals: A2($elm$core$Maybe$withDefault, _List_Nil, defLocals),
-											name: defName,
-											params: defParams,
-											retSize: defRetSize
-										});
-								} else {
-									return $author$project$HdlParser$BindingDef(
-										{
-											body: defBody,
-											locals: A2($elm$core$Maybe$withDefault, _List_Nil, defLocals),
-											name: defName
-										});
-								}
-							})),
-					$author$project$HdlParser$checkIndent),
-				A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps)),
+				$elm$parser$Parser$Advanced$ignorer,
+				$elm$parser$Parser$Advanced$succeed(
+					F2(
+						function (defName, _v4) {
+							var defLocals = _v4.a;
+							var defBody = _v4.b;
+							return $author$project$HdlParser$BindingDef(
+								{
+									body: defBody,
+									locals: A2($elm$core$Maybe$withDefault, _List_Nil, defLocals),
+									name: defName
+								});
+						})),
+				$author$project$HdlParser$checkIndent),
 			A2(
 				$elm$parser$Parser$Advanced$ignorer,
 				A2(
 					$elm$parser$Parser$Advanced$ignorer,
 					A2(
 						$elm$parser$Parser$Advanced$ignorer,
-						$author$project$HdlParser$optional(
-							A2(
-								$elm$parser$Parser$Advanced$keeper,
-								A2(
+						$elm$parser$Parser$Advanced$oneOf(
+							_List_fromArray(
+								[
+									$elm$parser$Parser$Advanced$backtrackable(
+									A2($elm$parser$Parser$Advanced$map, $author$project$HdlParser$BindingName, $author$project$HdlParser$name)),
+									A2(
 									$elm$parser$Parser$Advanced$keeper,
-									$elm$parser$Parser$Advanced$succeed($elm$core$Tuple$pair),
-									$author$project$HdlParser$params),
-								$author$project$HdlParser$retSize)),
-						$author$project$HdlParser$sps),
+									$elm$parser$Parser$Advanced$succeed(
+										A2($elm$core$Basics$composeL, $author$project$HdlParser$BindingRecord, $pzp1997$assoc_list$AssocList$fromList)),
+									$elm$parser$Parser$Advanced$sequence(
+										{
+											end: A2($elm$parser$Parser$Advanced$Token, '}', $author$project$HdlParser$ExpectingRightBrace),
+											item: A2(
+												$elm$parser$Parser$Advanced$keeper,
+												A2(
+													$elm$parser$Parser$Advanced$keeper,
+													$elm$parser$Parser$Advanced$succeed($elm$core$Tuple$pair),
+													A2(
+														$elm$parser$Parser$Advanced$ignorer,
+														A2(
+															$elm$parser$Parser$Advanced$ignorer,
+															A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps),
+															$elm$parser$Parser$Advanced$token(
+																A2($elm$parser$Parser$Advanced$Token, '=', $author$project$HdlParser$ExpectingEqual))),
+														$author$project$HdlParser$sps)),
+												$author$project$HdlParser$name),
+											separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
+											spaces: $author$project$HdlParser$sps,
+											start: A2($elm$parser$Parser$Advanced$Token, '{', $author$project$HdlParser$ExpectingLeftBrace),
+											trailing: $elm$parser$Parser$Advanced$Forbidden
+										}))
+								])),
+						$elm$parser$Parser$Advanced$backtrackable($author$project$HdlParser$sps)),
 					$elm$parser$Parser$Advanced$token(
 						A2($elm$parser$Parser$Advanced$Token, '=', $author$project$HdlParser$ExpectingEqual))),
 				$author$project$HdlParser$sps)),
@@ -5855,17 +6217,71 @@ function $author$project$HdlParser$cyclic$defs() {
 							$author$project$HdlParser$sps),
 						A2(
 							$elm$parser$Parser$Advanced$ignorer,
-							$author$project$HdlParser$cyclic$def(),
+							$elm$parser$Parser$Advanced$oneOf(
+								_List_fromArray(
+									[
+										$author$project$HdlParser$cyclic$bindingDef(),
+										$author$project$HdlParser$cyclic$funcDef()
+									])),
 							$author$project$HdlParser$sps)),
 						A2(
 						$elm$parser$Parser$Advanced$map,
-						function (_v2) {
+						function (_v3) {
 							return $elm$parser$Parser$Advanced$Done(
 								$elm$core$List$reverse(revDefs));
 						},
 						$elm$parser$Parser$Advanced$succeed(_Utils_Tuple0))
 					]));
 		});
+}
+function $author$project$HdlParser$cyclic$funcDef() {
+	return A2(
+		$elm$parser$Parser$Advanced$keeper,
+		A2(
+			$elm$parser$Parser$Advanced$keeper,
+			A2(
+				$elm$parser$Parser$Advanced$keeper,
+				A2(
+					$elm$parser$Parser$Advanced$keeper,
+					A2(
+						$elm$parser$Parser$Advanced$ignorer,
+						$elm$parser$Parser$Advanced$succeed(
+							F4(
+								function (defName, defParams, defRetType, _v2) {
+									var defLocals = _v2.a;
+									var defBody = _v2.b;
+									return $author$project$HdlParser$FuncDef(
+										{
+											body: defBody,
+											locals: A2($elm$core$Maybe$withDefault, _List_Nil, defLocals),
+											name: defName,
+											params: defParams,
+											retType: defRetType
+										});
+								})),
+						$author$project$HdlParser$checkIndent),
+					A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps)),
+				$author$project$HdlParser$params),
+			A2(
+				$elm$parser$Parser$Advanced$ignorer,
+				A2(
+					$elm$parser$Parser$Advanced$ignorer,
+					A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$retType, $author$project$HdlParser$sps),
+					$elm$parser$Parser$Advanced$token(
+						A2($elm$parser$Parser$Advanced$Token, '=', $author$project$HdlParser$ExpectingEqual))),
+				$author$project$HdlParser$sps)),
+		$author$project$HdlParser$indent(
+			A2(
+				$elm$parser$Parser$Advanced$keeper,
+				A2(
+					$elm$parser$Parser$Advanced$keeper,
+					$elm$parser$Parser$Advanced$succeed($elm$core$Tuple$pair),
+					A2(
+						$elm$parser$Parser$Advanced$ignorer,
+						$author$project$HdlParser$optional(
+							$author$project$HdlParser$cyclic$locals()),
+						$author$project$HdlParser$sps)),
+				$author$project$HdlParser$expr)));
 }
 function $author$project$HdlParser$cyclic$locals() {
 	return A2(
@@ -5905,20 +6321,24 @@ function $author$project$HdlParser$cyclic$locals() {
 				A2($elm$parser$Parser$Advanced$Token, 'in', $author$project$HdlParser$ExpectingIn))));
 }
 try {
-	var $author$project$HdlParser$def = $author$project$HdlParser$cyclic$def();
-	$author$project$HdlParser$cyclic$def = function () {
-		return $author$project$HdlParser$def;
+	var $author$project$HdlParser$bindingDef = $author$project$HdlParser$cyclic$bindingDef();
+	$author$project$HdlParser$cyclic$bindingDef = function () {
+		return $author$project$HdlParser$bindingDef;
 	};
 	var $author$project$HdlParser$defs = $author$project$HdlParser$cyclic$defs();
 	$author$project$HdlParser$cyclic$defs = function () {
 		return $author$project$HdlParser$defs;
+	};
+	var $author$project$HdlParser$funcDef = $author$project$HdlParser$cyclic$funcDef();
+	$author$project$HdlParser$cyclic$funcDef = function () {
+		return $author$project$HdlParser$funcDef;
 	};
 	var $author$project$HdlParser$locals = $author$project$HdlParser$cyclic$locals();
 	$author$project$HdlParser$cyclic$locals = function () {
 		return $author$project$HdlParser$locals;
 	};
 } catch ($) {
-	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    def\n  │     ↓\n  │    defs\n  │     ↓\n  │    locals\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
+	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    bindingDef\n  │     ↓\n  │    defs\n  │     ↓\n  │    funcDef\n  │     ↓\n  │    locals\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $elm$parser$Parser$Advanced$end = function (x) {
 	return $elm$parser$Parser$Advanced$Parser(
 		function (s) {
@@ -5983,7 +6403,7 @@ var $author$project$HdlParser$parse = function (string) {
 		string);
 };
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Main$source = '\nand1 a[1] b[1] -> [1] =\n  let\n    nand_a_b = nand a b[0..2]\n    c = nand a b\n  in\n  nand nand_a_b[0] nand_a_b\n\nnot a[1] -> [1] =\n  nand a a\n  ';
+var $author$project$Main$source = '\nxor a b -> out =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)  \n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$core$Debug$toString = _Debug_toString;

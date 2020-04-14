@@ -2,6 +2,7 @@ module HdlParser exposing (parse, Program)
 
 import Parser.Advanced exposing (..)
 import Set exposing (Set)
+import AssocList as Dict exposing (Dict)
 
 
 type alias Program =
@@ -12,21 +13,27 @@ type Def
   = FuncDef
     { name : Located String
     , params : List Param
-    , retSize : Located Int
+    , retType : List Param
     , locals : List Def
     , body : Expr
     }
   | BindingDef
-    { name : Located String
+    { name : BindingTarget
     , locals : List Def
     , body : Expr
     }
+
+
+type BindingTarget
+  = BindingName (Located String)
+  | BindingRecord (Dict (Located String) (Located String))
 
 
 type Expr
   = Binding (Located String)
   | Call (Located String) (List Expr)
   | Indexing Expr (Int, Int)
+  | Record (Dict (Located String) Expr)
 
 
 type alias Param =
@@ -52,6 +59,9 @@ type Problem
   | ExpectingRightParen
   | ExpectingIndent
   | ExpectingDotDot
+  | ExpectingLeftBrace
+  | ExpectingRightBrace
+  | ExpectingComma
 
 
 type Context
@@ -63,9 +73,9 @@ type alias HdlParser a =
 
 
 type alias Located a =
-  { start : (Int, Int)
+  { from : (Int, Int)
   , value : a
-  , end : (Int, Int)
+  , to : (Int, Int)
   }
 
 
@@ -94,42 +104,71 @@ defs =
     oneOf
     [ succeed (\d -> Loop (d :: revDefs))
       |. sps
-      |= def
+      |= oneOf
+        [ bindingDef
+        , funcDef          
+        ]
       |. sps
     , succeed ()
       |> map (\_ -> Done (List.reverse revDefs))
     ]
 
 
-def : HdlParser Def
-def =
+bindingDef : HdlParser Def
+bindingDef =
   succeed
-    (\defName defHeader (defLocals, defBody) ->
-      let
-        _ = Debug.log "AL -> defName" <| defName
-      in
-      case defHeader of
-        Just (defParams, defRetSize) ->
-          FuncDef { name = defName
-          , params = defParams
-          , retSize = defRetSize
-          , locals = Maybe.withDefault [] defLocals
-          , body = defBody
-          }
-        Nothing ->
-          BindingDef { name = defName
-          , locals = Maybe.withDefault [] defLocals
-          , body = defBody
-          }
+    (\defName (defLocals, defBody) ->
+      BindingDef { name = defName
+      , locals = Maybe.withDefault [] defLocals
+      , body = defBody
+      }
+    )
+    |. checkIndent
+    |= oneOf
+      [ backtrackable <| map BindingName name
+      , succeed (BindingRecord << Dict.fromList) |= sequence
+        { start = Token "{" ExpectingLeftBrace
+        , separator = Token "," ExpectingComma
+        , end = Token "}" ExpectingRightBrace
+        , spaces = sps
+        , item =
+          succeed Tuple.pair
+            |= name
+            |. sps
+            |. token (Token "=" ExpectingEqual)
+            |. sps
+            |= name
+        , trailing = Forbidden
+        }
+      ]
+    |. backtrackable sps
+    |. token (Token "=" ExpectingEqual)
+    |. sps
+    |= (indent <|
+        succeed Tuple.pair
+        |= optional locals
+        |. sps
+        |= expr
+      )
+
+
+funcDef : HdlParser Def
+funcDef =
+  succeed
+    (\defName defParams defRetType (defLocals, defBody) ->
+      FuncDef
+        { name = defName
+        , params = defParams
+        , retType = defRetType
+        , locals = Maybe.withDefault [] defLocals
+        , body = defBody
+        }
     )
     |. checkIndent
     |= name
     |. sps
-    |= (optional <|
-      succeed Tuple.pair
-        |= params
-        |= retSize
-      )
+    |= params
+    |= retType
     |. sps
     |. token (Token "=" ExpectingEqual)
     |. sps
@@ -201,7 +240,27 @@ expr =
   oneOf
     [ group
     , bindingOrCall
+    , record
     ]
+
+
+record : HdlParser Expr
+record =
+  succeed (Record << Dict.fromList)
+    |= sequence
+    { start = Token "{" ExpectingLeftBrace
+    , separator = Token "," ExpectingComma
+    , end = Token "}" ExpectingRightBrace
+    , spaces = sps
+    , item =
+      succeed Tuple.pair
+        |= name
+        |. sps
+        |. token (Token "=" ExpectingEqual)
+        |. sps
+        |= lazy (\_ -> expr)
+    , trailing = Forbidden
+    }
 
 
 group : HdlParser Expr
@@ -298,35 +357,60 @@ optional parser =
     ]
 
 
-retSize : HdlParser (Located Int)
-retSize =
+retType : HdlParser (List Param)
+retType =
+  let
+    singleRetType =
+      succeed (\p-> [ p ])
+        |= param
+    manyRetTypes =
+      sequence
+        { start = Token "{" ExpectingLeftBrace
+        , separator = Token "," ExpectingComma
+        , end = Token "}" ExpectingRightBrace
+        , spaces = sps
+        , item = param
+        , trailing = Forbidden
+        }
+  in
   succeed identity
     |. token (Token "->" ExpectingArrow)
     |. sps
-    |. token (Token "[" ExpectingLeftBracket)
-    |. sps
-    |= (located <| integer)
-    |. sps
-    |. token (Token "]" ExpectingRightBracket)
+    |= oneOf
+      [ manyRetTypes
+      , singleRetType
+      ]
 
 
 params : HdlParser (List Param)
 params =
   loop [] <| \revParams -> oneOf
     [ succeed (\p -> Loop (p :: revParams))
-      |= (
-        succeed Param
-          |= name
-          |. token (Token "[" ExpectingLeftBracket)
-          |. sps
-          |= (located <| integer)
-          |. sps
-          |. token (Token "]" ExpectingRightBracket)
-      )
+      |= param
       |. sps
     , succeed ()
         |> map (\_ -> Done (List.reverse revParams))
     ]
+
+
+param : HdlParser Param
+param =
+  succeed (\n s ->
+    case s of
+      Just size ->
+        Param n size
+      Nothing ->
+        Param n { from = n.from, to = n.to, value = 1 }
+    )
+    |= name
+    |= optional (
+      succeed identity
+      |. token (Token "[" ExpectingLeftBracket)
+      |. sps
+      |= (located <| integer)
+      |. sps
+      |. token (Token "]" ExpectingRightBracket)
+    )
 
 
 name : HdlParser (Located String)
