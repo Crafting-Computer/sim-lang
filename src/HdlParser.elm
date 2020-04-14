@@ -26,6 +26,7 @@ type Def
 type Expr
   = Binding (Located String)
   | Call (Located String) (List Expr)
+  | Indexing Expr (Int, Int)
 
 
 type alias Param =
@@ -37,7 +38,6 @@ type alias Param =
 type Problem
   = ExpectingName
   | ExpectingInt
-  | InvalidNumber
   | ExpectingLeftBracket
   | ExpectingRightBracket
   | ExpectingLet
@@ -51,6 +51,7 @@ type Problem
   | ExpectingLeftParen
   | ExpectingRightParen
   | ExpectingIndent
+  | ExpectingDotDot
 
 
 type Context
@@ -205,18 +206,58 @@ expr =
 
 group : HdlParser Expr
 group =
-  succeed identity
+  succeed (\g i ->
+    case i of
+      Just indexes ->
+        Indexing g indexes
+      Nothing ->
+        g
+  )
     |. checkIndent
     |. token (Token "(" ExpectingLeftParen)
     |= lazy (\_ -> expr)
     |. token (Token ")" ExpectingRightParen)
+    |= optional indexing
+
+
+indexing : HdlParser (Int, Int)
+indexing =
+  succeed (\from to -> Tuple.pair from (Maybe.withDefault from to))
+    |. token (Token "[" ExpectingLeftBracket)
+    |. sps
+    |= integer
+    |. sps
+    |= (optional <|
+      succeed identity
+        |. token (Token ".." ExpectingDotDot)
+        |. sps
+        |= integer
+    )
+    |. sps
+    |. token (Token "]" ExpectingRightBracket)
+
+
+integer : HdlParser Int
+integer =
+  map (\str -> Maybe.withDefault 0 <| String.toInt str) <|
+    getChompedString <|
+    succeed ()
+      |. chompIf Char.isDigit ExpectingInt
+      |. chompWhile Char.isDigit
 
 
 binding : HdlParser Expr
 binding =
-  succeed Binding
+  succeed (\n i ->
+    case i of
+      Just indexes ->
+        Indexing (Binding n) indexes
+      Nothing ->
+        Binding n
+    )
     |. checkIndent
     |= name
+    |= optional indexing
 
 
 bindingOrCall : HdlParser Expr
@@ -267,7 +308,7 @@ retSize =
     |. sps
     |. token (Token "[" ExpectingLeftBracket)
     |. sps
-    |= (located <| int ExpectingInt InvalidNumber)
+    |= (located <| integer)
     |. sps
     |. token (Token "]" ExpectingRightBracket)
 
@@ -281,7 +322,7 @@ params =
           |= name
           |. token (Token "[" ExpectingLeftBracket)
           |. sps
-          |= (located <| int ExpectingInt InvalidNumber)
+          |= (located <| integer)
           |. sps
           |. token (Token "]" ExpectingRightBracket)
       )
