@@ -10,27 +10,27 @@ type alias Program =
 
 type Def
   = FuncDef
-    { name : String
+    { name : Located String
     , params : List Param
-    , retSize : Int
+    , retSize : Located Int
     , locals : List Def
     , body : Expr
     }
   | BindingDef
-    { name : String
+    { name : Located String
     , locals : List Def
     , body : Expr
     }
 
 
 type Expr
-  = Binding String
-  | Call String (List String)
+  = Binding (Located String)
+  | Call (Located String) (List (Located String))
 
 
 type alias Param =
-  { name : String
-  , size : Int
+  { name : Located String
+  , size : Located Int
   }
 
 
@@ -56,6 +56,21 @@ type Context
 
 type alias HdlParser a =
   Parser Context Problem a
+
+
+type alias Located a =
+  { start : (Int, Int)
+  , value : a
+  , end : (Int, Int)
+  }
+
+
+located : HdlParser a -> HdlParser (Located a)
+located parser =
+  succeed Located
+    |= getPosition
+    |= parser
+    |= getPosition
 
 
 reserved : Set String
@@ -179,14 +194,14 @@ optional parser =
     ]
 
 
-retSize : HdlParser Int
+retSize : HdlParser (Located Int)
 retSize =
   succeed identity
     |. token (Token "->" ExpectingArrow)
     |. sps
     |. token (Token "[" ExpectingLeftBracket)
     |. sps
-    |= int ExpectingInt InvalidNumber
+    |= (located <| int ExpectingInt InvalidNumber)
     |. sps
     |. token (Token "]" ExpectingRightBracket)
 
@@ -200,7 +215,7 @@ params =
           |= name
           |. token (Token "[" ExpectingLeftBracket)
           |. sps
-          |= int ExpectingInt InvalidNumber
+          |= (located <| int ExpectingInt InvalidNumber)
           |. sps
           |. token (Token "]" ExpectingRightBracket)
       )
@@ -210,9 +225,9 @@ params =
     ]
 
 
-name : HdlParser String
+name : HdlParser (Located String)
 name =
-  variable
+  located <| variable
     { start = Char.isLower
     , inner = \c -> Char.isAlphaNum c || c == '_'
     , reserved = reserved

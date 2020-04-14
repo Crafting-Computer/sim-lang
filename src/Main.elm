@@ -25,6 +25,9 @@ main =
         ]
 
     Ok program ->
+      let
+        _ = Debug.log "program" program
+      in
       div []
         [ pre [] [ text source]
         , p [] [ text (Debug.toString program) ]
