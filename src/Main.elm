@@ -10,11 +10,15 @@ import HdlParser exposing (parse)
 source =
   -- "nand_a_b = nand a b\n"
   """
-  and1 a[1] b[1] -> [1] =
-    let
-      nand_a_b = nand a b
-    in
-    nand nand_a_b nand_a_b
+and1 a[1] b[1] -> [1] =
+  let
+    nand_a_b = nand a b
+    c = nand a b
+  in
+  nand nand_a_b nand_a_b
+
+not a[1] -> [1] =
+  nand a a
   """
 main =
   case parse source of

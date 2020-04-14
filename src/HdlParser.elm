@@ -50,6 +50,7 @@ type Problem
   | ExpectingEndOfMultiLineComment
   | ExpectingLeftParen
   | ExpectingRightParen
+  | ExpectingIndent
 
 
 type Context
@@ -102,7 +103,7 @@ defs =
 def : HdlParser Def
 def =
   succeed
-    (\defName defHeader defLocals defBody ->
+    (\defName defHeader (defLocals, defBody) ->
       let
         _ = Debug.log "AL -> defName" <| defName
       in
@@ -120,6 +121,7 @@ def =
           , body = defBody
           }
     )
+    |. checkIndent
     |= name
     |. sps
     |= (optional <|
@@ -130,9 +132,33 @@ def =
     |. sps
     |. token (Token "=" ExpectingEqual)
     |. sps
-    |= optional locals
-    |. sps
-    |= expr
+    |= (indent <|
+        succeed Tuple.pair
+        |= optional locals
+        |. sps
+        |= expr
+      )
+
+
+checkIndent : HdlParser ()
+checkIndent =
+  succeed (\indentation column ->
+    let
+      _ = Debug.log "AL -> column" <| column
+    in
+    indentation <= column
+    )
+    |= getIndent
+    |= getCol
+    |> andThen checkIndentHelp
+
+
+checkIndentHelp : Bool -> HdlParser ()
+checkIndentHelp isIndented =
+  if isIndented then
+    succeed ()
+  else
+    problem ExpectingIndent
 
 
 locals : HdlParser (List Def)
@@ -143,11 +169,30 @@ locals =
     in
     ds
   )
+    |. checkIndent
     |. keyword (Token "let" ExpectingLet)
     |. sps
-    |= lazy (\_ -> defs)
-    |. sps
+    |= (indent <|
+      succeed identity
+        |= lazy (\_ -> defs)
+        |. sps
+    )
+    |. checkIndent
     |. keyword (Token "in" ExpectingIn)
+
+
+indent : HdlParser a -> HdlParser a
+indent parser =
+  succeed (\indentation ->
+    indentation + 2
+  )
+  |= getIndent
+  |> andThen (\newIndentation ->
+    let
+      _ = Debug.log "AL -> newIndentation" <| newIndentation
+    in
+    withIndent newIndentation parser
+  )
 
 
 expr : HdlParser Expr
@@ -161,6 +206,7 @@ expr =
 group : HdlParser Expr
 group =
   succeed identity
+    |. checkIndent
     |. token (Token "(" ExpectingLeftParen)
     |= lazy (\_ -> expr)
     |. token (Token ")" ExpectingRightParen)
@@ -169,6 +215,7 @@ group =
 binding : HdlParser Expr
 binding =
   succeed Binding
+    |. checkIndent
     |= name
 
 
@@ -188,7 +235,7 @@ bindingOrCall =
     )
     |= name
     |. sps
-    |= ( loop [] <| \revExprs ->
+    |= indent ( loop [] <| \revExprs ->
       let
         _ = Debug.log "AL -> revExprs" <| revExprs
       in
