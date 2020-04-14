@@ -13,7 +13,10 @@ source =
 and1 a[1] b[1] -> [1] =
   let
     nand_a_b = nand a b[0..2]
-    c = nand a b
+    c =
+      nand
+      a
+      b
   in
   nand nand_a_b[0] nand_a_b
 

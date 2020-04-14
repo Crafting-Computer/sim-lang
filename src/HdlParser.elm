@@ -1,4 +1,4 @@
-module HdlParser exposing (parse)
+module HdlParser exposing (parse, Program)
 
 import Parser.Advanced exposing (..)
 import Set exposing (Set)
@@ -276,10 +276,7 @@ bindingOrCall =
     )
     |= name
     |. sps
-    |= indent ( loop [] <| \revExprs ->
-      let
-        _ = Debug.log "AL -> revExprs" <| revExprs
-      in
+    |=  ( loop [] <| \revExprs ->
       oneOf
         [ succeed (\n -> Loop (n :: revExprs))
           |= oneOf
