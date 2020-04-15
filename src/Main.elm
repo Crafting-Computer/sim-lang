@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Html exposing (div, p, pre, text)
 import HdlParser exposing (parse)
+import HdlChecker exposing (check)
 
 
 -- MAIN
@@ -67,4 +68,5 @@ main =
       div []
         [ pre [] [ text source]
         , p [] [ text (Debug.toString program) ]
+        , p [] [ text (Debug.toString <| check program) ]
         ]

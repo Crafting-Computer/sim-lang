@@ -4534,6 +4534,318 @@ var $elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
+var $author$project$HdlChecker$DuplicatedName = F2(
+	function (a, b) {
+		return {$: 'DuplicatedName', a: a, b: b};
+	});
+var $elm_community$list_extra$List$Extra$find = F2(
+	function (predicate, list) {
+		find:
+		while (true) {
+			if (!list.b) {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var first = list.a;
+				var rest = list.b;
+				if (predicate(first)) {
+					return $elm$core$Maybe$Just(first);
+				} else {
+					var $temp$predicate = predicate,
+						$temp$list = rest;
+					predicate = $temp$predicate;
+					list = $temp$list;
+					continue find;
+				}
+			}
+		}
+	});
+var $elm$core$List$foldrHelper = F4(
+	function (fn, acc, ctr, ls) {
+		if (!ls.b) {
+			return acc;
+		} else {
+			var a = ls.a;
+			var r1 = ls.b;
+			if (!r1.b) {
+				return A2(fn, a, acc);
+			} else {
+				var b = r1.a;
+				var r2 = r1.b;
+				if (!r2.b) {
+					return A2(
+						fn,
+						a,
+						A2(fn, b, acc));
+				} else {
+					var c = r2.a;
+					var r3 = r2.b;
+					if (!r3.b) {
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(fn, c, acc)));
+					} else {
+						var d = r3.a;
+						var r4 = r3.b;
+						var res = (ctr > 500) ? A3(
+							$elm$core$List$foldl,
+							fn,
+							acc,
+							$elm$core$List$reverse(r4)) : A4($elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
+						return A2(
+							fn,
+							a,
+							A2(
+								fn,
+								b,
+								A2(
+									fn,
+									c,
+									A2(fn, d, res))));
+					}
+				}
+			}
+		}
+	});
+var $elm$core$List$foldr = F3(
+	function (fn, acc, ls) {
+		return A4($elm$core$List$foldrHelper, fn, acc, 0, ls);
+	});
+var $elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						$elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
+var $pzp1997$assoc_list$AssocList$values = function (_v0) {
+	var alist = _v0.a;
+	return A2($elm$core$List$map, $elm$core$Tuple$second, alist);
+};
+var $author$project$HdlChecker$getDefNames = function (def) {
+	if (def.$ === 'FuncDef') {
+		var name = def.a.name;
+		return _List_fromArray(
+			[name]);
+	} else {
+		var name = def.a.name;
+		if (name.$ === 'BindingName') {
+			var n = name.a;
+			return _List_fromArray(
+				[n]);
+		} else {
+			var r = name.a;
+			return $pzp1997$assoc_list$AssocList$values(r);
+		}
+	}
+};
+var $author$project$HdlChecker$checkDef = F3(
+	function (beforeDefs, afterDefs, def) {
+		var defNames = $author$project$HdlChecker$getDefNames(def);
+		var duplicatedNames = A3(
+			$elm$core$List$foldl,
+			F2(
+				function (other, duplicates1) {
+					return _Utils_ap(
+						A3(
+							$elm$core$List$foldl,
+							F2(
+								function (defName, duplicates2) {
+									var _v1 = A2(
+										$elm_community$list_extra$List$Extra$find,
+										function (otherName) {
+											return _Utils_eq(otherName.value, defName.value);
+										},
+										$author$project$HdlChecker$getDefNames(other));
+									if (_v1.$ === 'Just') {
+										var otherName = _v1.a;
+										return A2(
+											$elm$core$List$cons,
+											A2($author$project$HdlChecker$DuplicatedName, otherName, defName),
+											duplicates2);
+									} else {
+										return duplicates2;
+									}
+								}),
+							_List_Nil,
+							defNames),
+						duplicates1);
+				}),
+			_List_Nil,
+			beforeDefs);
+		var errors = duplicatedNames;
+		if (!errors.b) {
+			return $elm$core$Result$Ok(_Utils_Tuple0);
+		} else {
+			var errs = errors;
+			return $elm$core$Result$Err(errs);
+		}
+	});
+var $elm$core$List$drop = F2(
+	function (n, list) {
+		drop:
+		while (true) {
+			if (n <= 0) {
+				return list;
+			} else {
+				if (!list.b) {
+					return list;
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					var $temp$n = n - 1,
+						$temp$list = xs;
+					n = $temp$n;
+					list = $temp$list;
+					continue drop;
+				}
+			}
+		}
+	});
+var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$HdlParser$VarSize = function (a) {
+	return {$: 'VarSize', a: a};
+};
+var $author$project$HdlParser$Binding = function (a) {
+	return {$: 'Binding', a: a};
+};
+var $author$project$HdlParser$FuncDef = function (a) {
+	return {$: 'FuncDef', a: a};
+};
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $author$project$HdlChecker$fakeLocated = function (value) {
+	return {
+		from: _Utils_Tuple2(-1, -1),
+		to: _Utils_Tuple2(-1, -1),
+		value: value
+	};
+};
+var $author$project$HdlChecker$preludeFuncDef = F3(
+	function (name, params, retType) {
+		return $author$project$HdlParser$FuncDef(
+			{
+				body: $author$project$HdlParser$Binding(
+					$author$project$HdlChecker$fakeLocated('')),
+				locals: _List_Nil,
+				name: $author$project$HdlChecker$fakeLocated(name),
+				params: A2(
+					$elm$core$List$map,
+					function (p) {
+						return {
+							name: $author$project$HdlChecker$fakeLocated(p.name),
+							size: $author$project$HdlChecker$fakeLocated(p.size)
+						};
+					},
+					params),
+				retType: A2(
+					$elm$core$List$map,
+					function (p) {
+						return {
+							name: $author$project$HdlChecker$fakeLocated(p.name),
+							size: $author$project$HdlChecker$fakeLocated(p.size)
+						};
+					},
+					retType)
+			});
+	});
+var $author$project$HdlChecker$prelude = _List_fromArray(
+	[
+		A3(
+		$author$project$HdlChecker$preludeFuncDef,
+		'nand',
+		_List_fromArray(
+			[
+				{
+				name: 'a',
+				size: $author$project$HdlParser$VarSize('n')
+			},
+				{
+				name: 'b',
+				size: $author$project$HdlParser$VarSize('n')
+			}
+			]),
+		_List_fromArray(
+			[
+				{
+				name: 'out',
+				size: $author$project$HdlParser$VarSize('n')
+			}
+			]))
+	]);
+var $elm_community$list_extra$List$Extra$takeWhile = function (predicate) {
+	var takeWhileMemo = F2(
+		function (memo, list) {
+			takeWhileMemo:
+			while (true) {
+				if (!list.b) {
+					return $elm$core$List$reverse(memo);
+				} else {
+					var x = list.a;
+					var xs = list.b;
+					if (predicate(x)) {
+						var $temp$memo = A2($elm$core$List$cons, x, memo),
+							$temp$list = xs;
+						memo = $temp$memo;
+						list = $temp$list;
+						continue takeWhileMemo;
+					} else {
+						return $elm$core$List$reverse(memo);
+					}
+				}
+			}
+		});
+	return takeWhileMemo(_List_Nil);
+};
+var $author$project$HdlChecker$check = function (defs) {
+	var errors = A3(
+		$elm$core$List$foldl,
+		F2(
+			function (def, errs) {
+				var beforeDefs = A2(
+					$elm_community$list_extra$List$Extra$takeWhile,
+					$elm$core$Basics$neq(def),
+					defs);
+				var afterDefs = A2(
+					$elm$core$List$drop,
+					$elm$core$List$length(beforeDefs) + 1,
+					defs);
+				var _v1 = A3(
+					$author$project$HdlChecker$checkDef,
+					_Utils_ap($author$project$HdlChecker$prelude, beforeDefs),
+					afterDefs,
+					def);
+				if (_v1.$ === 'Err') {
+					var error = _v1.a;
+					return _Utils_ap(error, errs);
+				} else {
+					return errs;
+				}
+			}),
+		_List_Nil,
+		defs);
+	if (!errors.b) {
+		return $elm$core$Result$Ok(_Utils_Tuple0);
+	} else {
+		var errs = errors;
+		return $elm$core$Result$Err(errs);
+	}
+};
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$core$Debug$log = _Debug_log;
 var $elm$html$Html$p = _VirtualDom_node('p');
@@ -4557,9 +4869,6 @@ var $author$project$HdlParser$ExpectingLeftBrace = {$: 'ExpectingLeftBrace'};
 var $author$project$HdlParser$ExpectingLet = {$: 'ExpectingLet'};
 var $author$project$HdlParser$ExpectingRightBrace = {$: 'ExpectingRightBrace'};
 var $elm$parser$Parser$Advanced$Forbidden = {$: 'Forbidden'};
-var $author$project$HdlParser$FuncDef = function (a) {
-	return {$: 'FuncDef', a: a};
-};
 var $elm$parser$Parser$Advanced$Loop = function (a) {
 	return {$: 'Loop', a: a};
 };
@@ -4726,9 +5035,6 @@ var $elm$core$Basics$composeL = F3(
 		return g(
 			f(x));
 	});
-var $author$project$HdlParser$Binding = function (a) {
-	return {$: 'Binding', a: a};
-};
 var $author$project$HdlParser$Call = F2(
 	function (a, b) {
 		return {$: 'Call', a: a, b: b};
@@ -4755,9 +5061,6 @@ var $author$project$HdlParser$ExpectingLeftBracket = {$: 'ExpectingLeftBracket'}
 var $author$project$HdlParser$ExpectingRightBracket = {$: 'ExpectingRightBracket'};
 var $author$project$HdlParser$ExpectingInt = {$: 'ExpectingInt'};
 var $elm$parser$Parser$Advanced$isSubChar = _Parser_isSubChar;
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
 var $elm$parser$Parser$Advanced$chompIf = F2(
 	function (isGood, expecting) {
 		return $elm$parser$Parser$Advanced$Parser(
@@ -5091,7 +5394,6 @@ var $elm$parser$Parser$Advanced$chompUntil = function (_v0) {
 				{col: newCol, context: s.context, indent: s.indent, offset: newOffset, row: newRow, src: s.src});
 		});
 };
-var $elm$core$Basics$neq = _Utils_notEqual;
 var $elm$parser$Parser$Advanced$isChar = function (_char) {
 	return true;
 };
@@ -5539,61 +5841,6 @@ var $author$project$HdlParser$binding = A2(
 var $pzp1997$assoc_list$AssocList$D = function (a) {
 	return {$: 'D', a: a};
 };
-var $elm$core$List$foldrHelper = F4(
-	function (fn, acc, ctr, ls) {
-		if (!ls.b) {
-			return acc;
-		} else {
-			var a = ls.a;
-			var r1 = ls.b;
-			if (!r1.b) {
-				return A2(fn, a, acc);
-			} else {
-				var b = r1.a;
-				var r2 = r1.b;
-				if (!r2.b) {
-					return A2(
-						fn,
-						a,
-						A2(fn, b, acc));
-				} else {
-					var c = r2.a;
-					var r3 = r2.b;
-					if (!r3.b) {
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(fn, c, acc)));
-					} else {
-						var d = r3.a;
-						var r4 = r3.b;
-						var res = (ctr > 500) ? A3(
-							$elm$core$List$foldl,
-							fn,
-							acc,
-							$elm$core$List$reverse(r4)) : A4($elm$core$List$foldrHelper, fn, acc, ctr + 1, r4);
-						return A2(
-							fn,
-							a,
-							A2(
-								fn,
-								b,
-								A2(
-									fn,
-									c,
-									A2(fn, d, res))));
-					}
-				}
-			}
-		}
-	});
-var $elm$core$List$foldr = F3(
-	function (fn, acc, ls) {
-		return A4($elm$core$List$foldrHelper, fn, acc, 0, ls);
-	});
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -6031,9 +6278,6 @@ var $author$project$HdlParser$Param = F2(
 	function (name, size) {
 		return {name: name, size: size};
 	});
-var $author$project$HdlParser$VarSize = function (a) {
-	return {$: 'VarSize', a: a};
-};
 var $author$project$HdlParser$param = A2(
 	$elm$parser$Parser$Advanced$keeper,
 	A2(
@@ -6469,6 +6713,15 @@ var $author$project$Main$main = function () {
 						[
 							$elm$html$Html$text(
 							$elm$core$Debug$toString(program))
+						])),
+					A2(
+					$elm$html$Html$p,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$elm$core$Debug$toString(
+								$author$project$HdlChecker$check(program)))
 						]))
 				]));
 	}

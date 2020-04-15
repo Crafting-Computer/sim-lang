@@ -1,12 +1,8 @@
-module HdlParser exposing (parse, Program, Def(..), BindingTarget(..), Expr(..), Param)
+module HdlParser exposing (parse, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
 
 import Parser.Advanced exposing (..)
 import Set exposing (Set)
 import AssocList as Dict exposing (Dict)
-
-
-type alias Program =
-  List Def
 
 
 type Def
@@ -98,7 +94,7 @@ reserved =
     [ "let", "in" ]
 
 
-parse : String -> Result (List (DeadEnd Context Problem)) Program
+parse : String -> Result (List (DeadEnd Context Problem)) (List Def)
 parse string =
   run (succeed identity |= defs |. end ExpectingEOF) string
 
