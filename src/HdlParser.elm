@@ -1,4 +1,4 @@
-module HdlParser exposing (parse, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+module HdlParser exposing (parse, fakeLocated, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
 
 import Parser.Advanced exposing (..)
 import Set exposing (Set)
@@ -41,6 +41,11 @@ type alias Param =
 type Size
   = IntSize Int
   | VarSize String
+
+
+type RetType
+  = SingleRetType (Located Size)
+  | RecordRetType (List Param)
 
 
 type Problem
@@ -362,8 +367,7 @@ retType : HdlParser (List Param)
 retType =
   let
     singleRetType =
-      succeed (\p-> [ p ])
-        |= param
+      map (\s -> [ Param (fakeLocated "") s ]) size
     manyRetTypes =
       sequence
         { start = Token "{" ExpectingLeftBrace
@@ -396,25 +400,28 @@ params =
 
 param : HdlParser Param
 param =
-  succeed (\n s ->
-    case s of
-      Just size ->
-        Param n size
+  succeed (\n s1 ->
+    case s1 of
+      Just s2 ->
+        Param n s2
       Nothing ->
         Param n { from = n.from, to = n.to, value = IntSize 1 }
     )
     |= name
-    |= optional (
-      succeed identity
-      |. token (Token "[" ExpectingLeftBracket)
-      |. sps
-      |= (located <| oneOf
-        [ map IntSize integer
-        , map (\n -> VarSize n.value) name
-        ])
-      |. sps
-      |. token (Token "]" ExpectingRightBracket)
-    )
+    |= optional size
+
+
+size : HdlParser (Located Size)
+size =
+  succeed identity
+    |. token (Token "[" ExpectingLeftBracket)
+    |. sps
+    |= (located <| oneOf
+      [ map IntSize integer
+      , map (\n -> VarSize n.value) name
+      ])
+    |. sps
+    |. token (Token "]" ExpectingRightBracket)
 
 
 name : HdlParser (Located String)
@@ -443,3 +450,11 @@ ifProgress parser offset =
     |. parser
     |= getOffset
     |> map (\newOffset -> if offset == newOffset then Done () else Loop newOffset)
+
+
+fakeLocated : a -> Located a
+fakeLocated value =
+  { from = (-1, -1)
+  , to = (-1, -1)
+  , value = value
+  }

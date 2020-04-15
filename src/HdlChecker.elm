@@ -1,6 +1,6 @@
 module HdlChecker exposing (..)
 
-import HdlParser exposing (Located, Def(..), Expr(..), BindingTarget(..), Size(..))
+import HdlParser exposing (fakeLocated, Located, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict
 import List.Extra
 
@@ -36,14 +36,6 @@ preludeFuncDef name params retType =
     , locals = []
     , body = Binding <| fakeLocated ""
     }
-
-
-fakeLocated : a -> Located a
-fakeLocated value =
-  { from = (-1, -1)
-  , to = (-1, -1)
-  , value = value
-  }
 
 
 check : List Def -> Result (List Problem) ()

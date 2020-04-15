@@ -4729,7 +4729,7 @@ var $author$project$HdlParser$FuncDef = function (a) {
 var $elm$core$Basics$negate = function (n) {
 	return -n;
 };
-var $author$project$HdlChecker$fakeLocated = function (value) {
+var $author$project$HdlParser$fakeLocated = function (value) {
 	return {
 		from: _Utils_Tuple2(-1, -1),
 		to: _Utils_Tuple2(-1, -1),
@@ -4741,15 +4741,15 @@ var $author$project$HdlChecker$preludeFuncDef = F3(
 		return $author$project$HdlParser$FuncDef(
 			{
 				body: $author$project$HdlParser$Binding(
-					$author$project$HdlChecker$fakeLocated('')),
+					$author$project$HdlParser$fakeLocated('')),
 				locals: _List_Nil,
-				name: $author$project$HdlChecker$fakeLocated(name),
+				name: $author$project$HdlParser$fakeLocated(name),
 				params: A2(
 					$elm$core$List$map,
 					function (p) {
 						return {
-							name: $author$project$HdlChecker$fakeLocated(p.name),
-							size: $author$project$HdlChecker$fakeLocated(p.size)
+							name: $author$project$HdlParser$fakeLocated(p.name),
+							size: $author$project$HdlParser$fakeLocated(p.size)
 						};
 					},
 					params),
@@ -4757,8 +4757,8 @@ var $author$project$HdlChecker$preludeFuncDef = F3(
 					$elm$core$List$map,
 					function (p) {
 						return {
-							name: $author$project$HdlChecker$fakeLocated(p.name),
-							size: $author$project$HdlChecker$fakeLocated(p.size)
+							name: $author$project$HdlParser$fakeLocated(p.name),
+							size: $author$project$HdlParser$fakeLocated(p.size)
 						};
 					},
 					retType)
@@ -6278,16 +6278,45 @@ var $author$project$HdlParser$Param = F2(
 	function (name, size) {
 		return {name: name, size: size};
 	});
+var $author$project$HdlParser$size = A2(
+	$elm$parser$Parser$Advanced$keeper,
+	A2(
+		$elm$parser$Parser$Advanced$ignorer,
+		A2(
+			$elm$parser$Parser$Advanced$ignorer,
+			$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+			$elm$parser$Parser$Advanced$token(
+				A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket))),
+		$author$project$HdlParser$sps),
+	A2(
+		$elm$parser$Parser$Advanced$ignorer,
+		A2(
+			$elm$parser$Parser$Advanced$ignorer,
+			$author$project$HdlParser$located(
+				$elm$parser$Parser$Advanced$oneOf(
+					_List_fromArray(
+						[
+							A2($elm$parser$Parser$Advanced$map, $author$project$HdlParser$IntSize, $author$project$HdlParser$integer),
+							A2(
+							$elm$parser$Parser$Advanced$map,
+							function (n) {
+								return $author$project$HdlParser$VarSize(n.value);
+							},
+							$author$project$HdlParser$name)
+						]))),
+			$author$project$HdlParser$sps),
+		$elm$parser$Parser$Advanced$token(
+			A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))));
 var $author$project$HdlParser$param = A2(
 	$elm$parser$Parser$Advanced$keeper,
 	A2(
 		$elm$parser$Parser$Advanced$keeper,
 		$elm$parser$Parser$Advanced$succeed(
 			F2(
-				function (n, s) {
-					if (s.$ === 'Just') {
-						var size = s.a;
-						return A2($author$project$HdlParser$Param, n, size);
+				function (n, s1) {
+					if (s1.$ === 'Just') {
+						var s2 = s1.a;
+						return A2($author$project$HdlParser$Param, n, s2);
 					} else {
 						return A2(
 							$author$project$HdlParser$Param,
@@ -6300,36 +6329,7 @@ var $author$project$HdlParser$param = A2(
 					}
 				})),
 		$author$project$HdlParser$name),
-	$author$project$HdlParser$optional(
-		A2(
-			$elm$parser$Parser$Advanced$keeper,
-			A2(
-				$elm$parser$Parser$Advanced$ignorer,
-				A2(
-					$elm$parser$Parser$Advanced$ignorer,
-					$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
-					$elm$parser$Parser$Advanced$token(
-						A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket))),
-				$author$project$HdlParser$sps),
-			A2(
-				$elm$parser$Parser$Advanced$ignorer,
-				A2(
-					$elm$parser$Parser$Advanced$ignorer,
-					$author$project$HdlParser$located(
-						$elm$parser$Parser$Advanced$oneOf(
-							_List_fromArray(
-								[
-									A2($elm$parser$Parser$Advanced$map, $author$project$HdlParser$IntSize, $author$project$HdlParser$integer),
-									A2(
-									$elm$parser$Parser$Advanced$map,
-									function (n) {
-										return $author$project$HdlParser$VarSize(n.value);
-									},
-									$author$project$HdlParser$name)
-								]))),
-					$author$project$HdlParser$sps),
-				$elm$parser$Parser$Advanced$token(
-					A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))))));
+	$author$project$HdlParser$optional($author$project$HdlParser$size));
 var $author$project$HdlParser$params = A2(
 	$elm$parser$Parser$Advanced$loop,
 	_List_Nil,
@@ -6357,13 +6357,17 @@ var $author$project$HdlParser$params = A2(
 var $author$project$HdlParser$ExpectingArrow = {$: 'ExpectingArrow'};
 var $author$project$HdlParser$retType = function () {
 	var singleRetType = A2(
-		$elm$parser$Parser$Advanced$keeper,
-		$elm$parser$Parser$Advanced$succeed(
-			function (p) {
-				return _List_fromArray(
-					[p]);
-			}),
-		$author$project$HdlParser$param);
+		$elm$parser$Parser$Advanced$map,
+		function (s) {
+			return _List_fromArray(
+				[
+					A2(
+					$author$project$HdlParser$Param,
+					$author$project$HdlParser$fakeLocated(''),
+					s)
+				]);
+		},
+		$author$project$HdlParser$size);
 	var manyRetTypes = $elm$parser$Parser$Advanced$sequence(
 		{
 			end: A2($elm$parser$Parser$Advanced$Token, '}', $author$project$HdlParser$ExpectingRightBrace),
@@ -6668,7 +6672,7 @@ var $author$project$HdlParser$parse = function (string) {
 		string);
 };
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Main$source = '\nxor a b -> out =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)  \n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n\nmux2 a[n] b[n] sel[1] -> out[n] =\n  or\n  (and a (not sel))\n  (and b sel)\n  ';
+var $author$project$Main$source = '\nxor a b -> [1] =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)  \n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n\nmux2 a[n] b[n] sel[1] -> [n] =\n  or\n  (and a (not sel))\n  (and b sel)\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$core$Debug$toString = _Debug_toString;

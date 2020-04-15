@@ -25,7 +25,7 @@ source =
 --   nand a a
 --   """
   """
-xor a b -> out =
+xor a b -> [1] =
   let
     nand_a_b = nand a b
   in
@@ -48,7 +48,7 @@ full_adder a b c -> { sum, carry } =
   in
   { sum = s2, carry = c3 }
 
-mux2 a[n] b[n] sel[1] -> out[n] =
+mux2 a[n] b[n] sel[1] -> [n] =
   or
   (and a (not sel))
   (and b sel)
