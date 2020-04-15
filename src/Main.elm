@@ -46,6 +46,11 @@ full_adder a b c -> { sum, carry } =
     c3 = or c1 c2
   in
   { sum = s2, carry = c3 }
+
+mux2 a[n] b[n] sel[1] -> out[n] =
+  or
+  (and a (not sel))
+  (and b sel)
   """
 main =
   case parse source of

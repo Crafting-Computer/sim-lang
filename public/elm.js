@@ -6024,10 +6024,16 @@ var $elm$parser$Parser$Advanced$keyword = function (_v0) {
 				{col: newCol, context: s.context, indent: s.indent, offset: newOffset, row: newRow, src: s.src});
 		});
 };
+var $author$project$HdlParser$IntSize = function (a) {
+	return {$: 'IntSize', a: a};
+};
 var $author$project$HdlParser$Param = F2(
 	function (name, size) {
 		return {name: name, size: size};
 	});
+var $author$project$HdlParser$VarSize = function (a) {
+	return {$: 'VarSize', a: a};
+};
 var $author$project$HdlParser$param = A2(
 	$elm$parser$Parser$Advanced$keeper,
 	A2(
@@ -6042,7 +6048,11 @@ var $author$project$HdlParser$param = A2(
 						return A2(
 							$author$project$HdlParser$Param,
 							n,
-							{from: n.from, to: n.to, value: 1});
+							{
+								from: n.from,
+								to: n.to,
+								value: $author$project$HdlParser$IntSize(1)
+							});
 					}
 				})),
 		$author$project$HdlParser$name),
@@ -6061,7 +6071,18 @@ var $author$project$HdlParser$param = A2(
 				$elm$parser$Parser$Advanced$ignorer,
 				A2(
 					$elm$parser$Parser$Advanced$ignorer,
-					$author$project$HdlParser$located($author$project$HdlParser$integer),
+					$author$project$HdlParser$located(
+						$elm$parser$Parser$Advanced$oneOf(
+							_List_fromArray(
+								[
+									A2($elm$parser$Parser$Advanced$map, $author$project$HdlParser$IntSize, $author$project$HdlParser$integer),
+									A2(
+									$elm$parser$Parser$Advanced$map,
+									function (n) {
+										return $author$project$HdlParser$VarSize(n.value);
+									},
+									$author$project$HdlParser$name)
+								]))),
 					$author$project$HdlParser$sps),
 				$elm$parser$Parser$Advanced$token(
 					A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))))));
@@ -6403,7 +6424,7 @@ var $author$project$HdlParser$parse = function (string) {
 		string);
 };
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Main$source = '\nxor a b -> out =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)  \n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n  ';
+var $author$project$Main$source = '\nxor a b -> out =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)  \n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n\nmux2 a[n] b[n] sel[1] -> out[n] =\n  or\n  (and a (not sel))\n  (and b sel)\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$core$Debug$toString = _Debug_toString;

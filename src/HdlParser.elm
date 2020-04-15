@@ -1,4 +1,4 @@
-module HdlParser exposing (parse, Program)
+module HdlParser exposing (parse, Program, Def(..), BindingTarget(..), Expr(..), Param)
 
 import Parser.Advanced exposing (..)
 import Set exposing (Set)
@@ -38,8 +38,13 @@ type Expr
 
 type alias Param =
   { name : Located String
-  , size : Located Int
+  , size : Located Size
   }
+
+
+type Size
+  = IntSize Int
+  | VarSize String
 
 
 type Problem
@@ -400,14 +405,17 @@ param =
       Just size ->
         Param n size
       Nothing ->
-        Param n { from = n.from, to = n.to, value = 1 }
+        Param n { from = n.from, to = n.to, value = IntSize 1 }
     )
     |= name
     |= optional (
       succeed identity
       |. token (Token "[" ExpectingLeftBracket)
       |. sps
-      |= (located <| integer)
+      |= (located <| oneOf
+        [ map IntSize integer
+        , map (\n -> VarSize n.value) name
+        ])
       |. sps
       |. token (Token "]" ExpectingRightBracket)
     )
