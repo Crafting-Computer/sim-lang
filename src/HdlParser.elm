@@ -9,7 +9,7 @@ type Def
   = FuncDef
     { name : Located String
     , params : List Param
-    , retType : List Param
+    , outputs : List Param
     , locals : List Def
     , body : Expr
     }
@@ -17,6 +17,7 @@ type Def
     { name : BindingTarget
     , locals : List Def
     , body : Expr
+    , size : Maybe (Located Size)
     }
 
 
@@ -28,8 +29,8 @@ type BindingTarget
 type Expr
   = Binding (Located String)
   | Call (Located String) (List Expr)
-  | Indexing Expr (Int, Int)
-  | Record (Dict (Located String) Expr)
+  | Indexing Expr (Located Int, Located Int)
+  | Record (Located (Dict (Located String) Expr))
 
 
 type alias Param =
@@ -40,12 +41,7 @@ type alias Param =
 
 type Size
   = IntSize Int
-  | VarSize String
-
-
-type RetType
-  = SingleRetType (Located Size)
-  | RecordRetType (List Param)
+  | VarSize String (Maybe Int)
 
 
 type Problem
@@ -127,6 +123,7 @@ bindingDef =
       BindingDef { name = defName
       , locals = Maybe.withDefault [] defLocals
       , body = defBody
+      , size = Nothing
       }
     )
     |. checkIndent
@@ -165,7 +162,7 @@ funcDef =
       FuncDef
         { name = defName
         , params = defParams
-        , retType = defRetType
+        , outputs = defRetType
         , locals = Maybe.withDefault [] defLocals
         , body = defBody
         }
@@ -174,7 +171,7 @@ funcDef =
     |= name
     |. sps
     |= params
-    |= retType
+    |= outputs
     |. sps
     |. token (Token "=" ExpectingEqual)
     |. sps
@@ -252,8 +249,12 @@ expr =
 
 record : HdlParser Expr
 record =
-  succeed (Record << Dict.fromList)
-    |= sequence
+  succeed (\locatedList -> Record <|
+    { from = locatedList.from
+    , to = locatedList.to
+    , value = Dict.fromList locatedList.value
+    })
+    |= ( located <| sequence
     { start = Token "{" ExpectingLeftBrace
     , separator = Token "," ExpectingComma
     , end = Token "}" ExpectingRightBrace
@@ -267,6 +268,7 @@ record =
         |= lazy (\_ -> expr)
     , trailing = Forbidden
     }
+    )
 
 
 group : HdlParser Expr
@@ -285,18 +287,18 @@ group =
     |= optional indexing
 
 
-indexing : HdlParser (Int, Int)
+indexing : HdlParser (Located Int, Located Int)
 indexing =
   succeed (\from to -> Tuple.pair from (Maybe.withDefault from to))
     |. token (Token "[" ExpectingLeftBracket)
     |. sps
-    |= integer
+    |= located integer
     |. sps
     |= (optional <|
       succeed identity
         |. token (Token ".." ExpectingDotDot)
         |. sps
-        |= integer
+        |= located integer
     )
     |. sps
     |. token (Token "]" ExpectingRightBracket)
@@ -363,8 +365,8 @@ optional parser =
     ]
 
 
-retType : HdlParser (List Param)
-retType =
+outputs : HdlParser (List Param)
+outputs =
   let
     singleRetType =
       map (\s -> [ Param (fakeLocated "") s ]) size
@@ -418,7 +420,7 @@ size =
     |. sps
     |= (located <| oneOf
       [ map IntSize integer
-      , map (\n -> VarSize n.value) name
+      , map (\n -> VarSize n.value Nothing) name
       ])
     |. sps
     |. token (Token "]" ExpectingRightBracket)
