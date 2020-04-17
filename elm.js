@@ -6092,14 +6092,14 @@ var $author$project$HdlChecker$checkDef = F3(
 							$elm$core$List$foldl,
 							F2(
 								function (defName, duplicates2) {
-									var _v3 = A2(
+									var _v5 = A2(
 										$elm_community$list_extra$List$Extra$find,
 										function (otherName) {
 											return _Utils_eq(otherName.value, defName.value);
 										},
 										$author$project$HdlChecker$getDefNames(other));
-									if (_v3.$ === 'Just') {
-										var otherName = _v3.a;
+									if (_v5.$ === 'Just') {
+										var otherName = _v5.a;
 										return A2(
 											$elm$core$List$cons,
 											A2($author$project$HdlChecker$DuplicatedName, otherName, defName),
@@ -6131,6 +6131,8 @@ var $author$project$HdlChecker$checkDef = F3(
 				var bodyType = A2($author$project$HdlChecker$getLocatedType, funcDefs, body);
 				var retTypeErrors = A2($author$project$HdlChecker$matchTypes, retType, bodyType);
 				var _v2 = A2($elm$core$Debug$log, 'AL -> locals', locals);
+				var _v3 = A2($elm$core$Debug$log, 'AL -> bodyType', bodyType);
+				var _v4 = A2($elm$core$Debug$log, 'AL -> retType', retType);
 				return _Utils_ap(
 					A3(
 						$elm$core$List$foldl,
@@ -6207,6 +6209,19 @@ var $elm$core$List$drop = F2(
 			}
 		}
 	});
+var $Gizra$elm_all_set$EverySet$EverySet = function (a) {
+	return {$: 'EverySet', a: a};
+};
+var $Gizra$elm_all_set$EverySet$empty = $Gizra$elm_all_set$EverySet$EverySet($pzp1997$assoc_list$AssocList$empty);
+var $Gizra$elm_all_set$EverySet$insert = F2(
+	function (k, _v0) {
+		var d = _v0.a;
+		return $Gizra$elm_all_set$EverySet$EverySet(
+			A3($pzp1997$assoc_list$AssocList$insert, k, _Utils_Tuple0, d));
+	});
+var $Gizra$elm_all_set$EverySet$fromList = function (xs) {
+	return A3($elm$core$List$foldl, $Gizra$elm_all_set$EverySet$insert, $Gizra$elm_all_set$EverySet$empty, xs);
+};
 var $author$project$HdlParser$FuncDef = function (a) {
 	return {$: 'FuncDef', a: a};
 };
@@ -6286,6 +6301,10 @@ var $elm_community$list_extra$List$Extra$takeWhile = function (predicate) {
 		});
 	return takeWhileMemo(_List_Nil);
 };
+var $Gizra$elm_all_set$EverySet$toList = function (_v0) {
+	var d = _v0.a;
+	return $pzp1997$assoc_list$AssocList$keys(d);
+};
 var $author$project$HdlChecker$check = function (defs) {
 	var problems = A3(
 		$elm$core$List$foldl,
@@ -6314,7 +6333,10 @@ var $author$project$HdlChecker$check = function (defs) {
 		return $elm$core$Result$Ok(_Utils_Tuple0);
 	} else {
 		var ps = problems;
-		return $elm$core$Result$Err(ps);
+		return $elm$core$Result$Err(
+			$elm$core$List$reverse(
+				$Gizra$elm_all_set$EverySet$toList(
+					$Gizra$elm_all_set$EverySet$fromList(ps))));
 	}
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
@@ -7941,7 +7963,7 @@ var $author$project$HdlParser$parse = function (string) {
 		string);
 };
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Main$source = '\nxor a[n] b[n] -> [n] =\n  and a b\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n  ';
+var $author$project$Main$source = 'half_adder a b -> { sum, carry } =\n  let\n    carry = nand (and a b) (and a b)\n  in\n  { sum = sum, carry = carry }\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$core$Debug$toString = _Debug_toString;
