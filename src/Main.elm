@@ -24,16 +24,13 @@ source =
 -- not a[1] -> out[1] =
 --   nand a a
 --   """
-  """
-xor a[n] b[n] -> [n] =
-  and a b
-
-and a[n] b[n] -> [n] =
+  """half_adder a b -> { sum, carry } =
   let
-    nand_a_b = nand a b
+    carry = nand (and a b) (and a b)
   in
-  nand nand_a_b nand_a_b
+  { sum = sum, carry = carry }
   """
+  -- "half_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }"
 main =
   case parse source of
     Err err ->
