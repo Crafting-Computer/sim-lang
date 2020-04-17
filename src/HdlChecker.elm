@@ -1,9 +1,10 @@
-module HdlChecker exposing (..)
+module HdlChecker exposing (Problem(..), Type(..), check)
 
 import HdlParser exposing (fakeLocated, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
 import List.Extra
 import Set
+import EverySet
 
 type Problem
   = DuplicatedName (Located String) (Located String)
@@ -82,7 +83,7 @@ check defs =
     [] ->
       Ok ()
     ps ->
-      Err ps
+      Err <| List.reverse <| EverySet.toList <| EverySet.fromList ps
 
 
 checkDef : List Def -> List Def -> Def -> List Problem
@@ -127,9 +128,11 @@ checkDef beforeDefs afterDefs def =
             funcDefs =
               allDefs ++ paramDefs ++ locals
 
+            _ = Debug.log "AL -> bodyType" <| bodyType
             bodyType =
               getLocatedType funcDefs body
             
+            _ = Debug.log "AL -> retType" <| retType
             retType =
               outputsToLocatedType params [] outputs
 
