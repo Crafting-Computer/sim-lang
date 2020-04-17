@@ -52,7 +52,7 @@ preludeFuncDef name params outputs =
       { name = fakeLocated p.name
       , size = fakeLocated p.size
       }) params
-    , outputs = List.map (\p ->
+    , outputs = fakeLocated <| List.map (\p ->
       { name = fakeLocated p.name
       , size = fakeLocated p.size
       }) outputs
@@ -259,25 +259,16 @@ paramToLocatedType p =
   }
 
 
-outputsToLocatedType : List Param -> List (Located Type) -> List Param -> Located Type
+outputsToLocatedType : List Param -> List (Located Type) -> Located (List Param) -> Located Type
 outputsToLocatedType params argTypes outputs =
   let
     t =
-      outputsToType params argTypes outputs
+      outputsToType params argTypes outputs.value
   in
-  case outputs of
-    [ single ] ->
-      { from = single.size.from
-      , to = single.size.to
-      , value = t
-      }
-    first :: rests ->
-      { from = first.name.from
-      , to = (.name >> .to) <| Maybe.withDefault first (List.Extra.last rests)
-      , value = t
-      }
-    [] ->
-      fakeLocated <| ErrorType [] -- impossible
+  { from = outputs.from
+  , to = outputs.to
+  , value = t
+  }
 
 
 outputsToType : List Param -> List (Located Type) -> List Param -> Type
@@ -498,7 +489,7 @@ getType defs expr =
               in
               case callProblems of
                 [] ->
-                  outputsToType params (List.map (getLocatedType defs) args) outputs
+                  outputsToType params (List.map (getLocatedType defs) args) outputs.value
                 _ ->
                   ErrorType callProblems
             BindingDef { name } ->
@@ -542,7 +533,7 @@ getType defs expr =
             (\(n, e) ->
               (n.value, getType defs e)
             )
-            (Dict.toList r.value)
+            (List.reverse <| Dict.toList r.value)
 
 
 getDef : List Def -> Located String -> Maybe Def

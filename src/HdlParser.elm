@@ -9,7 +9,7 @@ type Def
   = FuncDef
     { name : Located String
     , params : List Param
-    , outputs : List Param
+    , outputs : Located (List Param)
     , locals : List Def
     , body : Expr
     }
@@ -365,7 +365,7 @@ optional parser =
     ]
 
 
-outputs : HdlParser (List Param)
+outputs : HdlParser (Located (List Param))
 outputs =
   let
     singleRetType =
@@ -383,10 +383,11 @@ outputs =
   succeed identity
     |. token (Token "->" ExpectingArrow)
     |. sps
-    |= oneOf
+    |= (located <| oneOf
       [ manyRetTypes
       , singleRetType
       ]
+    )
 
 
 params : HdlParser (List Param)

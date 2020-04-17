@@ -4,6 +4,7 @@ import Test exposing (Test, describe, test)
 import Expect
 import HdlChecker exposing (Type(..), Problem(..))
 import HdlParser exposing (Size(..))
+import AssocList as Dict
 
 suite : Test
 suite =
@@ -33,7 +34,7 @@ suite =
             src =
               "not a[2] -> [1] = nand a a"
             expected =
-              Err [ MismatchedTypes { from = (1,14), to = (1,15), value = BusType (IntSize 1) } { from = (1,19), to = (1,27), value = BusType (IntSize 2) }]
+              Err [ MismatchedTypes { from = (1,13), to = (1,16), value = BusType (IntSize 1) } { from = (1,19), to = (1,27), value = BusType (IntSize 2) }]
           in
           Expect.equal expected (check src)
       , test "Arg type bus size too large" <|
@@ -69,7 +70,7 @@ suite =
             src =
               "not a[n] -> [1] = nand a a"
             expected =
-              Err [MismatchedTypes { from = (1,14), to = (1,15), value = BusType (IntSize 1) } { from = (1,19), to = (1,27), value = BusType (VarSize "n" Nothing) }]
+              Err [MismatchedTypes { from = (1,13), to = (1,16), value = BusType (IntSize 1) } { from = (1,19), to = (1,27), value = BusType (VarSize "n" Nothing) }]
           in
           Expect.equal expected (check src)
       , test "Undefined function name" <|
@@ -106,6 +107,18 @@ suite =
               "combine a b -> { a, b } = { a = a, b = b }"
             expected =
               Ok ()
+          in
+          Expect.equal expected (check src)
+      , test "Record output does not match declared record return type" <|
+        \_ ->
+          let
+            src =
+              "combine a b -> { a, b } = { a = a, c = b }"
+            expected =
+              Err [ MismatchedTypes
+                { from = (1,16), to = (1,24), value = RecordType (Dict.fromList [("a",BusType (IntSize 1)),("b",BusType (IntSize 1))]) }
+                { from = (1,27), to = (1,43), value = RecordType (Dict.fromList [("a",BusType (IntSize 1)),("c",BusType (IntSize 1))]) }
+              ]
           in
           Expect.equal expected (check src)
       ]

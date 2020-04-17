@@ -5590,21 +5590,6 @@ var $author$project$HdlChecker$matchTypes = F2(
 		var p2 = _v0.b.a;
 		return p2;
 	});
-var $elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $author$project$HdlParser$fakeLocated = function (value) {
-	return {
-		from: _Utils_Tuple2(-1, -1),
-		to: _Utils_Tuple2(-1, -1),
-		value: value
-	};
-};
 var $author$project$HdlChecker$ConflictingVarSizeArgs = F3(
 	function (a, b, c) {
 		return {$: 'ConflictingVarSizeArgs', a: a, b: b, c: c};
@@ -5714,35 +5699,8 @@ var $author$project$HdlChecker$outputsToType = F3(
 	});
 var $author$project$HdlChecker$outputsToLocatedType = F3(
 	function (params, argTypes, outputs) {
-		var t = A3($author$project$HdlChecker$outputsToType, params, argTypes, outputs);
-		if (outputs.b) {
-			if (!outputs.b.b) {
-				var single = outputs.a;
-				return {from: single.size.from, to: single.size.to, value: t};
-			} else {
-				var first = outputs.a;
-				var rests = outputs.b;
-				return {
-					from: first.name.from,
-					to: A3(
-						$elm$core$Basics$composeR,
-						function ($) {
-							return $.name;
-						},
-						function ($) {
-							return $.to;
-						},
-						A2(
-							$elm$core$Maybe$withDefault,
-							first,
-							$elm_community$list_extra$List$Extra$last(rests))),
-					value: t
-				};
-			}
-		} else {
-			return $author$project$HdlParser$fakeLocated(
-				$author$project$HdlChecker$ErrorType(_List_Nil));
-		}
+		var t = A3($author$project$HdlChecker$outputsToType, params, argTypes, outputs.value);
+		return {from: outputs.from, to: outputs.to, value: t};
 	});
 var $author$project$HdlChecker$paramToLocatedType = function (p) {
 	return {
@@ -5944,7 +5902,7 @@ var $author$project$HdlChecker$getType = F2(
 										$elm$core$List$map,
 										$author$project$HdlChecker$getLocatedType(defs),
 										args),
-									outputs);
+									outputs.value);
 							} else {
 								return $author$project$HdlChecker$ErrorType(callProblems);
 							}
@@ -6032,7 +5990,8 @@ var $author$project$HdlChecker$getType = F2(
 										n.value,
 										A2($author$project$HdlChecker$getType, defs, e));
 								},
-								$pzp1997$assoc_list$AssocList$toList(r.value))));
+								$elm$core$List$reverse(
+									$pzp1997$assoc_list$AssocList$toList(r.value)))));
 			}
 		}
 	});
@@ -6069,6 +6028,16 @@ var $author$project$HdlParser$BindingDef = function (a) {
 };
 var $author$project$HdlParser$BindingName = function (a) {
 	return {$: 'BindingName', a: a};
+};
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $author$project$HdlParser$fakeLocated = function (value) {
+	return {
+		from: _Utils_Tuple2(-1, -1),
+		to: _Utils_Tuple2(-1, -1),
+		value: value
+	};
 };
 var $author$project$HdlChecker$paramToDef = function (p) {
 	return $author$project$HdlParser$BindingDef(
@@ -6233,15 +6202,16 @@ var $author$project$HdlChecker$preludeFuncDef = F3(
 					$author$project$HdlParser$fakeLocated('<built-in function>')),
 				locals: _List_Nil,
 				name: $author$project$HdlParser$fakeLocated(name),
-				outputs: A2(
-					$elm$core$List$map,
-					function (p) {
-						return {
-							name: $author$project$HdlParser$fakeLocated(p.name),
-							size: $author$project$HdlParser$fakeLocated(p.size)
-						};
-					},
-					outputs),
+				outputs: $author$project$HdlParser$fakeLocated(
+					A2(
+						$elm$core$List$map,
+						function (p) {
+							return {
+								name: $author$project$HdlParser$fakeLocated(p.name),
+								size: $author$project$HdlParser$fakeLocated(p.size)
+							};
+						},
+						outputs)),
 				params: A2(
 					$elm$core$List$map,
 					function (p) {
@@ -7653,9 +7623,10 @@ var $author$project$HdlParser$outputs = function () {
 				$elm$parser$Parser$Advanced$token(
 					A2($elm$parser$Parser$Advanced$Token, '->', $author$project$HdlParser$ExpectingArrow))),
 			$author$project$HdlParser$sps),
-		$elm$parser$Parser$Advanced$oneOf(
-			_List_fromArray(
-				[manyRetTypes, singleRetType])));
+		$author$project$HdlParser$located(
+			$elm$parser$Parser$Advanced$oneOf(
+				_List_fromArray(
+					[manyRetTypes, singleRetType]))));
 }();
 var $author$project$HdlParser$params = A2(
 	$elm$parser$Parser$Advanced$loop,
