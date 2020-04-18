@@ -228,9 +228,9 @@ showProblem problem =
     ExpectingEndOfMultiLineComment ->
       "the end of multi-line comment '-}'"
     ExpectingLeftParen ->
-      "a '{'"
+      "a '('"
     ExpectingRightParen ->
-      "a '}'"
+      "a ')'"
     ExpectingIndent ->
       "an indentation"
     ExpectingDotDot ->
