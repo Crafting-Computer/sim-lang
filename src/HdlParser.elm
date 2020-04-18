@@ -504,6 +504,7 @@ bindingOrCall =
           |= oneOf
             [ binding
             , group
+            , record
             ]
           |. sps
         , succeed ()
