@@ -3,6 +3,7 @@ module Main exposing (main)
 import Html exposing (div, p, pre, text)
 import HdlParser exposing (parse)
 import HdlChecker exposing (check)
+import HdlEmitter exposing (emit)
 
 
 -- MAIN
@@ -24,13 +25,40 @@ source =
 -- not a[1] -> out[1] =
 --   nand a a
 --   """
-  """half_adder a b -> { sum, carry } =
+  -- """nand2 a[n] b[n] -> [n] =
+  -- let
+  --   nand_in_another_name a[n] -> [n] = nand a b
+  -- in
+  -- nand_in_another_name a
+  -- """
+  """
+half_adder a b -> { sum, carry } =
   let
-    carry = nand (and a b) (and a b)
+    sum = xor a b
+    carry = and a b
   in
   { sum = sum, carry = carry }
+
+xor a[n] b[n] -> [n] =
+  let
+    nand_a_b = nand a b
+  in
+  nand
+  (nand a nand_a_b)
+  (nand b nand_a_b)
+
+and a[n] b[n] -> [n] =
+  let
+    nand_a_b = nand a b
+  in
+  nand nand_a_b nand_a_b
   """
   -- "half_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }"
+  -- """
+  -- """
+  -- not a -> [1] =
+  --   nand a a
+  -- """
 main =
   case parse source of
     Err err ->
@@ -45,6 +73,7 @@ main =
       in
       div []
         [ pre [] [ text source]
-        , p [] [ text (Debug.toString program) ]
-        , p [] [ text (Debug.toString <| check program) ]
+        , pre [] [ text (Debug.toString program) ]
+        , pre [] [ text (Debug.toString <| check program) ]
+        , pre [] [ text (emit program) ]
         ]

@@ -3917,6 +3917,43 @@ function _VirtualDom_dekey(keyedNode)
 
 
 
+var _Bitwise_and = F2(function(a, b)
+{
+	return a & b;
+});
+
+var _Bitwise_or = F2(function(a, b)
+{
+	return a | b;
+});
+
+var _Bitwise_xor = F2(function(a, b)
+{
+	return a ^ b;
+});
+
+function _Bitwise_complement(a)
+{
+	return ~a;
+};
+
+var _Bitwise_shiftLeftBy = F2(function(offset, a)
+{
+	return a << offset;
+});
+
+var _Bitwise_shiftRightBy = F2(function(offset, a)
+{
+	return a >> offset;
+});
+
+var _Bitwise_shiftRightZfBy = F2(function(offset, a)
+{
+	return a >>> offset;
+});
+
+
+
 
 // STRINGS
 
@@ -6310,7 +6347,154 @@ var $author$project$HdlChecker$check = function (defs) {
 	}
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $elm$html$Html$p = _VirtualDom_node('p');
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
+var $elm$core$String$repeatHelp = F3(
+	function (n, chunk, result) {
+		return (n <= 0) ? result : A3(
+			$elm$core$String$repeatHelp,
+			n >> 1,
+			_Utils_ap(chunk, chunk),
+			(!(n & 1)) ? result : _Utils_ap(result, chunk));
+	});
+var $elm$core$String$repeat = F2(
+	function (n, chunk) {
+		return A3($elm$core$String$repeatHelp, n, chunk, '');
+	});
+var $author$project$HdlEmitter$emitIndentation = function (indent) {
+	return A2($elm$core$String$repeat, indent * 2, ' ');
+};
+var $elm$core$String$trim = _String_trim;
+var $author$project$HdlEmitter$emitBlock = F2(
+	function (indent, lines) {
+		var indentation = $author$project$HdlEmitter$emitIndentation(indent);
+		return indentation + (A2(
+			$elm$core$String$join,
+			'\n' + indentation,
+			A2(
+				$elm$core$List$filter,
+				function (line) {
+					return $elm$core$String$trim(line) !== '';
+				},
+				lines)) + '\n');
+	});
+var $author$project$HdlEmitter$emitExpr = function (e) {
+	switch (e.$) {
+		case 'Binding':
+			var name = e.a;
+			return name.value;
+		case 'Call':
+			var callee = e.a;
+			var args = e.b;
+			return callee.value + ('(' + (A2(
+				$elm$core$String$join,
+				', ',
+				A2($elm$core$List$map, $author$project$HdlEmitter$emitExpr, args)) + ')'));
+		case 'Indexing':
+			var expr = e.a;
+			var _v1 = e.b;
+			var from = _v1.a;
+			var to = _v1.b;
+			return '(' + ('(' + ($author$project$HdlEmitter$emitExpr(expr) + (')' + (' << ' + ($elm$core$String$fromInt(from.value) + (' >>> ' + ($elm$core$String$fromInt(to.value) + ')')))))));
+		default:
+			var r = e.a;
+			return A3(
+				$pzp1997$assoc_list$AssocList$foldl,
+				F3(
+					function (k, v, str) {
+						return str + (k.value + (' : ' + ($author$project$HdlEmitter$emitExpr(v) + ', ')));
+					}),
+				'{ ',
+				r.value) + ' }';
+	}
+};
+var $author$project$HdlEmitter$emitParam = function (p) {
+	return p.name.value;
+};
+var $author$project$HdlEmitter$emitDef = F2(
+	function (indent, def) {
+		if (def.$ === 'FuncDef') {
+			var name = def.a.name;
+			var params = def.a.params;
+			var locals = def.a.locals;
+			var body = def.a.body;
+			return A2(
+				$author$project$HdlEmitter$emitBlock,
+				indent,
+				_List_fromArray(
+					[
+						'function ' + (name.value + ('(' + (A2(
+						$elm$core$String$join,
+						', ',
+						A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params)) + ') {'))),
+						A2(
+						$elm$core$String$join,
+						'\n',
+						A2(
+							$elm$core$List$map,
+							$author$project$HdlEmitter$emitDef(indent + 1),
+							locals)),
+						'  return ' + ($author$project$HdlEmitter$emitExpr(body) + ';'),
+						'}'
+					]));
+		} else {
+			var name = def.a.name;
+			var locals = def.a.locals;
+			var body = def.a.body;
+			var emittedName = function () {
+				if (name.$ === 'BindingName') {
+					var n = name.a;
+					return n.value;
+				} else {
+					var r = name.a;
+					return A3(
+						$pzp1997$assoc_list$AssocList$foldl,
+						F3(
+							function (k, v, str) {
+								return str + (k.value + (' : ' + (v.value + ', ')));
+							}),
+						'{ ',
+						r) + ' }';
+				}
+			}();
+			if (!locals.b) {
+				return $author$project$HdlEmitter$emitIndentation(indent) + ('var ' + (emittedName + (' = ' + ($author$project$HdlEmitter$emitExpr(body) + ';'))));
+			} else {
+				var locs = locals;
+				return A2(
+					$author$project$HdlEmitter$emitBlock,
+					indent,
+					_List_fromArray(
+						[
+							'var ' + (emittedName + ' ='),
+							'function () {',
+							A2(
+							$elm$core$String$join,
+							'\n',
+							A2(
+								$elm$core$List$map,
+								$author$project$HdlEmitter$emitDef(indent + 1),
+								locs)),
+							'  return ' + ($author$project$HdlEmitter$emitExpr(body) + ';'),
+							'}();'
+						]));
+			}
+		}
+	});
+var $author$project$HdlEmitter$emitPrelude = A2(
+	$author$project$HdlEmitter$emitBlock,
+	0,
+	_List_fromArray(
+		['function nand(a, b) { return ~(a & b); }']));
+var $author$project$HdlEmitter$emit = function (defs) {
+	return $author$project$HdlEmitter$emitPrelude + ('\n' + A2(
+		$elm$core$String$join,
+		'\n',
+		A2(
+			$elm$core$List$map,
+			$author$project$HdlEmitter$emitDef(0),
+			defs)));
+};
 var $author$project$HdlParser$ExpectingEOF = {$: 'ExpectingEOF'};
 var $author$project$HdlParser$BindingRecord = function (a) {
 	return {$: 'BindingRecord', a: a};
@@ -7934,7 +8118,7 @@ var $author$project$HdlParser$parse = function (string) {
 		string);
 };
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Main$source = 'half_adder a b -> { sum, carry } =\n  let\n    carry = nand (and a b) (and a b)\n  in\n  { sum = sum, carry = carry }\n  ';
+var $author$project$Main$source = '\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$core$Debug$toString = _Debug_toString;
@@ -7973,7 +8157,7 @@ var $author$project$Main$main = function () {
 							$elm$html$Html$text($author$project$Main$source)
 						])),
 					A2(
-					$elm$html$Html$p,
+					$elm$html$Html$pre,
 					_List_Nil,
 					_List_fromArray(
 						[
@@ -7981,13 +8165,21 @@ var $author$project$Main$main = function () {
 							$elm$core$Debug$toString(program))
 						])),
 					A2(
-					$elm$html$Html$p,
+					$elm$html$Html$pre,
 					_List_Nil,
 					_List_fromArray(
 						[
 							$elm$html$Html$text(
 							$elm$core$Debug$toString(
 								$author$project$HdlChecker$check(program)))
+						])),
+					A2(
+					$elm$html$Html$pre,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$author$project$HdlEmitter$emit(program))
 						]))
 				]));
 	}
