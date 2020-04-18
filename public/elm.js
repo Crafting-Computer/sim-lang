@@ -8169,7 +8169,7 @@ var $elm$parser$Parser$Advanced$run = F2(
 				A2($elm$parser$Parser$Advanced$bagToList, bag, _List_Nil));
 		}
 	});
-var $author$project$HdlParser$parse = function (string) {
+var $author$project$HdlParser$parse = function (src) {
 	return A2(
 		$elm$parser$Parser$Advanced$run,
 		A2(
@@ -8179,9 +8179,217 @@ var $author$project$HdlParser$parse = function (string) {
 				$elm$parser$Parser$Advanced$ignorer,
 				$author$project$HdlParser$defs,
 				$elm$parser$Parser$Advanced$end($author$project$HdlParser$ExpectingEOF))),
-		string);
+		src);
 };
 var $elm$html$Html$pre = _VirtualDom_node('pre');
+var $elm_community$list_extra$List$Extra$groupWhile = F2(
+	function (isSameGroup, items) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					if (!acc.b) {
+						return _List_fromArray(
+							[
+								_Utils_Tuple2(x, _List_Nil)
+							]);
+					} else {
+						var _v1 = acc.a;
+						var y = _v1.a;
+						var restOfGroup = _v1.b;
+						var groups = acc.b;
+						return A2(isSameGroup, x, y) ? A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(
+								x,
+								A2($elm$core$List$cons, y, restOfGroup)),
+							groups) : A2(
+							$elm$core$List$cons,
+							_Utils_Tuple2(x, _List_Nil),
+							acc);
+					}
+				}),
+			_List_Nil,
+			items);
+	});
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var $author$project$HdlParser$showProblem = function (problem) {
+	switch (problem.$) {
+		case 'ExpectingName':
+			return 'a name';
+		case 'ExpectingInt':
+			return 'an integer';
+		case 'ExpectingLeftBracket':
+			return 'a \'[\'';
+		case 'ExpectingRightBracket':
+			return 'a \']\'';
+		case 'ExpectingLet':
+			return 'the keyword \'let\'';
+		case 'ExpectingIn':
+			return 'the keyword \'in\'';
+		case 'ExpectingEqual':
+			return 'a \'=\'';
+		case 'ExpectingEOF':
+			return 'the end of program';
+		case 'ExpectingArrow':
+			return 'an \'->\'';
+		case 'ExpectingStartOfLineComment':
+			return 'the start of line comment \'--\'';
+		case 'ExpectingStartOfMultiLineComment':
+			return 'the start of multi-line comment \'{-\'';
+		case 'ExpectingEndOfMultiLineComment':
+			return 'the end of multi-line comment \'-}\'';
+		case 'ExpectingLeftParen':
+			return 'a \'{\'';
+		case 'ExpectingRightParen':
+			return 'a \'}\'';
+		case 'ExpectingIndent':
+			return 'an indentation';
+		case 'ExpectingDotDot':
+			return 'a \'..\'';
+		case 'ExpectingLeftBrace':
+			return 'a \'{\'';
+		case 'ExpectingRightBrace':
+			return 'a \'}\'';
+		default:
+			return 'a \',\'';
+	}
+};
+var $author$project$HdlParser$showProblemContext = function (context) {
+	switch (context.$) {
+		case 'BindingDefContext':
+			var bindingName = context.a;
+			var nameStr = function () {
+				if (bindingName.$ === 'BindingName') {
+					var n = bindingName.a;
+					return n.value;
+				} else {
+					var r = bindingName.a;
+					return A3(
+						$pzp1997$assoc_list$AssocList$foldl,
+						F3(
+							function (k, v, str) {
+								return str + (k.value + (' = ' + (v.value + ', ')));
+							}),
+						'{ ',
+						r) + '}';
+				}
+			}();
+			return '`' + (nameStr + ('`' + ' definition'));
+		case 'FuncDefContext':
+			var funcName = context.a;
+			return '`' + (funcName.value + ('`' + ' definition'));
+		default:
+			return 'local definitions';
+	}
+};
+var $author$project$HdlParser$showProblemContextStack = function (contexts) {
+	var _v0 = A2($elm$core$Debug$log, 'AL -> contexts', contexts);
+	return A2(
+		$elm$core$String$join,
+		' of the ',
+		A2(
+			$elm$core$List$map,
+			A2(
+				$elm$core$Basics$composeR,
+				function ($) {
+					return $.context;
+				},
+				$author$project$HdlParser$showProblemContext),
+			contexts));
+};
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm_community$list_extra$List$Extra$getAt = F2(
+	function (idx, xs) {
+		return (idx < 0) ? $elm$core$Maybe$Nothing : $elm$core$List$head(
+			A2($elm$core$List$drop, idx, xs));
+	});
+var $author$project$HdlParser$getLine = F2(
+	function (row, src) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			'CAN\'T GET LINE AT ROW ' + $elm$core$String$fromInt(row),
+			A2(
+				$elm_community$list_extra$List$Extra$getAt,
+				row - 1,
+				A2($elm$core$String$split, '\n', src)));
+	});
+var $elm$core$String$fromList = _String_fromList;
+var $elm$core$String$foldr = _String_foldr;
+var $elm$core$String$toList = function (string) {
+	return A3($elm$core$String$foldr, $elm$core$List$cons, _List_Nil, string);
+};
+var $author$project$HdlParser$toUnderlineChar = F3(
+	function (minCol, maxCol, col) {
+		return ((_Utils_cmp(minCol, col) < 1) && (_Utils_cmp(col, maxCol) < 1)) ? _Utils_chr('^') : _Utils_chr(' ');
+	});
+var $author$project$HdlParser$makeUnderline = F3(
+	function (row, minCol, maxCol) {
+		return $elm$core$String$fromList(
+			A2(
+				$elm$core$List$indexedMap,
+				F2(
+					function (i, _v0) {
+						return A3($author$project$HdlParser$toUnderlineChar, minCol, maxCol, i);
+					}),
+				$elm$core$String$toList(row)));
+	});
+var $elm$core$String$trimLeft = _String_trimLeft;
+var $author$project$HdlParser$showProblemLocation = F3(
+	function (row, col, src) {
+		var rawLine = A2($author$project$HdlParser$getLine, row, src);
+		var line = $elm$core$String$fromInt(row) + ('| ' + $elm$core$String$trimLeft(rawLine));
+		var offset = ($elm$core$String$length(line) - $elm$core$String$length(rawLine)) - 1;
+		var offsettedCol = offset + col;
+		var underline = A3($author$project$HdlParser$makeUnderline, line, offsettedCol, offsettedCol);
+		return line + ('\n' + underline);
+	});
+var $author$project$HdlParser$showDeadEndsHelper = F2(
+	function (src, _v0) {
+		var first = _v0.a;
+		var rests = _v0.b;
+		var problems = A2(
+			$elm$core$List$map,
+			A2(
+				$elm$core$Basics$composeR,
+				function ($) {
+					return $.problem;
+				},
+				$author$project$HdlParser$showProblem),
+			A2($elm$core$List$cons, first, rests));
+		var location = A3($author$project$HdlParser$showProblemLocation, first.row, first.col, src);
+		var context = $author$project$HdlParser$showProblemContextStack(first.contextStack);
+		return location + ('\n' + ('I\'m expecting ' + (A2($elm$core$String$join, ' or ', problems) + (($elm$core$String$isEmpty(context) ? '' : (' in the ' + context)) + '.'))));
+	});
+var $author$project$HdlParser$showDeadEnds = F2(
+	function (src, deadEnds) {
+		var deadEndGroups = A2(
+			$elm_community$list_extra$List$Extra$groupWhile,
+			F2(
+				function (d1, d2) {
+					return _Utils_eq(d1.row, d2.row) && _Utils_eq(d1.col, d2.col);
+				}),
+			deadEnds);
+		return A2(
+			$elm$core$String$join,
+			'\n',
+			A2(
+				$elm$core$List$map,
+				$author$project$HdlParser$showDeadEndsHelper(src),
+				deadEndGroups));
+	});
 var $author$project$Main$source = '\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
@@ -8202,8 +8410,14 @@ var $author$project$Main$main = function () {
 						[
 							$elm$html$Html$text($author$project$Main$source)
 						])),
-					$elm$html$Html$text(
-					'error: ' + $elm$core$Debug$toString(err))
+					A2(
+					$elm$html$Html$pre,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							A2($author$project$HdlParser$showDeadEnds, $author$project$Main$source, err))
+						]))
 				]));
 	} else {
 		var program = _v0.a;

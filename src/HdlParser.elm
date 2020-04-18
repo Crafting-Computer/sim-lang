@@ -1,8 +1,10 @@
-module HdlParser exposing (parse, fakeLocated, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+module HdlParser exposing (parse, fakeLocated, showDeadEnds, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+
 
 import Parser.Advanced exposing (..)
 import Set exposing (Set)
 import AssocList as Dict exposing (Dict)
+import List.Extra
 
 
 type Def
@@ -98,8 +100,147 @@ reserved =
 
 
 parse : String -> Result (List (DeadEnd Context Problem)) (List Def)
-parse string =
-  run (succeed identity |= defs |. end ExpectingEOF) string
+parse src =
+  run (succeed identity |= defs |. end ExpectingEOF) src
+
+
+showDeadEnds : String -> List (DeadEnd Context Problem) -> String
+showDeadEnds src deadEnds =
+  let
+    deadEndGroups =
+      List.Extra.groupWhile (\d1 d2 -> d1.row == d2.row && d1.col == d2.col) deadEnds
+  in
+  String.join "\n" <| List.map (showDeadEndsHelper src) deadEndGroups
+
+
+showDeadEndsHelper : String -> ((DeadEnd Context Problem), List (DeadEnd Context Problem)) -> String
+showDeadEndsHelper src (first, rests) =
+  let
+    location =
+      showProblemLocation first.row first.col src
+    problems =
+      List.map (.problem >> showProblem) (first :: rests)
+    context =
+      showProblemContextStack first.contextStack
+  in
+  location ++ "\n"
+  ++ "I'm expecting " ++ String.join " or " problems
+  ++ (if String.isEmpty context then "" else " in the " ++ context)
+  ++ "."
+
+
+showProblemContextStack : List { row : Int, col : Int, context : Context } -> String
+showProblemContextStack contexts =
+  let
+    _ = Debug.log "AL -> contexts" <| contexts
+  in
+  String.join " of the " <| List.map (.context >> showProblemContext) contexts
+
+
+showProblemContext : Context -> String
+showProblemContext context =
+  case context of
+    BindingDefContext bindingName ->
+      let
+        nameStr =
+          case bindingName of
+            BindingName n ->
+              n.value
+            BindingRecord r ->
+              Dict.foldl
+                (\k v str ->
+                  str ++ k.value ++ " = " ++ v.value ++ ", "
+                )
+                "{ "
+                r
+              ++ "}"
+      in
+      "`" ++ nameStr ++ "`" ++ " definition"
+    FuncDefContext funcName ->
+      "`" ++ funcName.value ++ "`" ++ " definition"
+    LocalsContext ->
+      "local definitions"
+
+
+showProblemLocation : Int -> Int -> String -> String
+showProblemLocation row col src =
+  let
+    rawLine =
+      getLine row src
+    line =
+      String.fromInt row ++ "| " ++ (String.trimLeft <| rawLine)
+    offset =
+      String.length line - String.length rawLine - 1
+    offsettedCol =
+      offset + col
+    underline =
+      makeUnderline line offsettedCol offsettedCol
+  in
+  line ++ "\n" ++ underline
+
+
+makeUnderline : String -> Int -> Int -> String
+makeUnderline row minCol maxCol =
+  String.toList row
+    |> List.indexedMap (\i _ -> toUnderlineChar minCol maxCol i)
+    |> String.fromList
+
+
+toUnderlineChar : Int -> Int -> Int -> Char
+toUnderlineChar minCol maxCol col =
+  if minCol <= col && col <= maxCol then
+    '^'
+  else
+    ' '
+
+
+getLine : Int -> String -> String
+getLine row src =
+  Maybe.withDefault ("CAN'T GET LINE AT ROW " ++ String.fromInt row) -- impossible
+    <| List.Extra.getAt (row - 1) <| String.split "\n" src
+
+
+showProblem : Problem -> String
+showProblem problem =
+  case problem of
+    ExpectingName ->
+      "a name"
+    ExpectingInt ->
+      "an integer"
+    ExpectingLeftBracket ->
+      "a '['"
+    ExpectingRightBracket ->
+      "a ']'"
+    ExpectingLet ->
+      "the keyword 'let'"
+    ExpectingIn ->
+      "the keyword 'in'"
+    ExpectingEqual ->
+      "a '='"
+    ExpectingEOF ->
+      "the end of program"
+    ExpectingArrow ->
+      "an '->'"
+    ExpectingStartOfLineComment ->
+      "the start of line comment '--'"
+    ExpectingStartOfMultiLineComment ->
+      "the start of multi-line comment '{-'"
+    ExpectingEndOfMultiLineComment ->
+      "the end of multi-line comment '-}'"
+    ExpectingLeftParen ->
+      "a '{'"
+    ExpectingRightParen ->
+      "a '}'"
+    ExpectingIndent ->
+      "an indentation"
+    ExpectingDotDot ->
+      "a '..'"
+    ExpectingLeftBrace ->
+      "a '{'"
+    ExpectingRightBrace ->
+      "a '}'"
+    ExpectingComma ->
+      "a ','"
 
 
 defs : HdlParser (List Def)

@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Html exposing (div, p, pre, text)
-import HdlParser exposing (parse)
+import HdlParser exposing (parse, showDeadEnds)
 import HdlChecker exposing (check)
 import HdlEmitter exposing (emit)
 
@@ -64,7 +64,7 @@ main =
     Err err ->
       div []
         [ pre [] [ text source]
-        , text ("error: " ++ Debug.toString err)
+        , pre [] [ text <| showDeadEnds source err ]
         ]
 
     Ok program ->
