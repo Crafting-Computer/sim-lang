@@ -64,16 +64,24 @@ main =
     Err err ->
       div []
         [ pre [] [ text source]
-        , pre [] [ text <| showDeadEnds source err ]
+        , pre [] [ text <| 
+          "❌ Parse error.\n\n"
+          ++ showDeadEnds source err
+        ]
         ]
 
     Ok program ->
-      let
-        _ = Debug.log "program" program
-      in
       div []
         [ pre [] [ text source]
-        , pre [] [ text (Debug.toString program) ]
-        , pre [] [ text (Debug.toString <| check program) ]
-        , pre [] [ text (emit program) ]
+        , pre [] [ text "✔️ Passed parser." ]
+        , pre [] [ text (
+          case check program of
+            Ok _ ->
+              "✔️ Passed checker.\n\n"
+              ++ "🏭 Generated JS code:\n\n"
+              ++ emit program
+            Err problems ->
+              "❌ Check error.\n"
+              ++ HdlChecker.showProblems source problems
+        )]
         ]

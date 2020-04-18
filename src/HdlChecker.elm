@@ -1,4 +1,4 @@
-module HdlChecker exposing (Problem(..), Type(..), check)
+module HdlChecker exposing (Problem(..), Type(..), check, showProblems)
 
 import HdlParser exposing (fakeLocated, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
@@ -83,6 +83,157 @@ check defs =
       Ok ()
     ps ->
       Err <| List.reverse <| EverySet.toList <| EverySet.fromList ps
+
+
+showProblems : String -> List Problem -> String
+showProblems src problems =
+  String.join "\n\n" <| List.map (showProblem src) problems
+
+
+showProblem : String -> Problem -> String
+showProblem src problem =
+  case problem of
+    DuplicatedName prevName currName ->
+      "I found a duplicated name `" ++ currName.value ++ "` that is previously defined here:\n"
+      ++ showLocation src prevName ++ "\n"
+      ++ "but I found it defined again here:\n"
+      ++ showLocation src currName ++ "\n"
+      ++ "Hint: Try renaming one of the names to avoid conflict."
+    UndefinedName undefinedName ->
+      "I found an undefined name `" ++ undefinedName.value ++ "` here:\n"
+      ++ showLocation src undefinedName ++ "\n"
+      ++ "Hint: Try defining `" ++ undefinedName.value ++ "` before use."
+    WrongCallArity callee params locatedArgTypes ->
+      let
+        paramTypes =
+          List.map (paramToLocatedType >> .value) params
+        argTypes =
+          List.map (.value) locatedArgTypes
+        paramLength =
+          List.length params
+        argLength =
+          List.length argTypes
+      in
+      "I was expecting " ++ String.fromInt paramLength ++ " arguments but got " ++ String.fromInt argLength ++ ".\n"
+      ++ (case locatedArgTypes of
+        first :: rests ->
+          showLocationRange src first (Maybe.withDefault first <| List.Extra.last rests) ++ "\n"
+        [] ->
+          ""
+      )
+      ++ "Hint: "
+        ++ ( if paramLength > argLength then
+          "Try adding "
+          ++ ( case paramLength - argLength of
+            1 ->
+              "1 argument"
+            difference ->
+              String.fromInt difference ++ " arguments"
+          )
+          ++ " of type " ++ (String.join " and " <| List.map typeToString <| List.drop argLength paramTypes) ++ " to match the parameter types."
+        else
+          "Try dropping " ++ String.fromInt (argLength - paramLength) ++ " arguments to match the parameter size."
+        )
+    TryIndexingRecordType recordType (from, to) ->
+      "Are you trying to get a value of a record at some index? This doesn't work as you can only index into a bus type.\n"
+      ++ showLocationRange src from to ++ "\n"
+      ++ "Hint: Try destructing the record to get the values inside:\n\n"
+      ++ "{ sum = s1, carry = c1 } = { sum = 0, carry = 1 }\n\n"
+      ++ "Note that the record destructure automatically creates two new bindings `s1` and `c1`."
+    IndexOutOfBounds busSize from to ->
+      let
+        (indexName, indexValue) =
+          if from.value == to.value then
+            ( "index"
+            , String.fromInt from.value
+            )
+          else if from.value >= busSize then
+            ("start index"
+            , String.fromInt from.value
+            )
+          else
+            ("end index"
+            , String.fromInt to.value
+            )
+      in
+      "I found that you stepped out of bounds when indexing a bus of size " ++ String.fromInt busSize ++ ".\n"
+      ++ "The " ++ indexName ++ " " ++ indexValue ++ " is greater than the highest bus index " ++ String.fromInt (busSize - 1) ++ ".\n"
+      ++ showLocationRange src from to ++ "\n"
+      ++ "Hint: Try limiting the " ++ indexName ++ " to between 0 and " ++ String.fromInt (busSize - 1) ++ "."
+    FromIndexBiggerThanToIndex from to ->
+      "I found that the start index " ++ String.fromInt from.value ++ " is greater than " ++ " the end index " ++ String.fromInt to.value ++ ".\n"
+      ++ showLocationRange src from to ++ "\n"
+      ++ "Hint: Try limiting the start index to between 0 and " ++ (String.fromInt <| to.value) ++ "."
+    ExpectingBindingGotFunction bindingName functionName ->
+      "I'm expecting a binding for the name `" ++ bindingName.value ++ "` but got a function.\n"
+      ++ showLocation src bindingName ++ "\n"
+      ++ "Hint: Try referencing a binding instead of a function or calling the function `" ++ bindingName.value ++ "` with arguments."
+    ExpectingFunctionGotBinding functionName bindingName ->
+      "I'm expecting a function for the name `" ++ functionName.value ++ "` but got a binding.\n"
+      ++ showLocation src functionName ++ "\n"
+      ++ "Hint: Try referencing a function instead of a binding."
+    MismatchedTypes expectedType actualType ->
+      "I'm expecting to find the type " ++ typeToString expectedType.value ++ " here:\n"
+      ++ showLocation src actualType ++ "\n"
+      ++ "but got the type " ++ typeToString actualType.value ++ ".\n"
+    ConflictingVarSizeArgs param previousArgType currentArgType ->
+      "I'm stuck part way in figuring out the size of a bus.\n"
+      ++ "You previously implied that the size should be " ++ typeToString previousArgType.value ++ " here:\n"
+      ++ showLocation src previousArgType ++ "\n"
+      ++ "but you implied a different size of " ++ typeToString currentArgType.value ++ " here:\n"
+      ++ showLocation src currentArgType
+
+
+showLocation : String -> Located a -> String
+showLocation src located =
+  let
+    (fromRow, fromCol) =
+      located.from
+    (toRow, toCol) =
+      located.to
+  in
+  HdlParser.showProblemLocationRange fromRow fromCol toRow toCol src
+
+
+showLocationRange : String -> Located a -> Located a -> String
+showLocationRange src start end =
+  let
+    (fromRow, fromCol) =
+      start.from
+    (toRow, toCol) =
+      end.to
+  in
+  HdlParser.showProblemLocationRange fromRow fromCol toRow toCol src
+
+
+typeToString : Type -> String
+typeToString t =
+  case t of
+    BusType s ->
+      sizeToString s
+    RecordType r ->
+      "{ " ++
+      ( String.join ", " <|
+        List.map
+          (\(k, v) ->
+            k ++ " = " ++ typeToString v
+          )
+          (Dict.toList r)
+      ) ++ " }"
+    ErrorType _ ->
+      "Type Error"
+
+
+sizeToString : Size -> String
+sizeToString s =
+  "["
+  ++ (case s of
+    IntSize i ->
+      String.fromInt i
+    VarSize n i ->
+      n
+  )
+  ++ "]"
 
 
 checkDef : List Def -> List Def -> Def -> List Problem

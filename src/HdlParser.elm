@@ -1,4 +1,4 @@
-module HdlParser exposing (parse, fakeLocated, showDeadEnds, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+module HdlParser exposing (parse, fakeLocated, showDeadEnds, showProblemLocation, showProblemLocationRange, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
 
 
 import Parser.Advanced exposing (..)
@@ -147,13 +147,14 @@ showProblemContext context =
             BindingName n ->
               n.value
             BindingRecord r ->
-              Dict.foldl
-                (\k v str ->
-                  str ++ k.value ++ " = " ++ v.value ++ ", "
+              "{ "
+              ++ (String.join ", " <|
+              List.map
+                (\(k, v) ->
+                  k.value ++ " = " ++ v.value
                 )
-                "{ "
-                r
-              ++ "}"
+                (Dict.toList r)
+              ) ++ " }"
       in
       "`" ++ nameStr ++ "`" ++ " definition"
     FuncDefContext funcName ->
@@ -177,6 +178,36 @@ showProblemLocation row col src =
       makeUnderline line offsettedCol offsettedCol
   in
   line ++ "\n" ++ underline
+
+
+showProblemLocationRange : Int -> Int -> Int -> Int -> String -> String
+showProblemLocationRange startRow startCol endRow endCol src =
+  String.join "\n" <|
+  List.map
+  (\row ->
+    let
+      rawLine =
+        getLine row src
+      line =
+        String.fromInt row ++ "| " ++ (String.trimLeft <| rawLine)
+      offset =
+        String.length line - String.length rawLine - 1
+      underlineStartCol =
+        if row == startRow then
+          offset + startCol
+        else
+          1
+      underlineEndCol =
+        if row == endRow then
+          offset + endCol
+        else
+          String.length line
+      underline =
+        makeUnderline line underlineStartCol underlineEndCol
+    in
+    line ++ "\n" ++ underline
+  )
+  (List.range startRow endRow)
 
 
 makeUnderline : String -> Int -> Int -> String
