@@ -9,7 +9,6 @@ import EverySet
 type Problem
   = DuplicatedName (Located String) (Located String)
   | UndefinedName (Located String)
-  | CalleeNotFunction (Located String)
   | WrongCallArity (Located String) (List Param) (List (Located Type)) -- callee params argTypes
   | TryIndexingRecordType (Dict String Type) (Located Int, Located Int) -- recordType indices
   | IndexOutOfBounds Int (Located Int) (Located Int) -- expectedBusSize from to
@@ -217,8 +216,8 @@ checkExpr defs expr =
                   _ ->
                     paramTypeErrors
 
-            BindingDef _ ->
-              [ CalleeNotFunction callee ]
+            BindingDef { name } ->
+              [ ExpectingFunctionGotBinding callee name ]
 
         Nothing ->
           [ UndefinedName callee ]
