@@ -67,7 +67,9 @@ type Problem
 
 
 type Context
-  = DefContext
+  = BindingDefContext BindingTarget
+  | FuncDefContext (Located String)
+  | LocalsContext
 
 
 type alias HdlParser a =
@@ -118,14 +120,7 @@ defs =
 
 bindingDef : HdlParser Def
 bindingDef =
-  succeed
-    (\defName (defLocals, defBody) ->
-      BindingDef { name = defName
-      , locals = Maybe.withDefault [] defLocals
-      , body = defBody
-      , size = Nothing
-      }
-    )
+  succeed identity
     |. checkIndent
     |= oneOf
       [ backtrackable <| map BindingName name
@@ -144,43 +139,58 @@ bindingDef =
         , trailing = Forbidden
         }
       ]
-    |. backtrackable sps
-    |. token (Token "=" ExpectingEqual)
-    |. sps
-    |= (indent <|
-        succeed Tuple.pair
-        |= optional locals
-        |. sps
-        |= expr
+    |> andThen
+    (\bindingName ->
+      inContext (BindingDefContext bindingName) <|
+      succeed (\(defLocals, defBody) ->
+        BindingDef { name = bindingName
+        , locals = Maybe.withDefault [] defLocals
+        , body = defBody
+        , size = Nothing
+        }
       )
+      |. backtrackable sps
+      |. token (Token "=" ExpectingEqual)
+      |. sps
+      |= (indent <|
+          succeed Tuple.pair
+          |= optional locals
+          |. sps
+          |= expr
+        )
+    )
 
 
 funcDef : HdlParser Def
 funcDef =
-  succeed
-    (\defName defParams defRetType (defLocals, defBody) ->
-      FuncDef
-        { name = defName
-        , params = defParams
-        , outputs = defRetType
-        , locals = Maybe.withDefault [] defLocals
-        , body = defBody
-        }
-    )
+  succeed identity
     |. checkIndent
     |= name
-    |. sps
-    |= params
-    |= outputs
-    |. sps
-    |. token (Token "=" ExpectingEqual)
-    |. sps
-    |= (indent <|
-        succeed Tuple.pair
-        |= optional locals
-        |. sps
-        |= expr
+    |> andThen
+    (\funcName -> inContext (FuncDefContext funcName) <|
+      succeed
+      (\defParams defRetType (defLocals, defBody) ->
+        FuncDef
+          { name = funcName
+          , params = defParams
+          , outputs = defRetType
+          , locals = Maybe.withDefault [] defLocals
+          , body = defBody
+          }
       )
+      |. sps
+      |= params
+      |= outputs
+      |. sps
+      |. token (Token "=" ExpectingEqual)
+      |. sps
+      |= (indent <|
+          succeed Tuple.pair
+          |= optional locals
+          |. sps
+          |= expr
+        )
+    )
 
 
 checkIndent : HdlParser ()
@@ -206,6 +216,7 @@ checkIndentHelp isIndented =
 
 locals : HdlParser (List Def)
 locals =
+  inContext LocalsContext <|
   succeed (\ds ->
     let
       _ = Debug.log "AL -> ds" <| ds
