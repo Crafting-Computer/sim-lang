@@ -1,17 +1,139 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elm Hdl</title>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+	<link rel="stylesheet" data-name="vs/editor/editor.main" href="../node_modules/monaco-editor/min/vs/editor/editor.main.css">
 </head>
 <body>
-  <main></main>
-  <script src="https://unpkg.com/elm-debug-transformer@latest/dist/elm-console-debug.js"></script>
-  <script>ElmConsoleDebug.register({simple_mode: false, debug: false, limit: 10000});</script>
-  <script src="/public/elm.js"></script>
-  <script>
-    var app = Elm.Main.init({ node: document.querySelector('main') });
-  </script>
+
+<div id="editor" style="width:800px;height:600px;border:1px solid grey"></div>
+
+<script>var require = { paths: { 'vs': '../node_modules/monaco-editor/min/vs' } };</script>
+<script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
+<script src="../node_modules/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+<script src="../node_modules/monaco-editor/min/vs/editor/editor.main.js"></script>
+
+<script>
+
+  // Register a new language
+  monaco.languages.register({ id: 'hdl', extensions: [ '.hdl' ] });
+
+  // Register a tokens provider for the language
+  monaco.languages.setMonarchTokensProvider('hdl', {
+    symbols: /[\-\=\.]+/,
+    keywords: [
+      'let', 'in'
+    ],
+    operators: [
+      '=', '->', '..'
+    ],
+    digits: /\d+(_+\d+)*/,
+    binarydigits: /[0-1]+(_+[0-1]+)*/,
+    hexdigits: /[[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
+    tokenizer: {
+      root: [
+        { include: 'common' }
+      ],
+      common: [
+        // keyword and identifier
+        [/[a-z$][a-zA-Z0-9_$]*/, {
+          cases: {
+            '@keywords': 'keyword',
+            '@default': 'identifier'
+          }
+        }],
+
+        // number
+        [/0[xX](@hexdigits)n?/, 'number.hex'],
+        [/0[bB](@binarydigits)n?/, 'number.binary'],
+        [/(@digits)n?/, 'number'],
+
+        // whitespace
+        { include: '@whitespace' },
+
+        // delimiters and operators
+        [/[()\[\]]/, '@brackets'],
+        [/!(?=([^=]|$))/, 'delimiter'],
+        [/@symbols/, {
+          cases: {
+            '@operators': 'delimiter',
+            '@default': ''
+          }
+        }],
+      ],
+      whitespace: [
+        [/[ \r\n]+/, ''],
+        [/\{\-/, 'comment', '@comment'],
+        [/\-\-.*$/, 'comment'],
+      ],
+      comment: [
+        [/[^\{\-]+/, 'comment'],
+        [/\-\}/, 'comment', '@pop'],
+        [/[\{\-]/, 'comment']
+      ],
+    }
+  });
+  monaco.languages.setLanguageConfiguration('hdl', {
+    brackets: [
+      ['{', '}'],
+      ['[', ']'],
+      ['(', ')']
+    ],
+    comments: {
+      lineComment: '--',
+      blockComment: ['{-', '-}']
+    },
+    autoClosingPairs: [
+      { open: '{', close: '}' },
+      { open: '[', close: ']' },
+      { open: '(', close: ')' },
+    ],
+  });
+
+  monaco.editor.create(document.getElementById("editor"), {
+    theme: "vs",
+    value: sampleCode(),
+    language: 'hdl'
+  });
+
+  function sampleCode() {
+return `{- sample full adder -}
+
+full_adder a b c -> { sum, carry } =
+  let
+    { sum = s1, carry = c1 } = half_adder a b
+    { sum = s2, carry = c2 } = half_adder s1 c
+    c3 = or c1 c2
+  in
+  { sum = s2, carry = c3 }
+
+half_adder a b -> { sum, carry } =
+  let
+    sum = xor a b
+    carry = and a b
+  in
+  { sum = sum, carry = carry }
+
+xor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus
+  let
+    nand_a_b = nand a b
+  in
+  nand
+  (nand a nand_a_b)
+  (nand b nand_a_b)
+
+and a[n] b[n] -> [n] =
+  let
+    nand_a_b = nand a b
+  in
+  nand nand_a_b nand_a_b
+
+-- test out full adder
+add_1_1_0 = full_adder 1 1 0
+`;
+  }
+</script>
+
 </body>
 </html>
