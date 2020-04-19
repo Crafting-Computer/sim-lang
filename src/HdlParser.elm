@@ -453,6 +453,7 @@ record =
         |= oneOf
           [ group
           , bindingOrCall
+          , intLiteral
           ]
     , trailing = Forbidden
     }
