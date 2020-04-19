@@ -3,137 +3,114 @@
 <head>
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
-	<link rel="stylesheet" data-name="vs/editor/editor.main" href="../node_modules/monaco-editor/min/vs/editor/editor.main.css">
+  <link rel="stylesheet" data-name="vs/editor/editor.main" href="../node_modules/monaco-editor/min/vs/editor/editor.main.css">
 </head>
 <body>
 
-<div id="editor" style="width:800px;height:600px;border:1px solid grey"></div>
+  <main style="display: flex; flex-direction: row; margin: 20px 20px;">
+    <div id="editor" style="width: 45vw; height: 90vh; border: grey 1px solid; margin: 0 20px;"></div>
+    <div id="rightPanel"></div>
+  </main>
 
-<script>var require = { paths: { 'vs': '../node_modules/monaco-editor/min/vs' } };</script>
-<script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
-<script src="../node_modules/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
-<script src="../node_modules/monaco-editor/min/vs/editor/editor.main.js"></script>
+  <script>var require = { paths: { 'vs': '../node_modules/monaco-editor/min/vs' } };</script>
+  <script src="../node_modules/monaco-editor/min/vs/loader.js"></script>
+  <script src="../node_modules/monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+  <script src="../node_modules/monaco-editor/min/vs/editor/editor.main.js"></script>
+  <script src="public/elm.js"></script>
 
-<script>
+  <script>
 
-  // Register a new language
-  monaco.languages.register({ id: 'hdl', extensions: [ '.hdl' ] });
+    // Register a new language
+    monaco.languages.register({ id: 'hdl', extensions: [ '.hdl' ] });
 
-  // Register a tokens provider for the language
-  monaco.languages.setMonarchTokensProvider('hdl', {
-    symbols: /[\-\=\.]+/,
-    keywords: [
-      'let', 'in'
-    ],
-    operators: [
-      '=', '->', '..'
-    ],
-    digits: /\d+(_+\d+)*/,
-    binarydigits: /[0-1]+(_+[0-1]+)*/,
-    hexdigits: /[[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
-    tokenizer: {
-      root: [
-        { include: 'common' }
+    // Register a tokens provider for the language
+    monaco.languages.setMonarchTokensProvider('hdl', {
+      symbols: /[\-\=\.]+/,
+      keywords: [
+        'let', 'in'
       ],
-      common: [
-        // keyword and identifier
-        [/[a-z$][a-zA-Z0-9_$]*/, {
-          cases: {
-            '@keywords': 'keyword',
-            '@default': 'identifier'
-          }
-        }],
-
-        // number
-        [/0[xX](@hexdigits)n?/, 'number.hex'],
-        [/0[bB](@binarydigits)n?/, 'number.binary'],
-        [/(@digits)n?/, 'number'],
-
-        // whitespace
-        { include: '@whitespace' },
-
-        // delimiters and operators
-        [/[()\[\]]/, '@brackets'],
-        [/!(?=([^=]|$))/, 'delimiter'],
-        [/@symbols/, {
-          cases: {
-            '@operators': 'delimiter',
-            '@default': ''
-          }
-        }],
+      operators: [
+        '=', '->', '..'
       ],
-      whitespace: [
-        [/[ \r\n]+/, ''],
-        [/\{\-/, 'comment', '@comment'],
-        [/\-\-.*$/, 'comment'],
+      digits: /\d+(_+\d+)*/,
+      binarydigits: /[0-1]+(_+[0-1]+)*/,
+      hexdigits: /[[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
+      tokenizer: {
+        root: [
+          { include: 'common' }
+        ],
+        common: [
+          // keyword and identifier
+          [/[a-z$][a-zA-Z0-9_$]*/, {
+            cases: {
+              '@keywords': 'keyword',
+              '@default': 'identifier'
+            }
+          }],
+
+          // number
+          [/0[xX](@hexdigits)n?/, 'number.hex'],
+          [/0[bB](@binarydigits)n?/, 'number.binary'],
+          [/(@digits)n?/, 'number'],
+
+          // whitespace
+          { include: '@whitespace' },
+
+          // delimiters and operators
+          [/[()\[\]]/, '@brackets'],
+          [/!(?=([^=]|$))/, 'delimiter'],
+          [/@symbols/, {
+            cases: {
+              '@operators': 'delimiter',
+              '@default': ''
+            }
+          }],
+        ],
+        whitespace: [
+          [/[ \r\n]+/, ''],
+          [/\{\-/, 'comment', '@comment'],
+          [/\-\-.*$/, 'comment'],
+        ],
+        comment: [
+          [/[^\{\-]+/, 'comment'],
+          [/\-\}/, 'comment', '@pop'],
+          [/[\{\-]/, 'comment']
+        ],
+      }
+    });
+    monaco.languages.setLanguageConfiguration('hdl', {
+      brackets: [
+        ['{', '}'],
+        ['[', ']'],
+        ['(', ')']
       ],
-      comment: [
-        [/[^\{\-]+/, 'comment'],
-        [/\-\}/, 'comment', '@pop'],
-        [/[\{\-]/, 'comment']
+      comments: {
+        lineComment: '--',
+        blockComment: ['{-', '-}']
+      },
+      autoClosingPairs: [
+        { open: '{', close: '}' },
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
       ],
-    }
-  });
-  monaco.languages.setLanguageConfiguration('hdl', {
-    brackets: [
-      ['{', '}'],
-      ['[', ']'],
-      ['(', ')']
-    ],
-    comments: {
-      lineComment: '--',
-      blockComment: ['{-', '-}']
-    },
-    autoClosingPairs: [
-      { open: '{', close: '}' },
-      { open: '[', close: ']' },
-      { open: '(', close: ')' },
-    ],
-  });
+    });
 
-  monaco.editor.create(document.getElementById("editor"), {
-    theme: "vs",
-    value: sampleCode(),
-    language: 'hdl'
-  });
+    var editor = monaco.editor.create(document.getElementById("editor"), {
+      theme: "vs",
+      value: "",
+      language: 'hdl'
+    });
 
-  function sampleCode() {
-return `{- sample full adder -}
+    var app = Elm.Editor.init({ node: document.getElementById('rightPanel') });
 
-full_adder a b c -> { sum, carry } =
-  let
-    { sum = s1, carry = c1 } = half_adder a b
-    { sum = s2, carry = c2 } = half_adder s1 c
-    c3 = or c1 c2
-  in
-  { sum = s2, carry = c3 }
+    app.ports.setEditorValue.subscribe(function(newValue) {
+      editor.setValue(newValue);
+    });
 
-half_adder a b -> { sum, carry } =
-  let
-    sum = xor a b
-    carry = and a b
-  in
-  { sum = sum, carry = carry }
-
-xor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus
-  let
-    nand_a_b = nand a b
-  in
-  nand
-  (nand a nand_a_b)
-  (nand b nand_a_b)
-
-and a[n] b[n] -> [n] =
-  let
-    nand_a_b = nand a b
-  in
-  nand nand_a_b nand_a_b
-
--- test out full adder
-add_1_1_0 = full_adder 1 1 0
-`;
-  }
-</script>
+    editor.onDidChangeModelContent((event) => {
+      app.ports.editorValueChanged.send(editor.getValue());
+    });
+  </script>
 
 </body>
 </html>
