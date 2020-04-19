@@ -635,12 +635,23 @@ getType defs expr =
           case def of
             FuncDef { name } ->
               ErrorType [ ExpectingBindingGotFunction bindingName name ]
-            BindingDef { body, size } ->
+            BindingDef { name, body, size } ->
               case size of
                 Just s ->
                   BusType s.value
                 Nothing ->
-                  getType (List.filter ((/=) def) defs) body
+                  let
+                    t =
+                      getType (List.filter ((/=) def) defs) body
+                  in
+                  case (t, name) of
+                    (RecordType rt, BindingRecord r) ->
+                      Maybe.withDefault t <|
+                        Maybe.andThen (\(k, _) -> Dict.get k.value rt) <|
+                          List.Extra.find (\(_, v) -> v.value == bindingName.value) <|
+                            Dict.toList r
+                    _ ->
+                      t
         Nothing ->
           ErrorType [ UndefinedName bindingName ]
     Call callee args ->
@@ -717,7 +728,7 @@ getDef defs bindingName =
                 BindingName n ->
                   [ n.value ]
                 BindingRecord r ->
-                  List.map .value <| Dict.keys r
+                  List.map .value <| Dict.values r
       in
       List.member bindingName.value defNames
     )

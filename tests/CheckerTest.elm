@@ -121,6 +121,24 @@ suite =
               ]
           in
           Expect.equal expected (check src)
+      , test "Record assignment in locals" <|
+        \_ ->
+          let
+            src =
+              "combine a b -> { a, b } =\n  let { a = a1, b = b1 } = { a = a, b = b } in\n  { a = a1, b = b1 }"
+            expected =
+              Ok ()
+          in
+          Expect.equal expected (check src)
+      , test "Undefined name in record literal" <|
+        \_ ->
+          let
+            src =
+              "combine a b -> { a, b } =\n  let { a = a1, b = b1 } = { a = a, b = b } in\n  { a = a1, b = c1 }"
+            expected =
+              Err [UndefinedName { from = (3,17), to = (3,19), value = "c1" }]
+          in
+          Expect.equal expected (check src)
       ]
     ]
 

@@ -39,6 +39,14 @@ half_adder a b -> { sum, carry } =
   in
   { sum = sum, carry = carry }
 
+full_adder a b c -> { sum, carry } =
+  let
+    { sum = s1, carry = c1 } = half_adder a b
+    { sum = s2, carry = c2 } = half_adder s1 c
+    c3 = or c1 c2
+  in
+  { sum = s2, carry = c3 }
+
 xor a[n] b[n] -> [n] =
   let
     nand_a_b = nand a b
@@ -46,6 +54,12 @@ xor a[n] b[n] -> [n] =
   nand
   (nand a nand_a_b)
   (nand b nand_a_b)
+
+not a[1] -> [1] =
+  nand a a
+
+or a[1] b[1] -> [1] =
+  nand (not a) (not b)
 
 and a[n] b[n] -> [n] =
   let
