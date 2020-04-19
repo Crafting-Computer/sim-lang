@@ -538,18 +538,7 @@ binding =
 
 bindingOrCall : HdlParser Expr
 bindingOrCall =
-  succeed
-    (\callee args ->
-      let
-        _ = Debug.log "AL -> callee" <| callee
-        _ = Debug.log "AL -> args" <| args
-      in
-      case args of
-        [] ->
-          Binding callee
-        list ->
-          Call callee list
-    )
+  succeed Tuple.pair
     |= name
     |. sps
     |=  ( loop [] <| \revExprs ->
@@ -567,6 +556,21 @@ bindingOrCall =
           |> map (\_ -> Done (List.reverse revExprs))
         ]
     )
+    |> andThen
+      (\(callee, args) ->
+        case args of
+          [] ->
+            succeed
+              (\i -> case i of
+                Just indexes ->
+                  Indexing (Binding callee) indexes
+                Nothing ->
+                  Binding callee
+              )
+              |= optional indexing
+          list ->
+            succeed (Call callee list)
+      )
 
 
 optional : HdlParser a -> HdlParser (Maybe a)
