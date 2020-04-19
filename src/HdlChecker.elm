@@ -5,12 +5,13 @@ import AssocList as Dict exposing (Dict)
 import List.Extra
 import Set
 import EverySet
+import Binary
 
 type Problem
   = DuplicatedName (Located String) (Located String)
   | UndefinedName (Located String)
   | WrongCallArity (Located String) (List Param) (List (Located Type)) -- callee params argTypes
-  | TryIndexingRecordType (Dict String Type) (Located Int, Located Int) -- recordType indices
+  | InvalidIndexingTarget (Located Type) (Located Int, Located Int) -- targetType indices
   | IndexOutOfBounds Int (Located Int) (Located Int) -- expectedBusSize from to
   | FromIndexBiggerThanToIndex (Located Int) (Located Int) -- from to
   | ExpectingBindingGotFunction (Located String) (Located String) -- bindingName functioName
@@ -134,12 +135,18 @@ showProblem src problem =
         else
           "Try dropping " ++ String.fromInt (argLength - paramLength) ++ " arguments to match the parameter size."
         )
-    TryIndexingRecordType recordType (from, to) ->
-      "Are you trying to get a value of a record at some index? This doesn't work as you can only index into a bus type.\n"
-      ++ showLocationRange src from to ++ "\n"
-      ++ "Hint: Try destructing the record to get the values inside:\n\n"
-      ++ "{ sum = s1, carry = c1 } = { sum = 0, carry = 1 }\n\n"
-      ++ "Note that the record destructure automatically creates two new bindings `s1` and `c1`."
+    InvalidIndexingTarget targetType (from, to) ->
+      case targetType.value of
+        RecordType _ ->
+          "Are you trying to get a value of a record at some index? This doesn't work as you can only index into a bus type.\n"
+          ++ showLocationRange src from to ++ "\n"
+          ++ "Hint: Try destructing the record to get the values inside:\n\n"
+          ++ "{ sum = s1, carry = c1 } = { sum = 0, carry = 1 }\n\n"
+          ++ "Note that the record destructure automatically creates two new bindings `s1` and `c1`."
+        _ -> -- must be BusType (IntLiteral)
+          "Are you trying to slice an integer? This is not allowed.\n"
+          ++ showLocationRange src from to ++ "\n"
+          ++ "Hint: Try specifying the integer value you want directly."
     IndexOutOfBounds busSize from to ->
       let
         (indexName, indexValue) =
@@ -400,6 +407,9 @@ checkExpr defs expr =
         _ ->
           []
 
+    IntLiteral _ ->
+      []
+
 
 paramToLocatedType : Param -> Located Type
 paramToLocatedType p =
@@ -611,6 +621,11 @@ locateExpr expr =
       , to = r.to
       }
 
+    IntLiteral i ->
+      { from = i.from
+      , to = i.to
+      }
+
 getType : List Def -> Expr -> Type
 getType defs expr =
   case expr of
@@ -649,9 +664,9 @@ getType defs expr =
     Indexing e (from, to) ->
       let
         t =
-          getType defs e
+          getLocatedType defs e
       in
-      case t of
+      case t.value of
         BusType size ->
           let
             slicedBusType s =
@@ -673,7 +688,7 @@ getType defs expr =
                   Nothing ->
                     BusType <| VarSize n (Just <| from.value + 1)
         RecordType r ->
-          ErrorType [ TryIndexingRecordType r (from, to) ]
+          ErrorType [ InvalidIndexingTarget t (from, to) ]
         ErrorType problems ->
           ErrorType problems
     Record r ->
@@ -684,6 +699,8 @@ getType defs expr =
               (n.value, getType defs e)
             )
             (List.reverse <| Dict.toList r.value)
+    IntLiteral i ->
+      BusType <| IntSize <| Binary.width <| Binary.fromDecimal i.value
 
 
 getDef : List Def -> Located String -> Maybe Def

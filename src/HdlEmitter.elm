@@ -97,6 +97,8 @@ emitExpr e =
         "{ "
         r.value
       ++ " }"
+    IntLiteral i ->
+      String.fromInt i.value
 
 
 emitParam : Param -> String

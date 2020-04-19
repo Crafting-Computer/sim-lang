@@ -13,6 +13,7 @@
             "elm/parser": "1.1.0",
             "elm-community/list-extra": "8.2.3",
             "elm-explorations/test": "1.2.2",
+            "icidasset/elm-binary": "2.1.0",
             "pzp1997/assoc-list": "1.0.0"
         },
         "indirect": {

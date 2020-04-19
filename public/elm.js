@@ -4608,16 +4608,16 @@ var $author$project$HdlParser$Indexing = F2(
 var $author$project$HdlParser$IntSize = function (a) {
 	return {$: 'IntSize', a: a};
 };
+var $author$project$HdlChecker$InvalidIndexingTarget = F2(
+	function (a, b) {
+		return {$: 'InvalidIndexingTarget', a: a, b: b};
+	});
 var $author$project$HdlParser$Record = function (a) {
 	return {$: 'Record', a: a};
 };
 var $author$project$HdlChecker$RecordType = function (a) {
 	return {$: 'RecordType', a: a};
 };
-var $author$project$HdlChecker$TryIndexingRecordType = F2(
-	function (a, b) {
-		return {$: 'TryIndexingRecordType', a: a, b: b};
-	});
 var $author$project$HdlChecker$UndefinedName = function (a) {
 	return {$: 'UndefinedName', a: a};
 };
@@ -4709,9 +4709,69 @@ var $pzp1997$assoc_list$AssocList$foldl = F3(
 			initialResult,
 			alist);
 	});
+var $elm$core$Basics$composeR = F3(
+	function (f, g, x) {
+		return g(
+			f(x));
+	});
+var $elm$core$Basics$modBy = _Basics_modBy;
+var $icidasset$elm_binary$Binary$fromDecimal_ = F2(
+	function (acc, n) {
+		fromDecimal_:
+		while (true) {
+			var _v0 = _Utils_Tuple2((n / 2) | 0, n % 2);
+			var x = _v0.a;
+			var bit = _v0.b;
+			var bits = A2(
+				$elm$core$List$cons,
+				A2($elm$core$Basics$modBy, 2, bit),
+				acc);
+			if (x > 0) {
+				var $temp$acc = bits,
+					$temp$n = x;
+				acc = $temp$acc;
+				n = $temp$n;
+				continue fromDecimal_;
+			} else {
+				return bits;
+			}
+		}
+	});
 var $elm$core$Basics$identity = function (x) {
 	return x;
 };
+var $icidasset$elm_binary$Binary$Bits = function (a) {
+	return {$: 'Bits', a: a};
+};
+var $icidasset$elm_binary$Binary$ifThenElse = F3(
+	function (bool, a, b) {
+		return bool ? a : b;
+	});
+var $elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						$elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var $icidasset$elm_binary$Binary$fromIntegers = A2(
+	$elm$core$Basics$composeR,
+	$elm$core$List$map(
+		function (i) {
+			return A3($icidasset$elm_binary$Binary$ifThenElse, i <= 0, false, true);
+		}),
+	$icidasset$elm_binary$Binary$Bits);
+var $icidasset$elm_binary$Binary$fromDecimal = A2(
+	$elm$core$Basics$composeR,
+	$icidasset$elm_binary$Binary$fromDecimal_(_List_Nil),
+	$icidasset$elm_binary$Binary$fromIntegers);
 var $pzp1997$assoc_list$AssocList$D = function (a) {
 	return {$: 'D', a: a};
 };
@@ -4771,20 +4831,6 @@ var $elm_community$list_extra$List$Extra$find = F2(
 				}
 			}
 		}
-	});
-var $elm$core$List$map = F2(
-	function (f, xs) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						$elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
 	});
 var $pzp1997$assoc_list$AssocList$keys = function (_v0) {
 	var alist = _v0.a;
@@ -4924,9 +4970,12 @@ var $author$project$HdlChecker$locateExpr = function (expr) {
 				from: $author$project$HdlChecker$locateExpr(e).from,
 				to: to.to
 			};
-		default:
+		case 'Record':
 			var r = expr.a;
 			return {from: r.from, to: r.to};
+		default:
+			var i = expr.a;
+			return {from: i.from, to: i.to};
 	}
 };
 var $elm$core$Debug$log = _Debug_log;
@@ -5747,6 +5796,10 @@ var $pzp1997$assoc_list$AssocList$toList = function (_v0) {
 	var alist = _v0.a;
 	return alist;
 };
+var $icidasset$elm_binary$Binary$width = function (_v0) {
+	var bits = _v0.a;
+	return $elm$core$List$length(bits);
+};
 var $author$project$HdlChecker$checkExpr = F2(
 	function (defs, expr) {
 		switch (expr.$) {
@@ -5840,7 +5893,7 @@ var $author$project$HdlChecker$checkExpr = F2(
 				} else {
 					return _List_Nil;
 				}
-			default:
+			case 'Record':
 				var r = expr.a;
 				var t = A2(
 					$author$project$HdlChecker$getType,
@@ -5864,6 +5917,8 @@ var $author$project$HdlChecker$checkExpr = F2(
 				} else {
 					return _List_Nil;
 				}
+			default:
+				return _List_Nil;
 		}
 	});
 var $author$project$HdlChecker$getLocatedType = F2(
@@ -5961,10 +6016,11 @@ var $author$project$HdlChecker$getType = F2(
 					var _v7 = expr.b;
 					var from = _v7.a;
 					var to = _v7.b;
-					var t = A2($author$project$HdlChecker$getType, defs, e);
-					switch (t.$) {
+					var t = A2($author$project$HdlChecker$getLocatedType, defs, e);
+					var _v8 = t.value;
+					switch (_v8.$) {
 						case 'BusType':
-							var size = t.a;
+							var size = _v8.a;
 							var slicedBusType = function (s) {
 								return ((_Utils_cmp(from.value, s) > -1) || (_Utils_cmp(to.value, s) > -1)) ? $author$project$HdlChecker$ErrorType(
 									_List_fromArray(
@@ -5999,20 +6055,20 @@ var $author$project$HdlChecker$getType = F2(
 								}
 							}
 						case 'RecordType':
-							var r = t.a;
+							var r = _v8.a;
 							return $author$project$HdlChecker$ErrorType(
 								_List_fromArray(
 									[
 										A2(
-										$author$project$HdlChecker$TryIndexingRecordType,
-										r,
+										$author$project$HdlChecker$InvalidIndexingTarget,
+										t,
 										_Utils_Tuple2(from, to))
 									]));
 						default:
-							var problems = t.a;
+							var problems = _v8.a;
 							return $author$project$HdlChecker$ErrorType(problems);
 					}
-				default:
+				case 'Record':
 					var r = expr.a;
 					return $author$project$HdlChecker$RecordType(
 						$pzp1997$assoc_list$AssocList$fromList(
@@ -6027,6 +6083,12 @@ var $author$project$HdlChecker$getType = F2(
 								},
 								$elm$core$List$reverse(
 									$pzp1997$assoc_list$AssocList$toList(r.value)))));
+				default:
+					var i = expr.a;
+					return $author$project$HdlChecker$BusType(
+						$author$project$HdlParser$IntSize(
+							$icidasset$elm_binary$Binary$width(
+								$icidasset$elm_binary$Binary$fromDecimal(i.value))));
 			}
 		}
 	});
@@ -6394,7 +6456,7 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 			var from = _v1.a;
 			var to = _v1.b;
 			return '(' + ('(' + ($author$project$HdlEmitter$emitExpr(expr) + (')' + (' << ' + ($elm$core$String$fromInt(from.value) + (' >>> ' + ($elm$core$String$fromInt(to.value) + ')')))))));
-		default:
+		case 'Record':
 			var r = e.a;
 			return A3(
 				$pzp1997$assoc_list$AssocList$foldl,
@@ -6404,6 +6466,9 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 					}),
 				'{ ',
 				r.value) + ' }';
+		default:
+			var i = e.a;
+			return $elm$core$String$fromInt(i.value);
 	}
 };
 var $author$project$HdlEmitter$emitParam = function (p) {
@@ -7330,6 +7395,167 @@ var $author$project$HdlParser$binding = A2(
 			$author$project$HdlParser$checkIndent),
 		$author$project$HdlParser$name),
 	$author$project$HdlParser$optional($author$project$HdlParser$indexing));
+var $author$project$HdlParser$IntLiteral = function (a) {
+	return {$: 'IntLiteral', a: a};
+};
+var $elm$parser$Parser$Advanced$consumeBase = _Parser_consumeBase;
+var $elm$parser$Parser$Advanced$consumeBase16 = _Parser_consumeBase16;
+var $elm$parser$Parser$Advanced$bumpOffset = F2(
+	function (newOffset, s) {
+		return {col: s.col + (newOffset - s.offset), context: s.context, indent: s.indent, offset: newOffset, row: s.row, src: s.src};
+	});
+var $elm$parser$Parser$Advanced$chompBase10 = _Parser_chompBase10;
+var $elm$parser$Parser$Advanced$isAsciiCode = _Parser_isAsciiCode;
+var $elm$parser$Parser$Advanced$consumeExp = F2(
+	function (offset, src) {
+		if (A3($elm$parser$Parser$Advanced$isAsciiCode, 101, offset, src) || A3($elm$parser$Parser$Advanced$isAsciiCode, 69, offset, src)) {
+			var eOffset = offset + 1;
+			var expOffset = (A3($elm$parser$Parser$Advanced$isAsciiCode, 43, eOffset, src) || A3($elm$parser$Parser$Advanced$isAsciiCode, 45, eOffset, src)) ? (eOffset + 1) : eOffset;
+			var newOffset = A2($elm$parser$Parser$Advanced$chompBase10, expOffset, src);
+			return _Utils_eq(expOffset, newOffset) ? (-newOffset) : newOffset;
+		} else {
+			return offset;
+		}
+	});
+var $elm$parser$Parser$Advanced$consumeDotAndExp = F2(
+	function (offset, src) {
+		return A3($elm$parser$Parser$Advanced$isAsciiCode, 46, offset, src) ? A2(
+			$elm$parser$Parser$Advanced$consumeExp,
+			A2($elm$parser$Parser$Advanced$chompBase10, offset + 1, src),
+			src) : A2($elm$parser$Parser$Advanced$consumeExp, offset, src);
+	});
+var $elm$parser$Parser$Advanced$finalizeInt = F5(
+	function (invalid, handler, startOffset, _v0, s) {
+		var endOffset = _v0.a;
+		var n = _v0.b;
+		if (handler.$ === 'Err') {
+			var x = handler.a;
+			return A2(
+				$elm$parser$Parser$Advanced$Bad,
+				true,
+				A2($elm$parser$Parser$Advanced$fromState, s, x));
+		} else {
+			var toValue = handler.a;
+			return _Utils_eq(startOffset, endOffset) ? A2(
+				$elm$parser$Parser$Advanced$Bad,
+				_Utils_cmp(s.offset, startOffset) < 0,
+				A2($elm$parser$Parser$Advanced$fromState, s, invalid)) : A3(
+				$elm$parser$Parser$Advanced$Good,
+				true,
+				toValue(n),
+				A2($elm$parser$Parser$Advanced$bumpOffset, endOffset, s));
+		}
+	});
+var $elm$core$String$toFloat = _String_toFloat;
+var $elm$parser$Parser$Advanced$finalizeFloat = F6(
+	function (invalid, expecting, intSettings, floatSettings, intPair, s) {
+		var intOffset = intPair.a;
+		var floatOffset = A2($elm$parser$Parser$Advanced$consumeDotAndExp, intOffset, s.src);
+		if (floatOffset < 0) {
+			return A2(
+				$elm$parser$Parser$Advanced$Bad,
+				true,
+				A4($elm$parser$Parser$Advanced$fromInfo, s.row, s.col - (floatOffset + s.offset), invalid, s.context));
+		} else {
+			if (_Utils_eq(s.offset, floatOffset)) {
+				return A2(
+					$elm$parser$Parser$Advanced$Bad,
+					false,
+					A2($elm$parser$Parser$Advanced$fromState, s, expecting));
+			} else {
+				if (_Utils_eq(intOffset, floatOffset)) {
+					return A5($elm$parser$Parser$Advanced$finalizeInt, invalid, intSettings, s.offset, intPair, s);
+				} else {
+					if (floatSettings.$ === 'Err') {
+						var x = floatSettings.a;
+						return A2(
+							$elm$parser$Parser$Advanced$Bad,
+							true,
+							A2($elm$parser$Parser$Advanced$fromState, s, invalid));
+					} else {
+						var toValue = floatSettings.a;
+						var _v1 = $elm$core$String$toFloat(
+							A3($elm$core$String$slice, s.offset, floatOffset, s.src));
+						if (_v1.$ === 'Nothing') {
+							return A2(
+								$elm$parser$Parser$Advanced$Bad,
+								true,
+								A2($elm$parser$Parser$Advanced$fromState, s, invalid));
+						} else {
+							var n = _v1.a;
+							return A3(
+								$elm$parser$Parser$Advanced$Good,
+								true,
+								toValue(n),
+								A2($elm$parser$Parser$Advanced$bumpOffset, floatOffset, s));
+						}
+					}
+				}
+			}
+		}
+	});
+var $elm$parser$Parser$Advanced$number = function (c) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			if (A3($elm$parser$Parser$Advanced$isAsciiCode, 48, s.offset, s.src)) {
+				var zeroOffset = s.offset + 1;
+				var baseOffset = zeroOffset + 1;
+				return A3($elm$parser$Parser$Advanced$isAsciiCode, 120, zeroOffset, s.src) ? A5(
+					$elm$parser$Parser$Advanced$finalizeInt,
+					c.invalid,
+					c.hex,
+					baseOffset,
+					A2($elm$parser$Parser$Advanced$consumeBase16, baseOffset, s.src),
+					s) : (A3($elm$parser$Parser$Advanced$isAsciiCode, 111, zeroOffset, s.src) ? A5(
+					$elm$parser$Parser$Advanced$finalizeInt,
+					c.invalid,
+					c.octal,
+					baseOffset,
+					A3($elm$parser$Parser$Advanced$consumeBase, 8, baseOffset, s.src),
+					s) : (A3($elm$parser$Parser$Advanced$isAsciiCode, 98, zeroOffset, s.src) ? A5(
+					$elm$parser$Parser$Advanced$finalizeInt,
+					c.invalid,
+					c.binary,
+					baseOffset,
+					A3($elm$parser$Parser$Advanced$consumeBase, 2, baseOffset, s.src),
+					s) : A6(
+					$elm$parser$Parser$Advanced$finalizeFloat,
+					c.invalid,
+					c.expecting,
+					c._int,
+					c._float,
+					_Utils_Tuple2(zeroOffset, 0),
+					s)));
+			} else {
+				return A6(
+					$elm$parser$Parser$Advanced$finalizeFloat,
+					c.invalid,
+					c.expecting,
+					c._int,
+					c._float,
+					A3($elm$parser$Parser$Advanced$consumeBase, 10, s.offset, s.src),
+					s);
+			}
+		});
+};
+var $author$project$HdlParser$intLiteral = function () {
+	var invalid = $author$project$HdlParser$ExpectingInt;
+	var expecting = $author$project$HdlParser$ExpectingInt;
+	return A2(
+		$elm$parser$Parser$Advanced$map,
+		$author$project$HdlParser$IntLiteral,
+		$author$project$HdlParser$located(
+			$elm$parser$Parser$Advanced$number(
+				{
+					binary: $elm$core$Result$Ok($elm$core$Basics$identity),
+					expecting: expecting,
+					_float: $elm$core$Result$Err(invalid),
+					hex: $elm$core$Result$Ok($elm$core$Basics$identity),
+					_int: $elm$core$Result$Ok($elm$core$Basics$identity),
+					invalid: invalid,
+					octal: $elm$core$Result$Err(invalid)
+				})));
+}();
 var $elm$parser$Parser$Advanced$lazy = function (thunk) {
 	return $elm$parser$Parser$Advanced$Parser(
 		function (s) {
@@ -7509,7 +7735,8 @@ function $author$project$HdlParser$cyclic$expr() {
 			[
 				$author$project$HdlParser$cyclic$group(),
 				$author$project$HdlParser$cyclic$bindingOrCall(),
-				$author$project$HdlParser$cyclic$record()
+				$author$project$HdlParser$cyclic$record(),
+				$author$project$HdlParser$intLiteral
 			]));
 }
 function $author$project$HdlParser$cyclic$record() {
@@ -7592,7 +7819,8 @@ function $author$project$HdlParser$cyclic$bindingOrCall() {
 										[
 											$author$project$HdlParser$binding,
 											$author$project$HdlParser$cyclic$group(),
-											$author$project$HdlParser$cyclic$record()
+											$author$project$HdlParser$cyclic$record(),
+											$author$project$HdlParser$intLiteral
 										])),
 								$author$project$HdlParser$sps)),
 							A2(
@@ -8213,11 +8441,6 @@ var $elm_community$list_extra$List$Extra$groupWhile = F2(
 			_List_Nil,
 			items);
 	});
-var $elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
 var $author$project$HdlParser$showProblem = function (problem) {
 	switch (problem.$) {
 		case 'ExpectingName':
@@ -8527,25 +8750,30 @@ var $author$project$HdlChecker$showProblem = F2(
 						$elm$core$List$map,
 						$author$project$HdlChecker$typeToString,
 						A2($elm$core$List$drop, argLength, paramTypes))) + ' to match the parameter types.')))) : ('Try dropping ' + ($elm$core$String$fromInt(argLength - paramLength) + ' arguments to match the parameter size.')))))))));
-			case 'TryIndexingRecordType':
-				var recordType = problem.a;
+			case 'InvalidIndexingTarget':
+				var targetType = problem.a;
 				var _v3 = problem.b;
 				var from = _v3.a;
 				var to = _v3.b;
-				return 'Are you trying to get a value of a record at some index? This doesn\'t work as you can only index into a bus type.\n' + (A3($author$project$HdlChecker$showLocationRange, src, from, to) + ('\n' + ('Hint: Try destructing the record to get the values inside:\n\n' + ('{ sum = s1, carry = c1 } = { sum = 0, carry = 1 }\n\n' + 'Note that the record destructure automatically creates two new bindings `s1` and `c1`.'))));
+				var _v4 = targetType.value;
+				if (_v4.$ === 'RecordType') {
+					return 'Are you trying to get a value of a record at some index? This doesn\'t work as you can only index into a bus type.\n' + (A3($author$project$HdlChecker$showLocationRange, src, from, to) + ('\n' + ('Hint: Try destructing the record to get the values inside:\n\n' + ('{ sum = s1, carry = c1 } = { sum = 0, carry = 1 }\n\n' + 'Note that the record destructure automatically creates two new bindings `s1` and `c1`.'))));
+				} else {
+					return 'Are you trying to slice an integer? This is not allowed.\n' + (A3($author$project$HdlChecker$showLocationRange, src, from, to) + ('\n' + 'Hint: Try specifying the integer value you want directly.'));
+				}
 			case 'IndexOutOfBounds':
 				var busSize = problem.a;
 				var from = problem.b;
 				var to = problem.c;
-				var _v4 = _Utils_eq(from.value, to.value) ? _Utils_Tuple2(
+				var _v5 = _Utils_eq(from.value, to.value) ? _Utils_Tuple2(
 					'index',
 					$elm$core$String$fromInt(from.value)) : ((_Utils_cmp(from.value, busSize) > -1) ? _Utils_Tuple2(
 					'start index',
 					$elm$core$String$fromInt(from.value)) : _Utils_Tuple2(
 					'end index',
 					$elm$core$String$fromInt(to.value)));
-				var indexName = _v4.a;
-				var indexValue = _v4.b;
+				var indexName = _v5.a;
+				var indexValue = _v5.b;
 				return 'I found that you stepped out of bounds when indexing a bus of size ' + ($elm$core$String$fromInt(busSize) + ('.\n' + ('The ' + (indexName + (' ' + (indexValue + (' is greater than the highest bus index ' + ($elm$core$String$fromInt(busSize - 1) + ('.\n' + (A3($author$project$HdlChecker$showLocationRange, src, from, to) + ('\n' + ('Hint: Try limiting the ' + (indexName + (' to between 0 and ' + ($elm$core$String$fromInt(busSize - 1) + '.')))))))))))))));
 			case 'FromIndexBiggerThanToIndex':
 				var from = problem.a;
@@ -8580,7 +8808,7 @@ var $author$project$HdlChecker$showProblems = F2(
 				$author$project$HdlChecker$showProblem(src),
 				problems));
 	});
-var $author$project$Main$source = '\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n  ';
+var $author$project$Main$source = '\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n\nand_0_0 = and 0 0\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$main = function () {

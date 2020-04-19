@@ -52,6 +52,8 @@ and a[n] b[n] -> [n] =
     nand_a_b = nand a b
   in
   nand nand_a_b nand_a_b
+
+and_0_0 = and 0 0
   """
   -- "half_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }"
   -- """

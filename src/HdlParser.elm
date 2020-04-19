@@ -33,6 +33,7 @@ type Expr
   | Call (Located String) (List Expr)
   | Indexing Expr (Located Int, Located Int)
   | Record (Located (Dict (Located String) Expr))
+  | IntLiteral (Located Int)
 
 
 type alias Param =
@@ -427,6 +428,7 @@ expr =
     [ group
     , bindingOrCall
     , record
+    , intLiteral
     ]
 
 
@@ -455,6 +457,26 @@ record =
     , trailing = Forbidden
     }
     )
+
+
+intLiteral : HdlParser Expr
+intLiteral =
+  let
+    invalid = 
+      ExpectingInt
+    expecting =
+      ExpectingInt
+  in
+  map IntLiteral <| located <|
+    number
+    { int = Ok identity
+    , hex = Ok identity
+    , octal = Err invalid
+    , binary = Ok identity
+    , float = Err invalid
+    , invalid = invalid
+    , expecting = expecting
+    }
 
 
 group : HdlParser Expr
@@ -536,6 +558,7 @@ bindingOrCall =
             [ binding
             , group
             , record
+            , intLiteral
             ]
           |. sps
         , succeed ()
