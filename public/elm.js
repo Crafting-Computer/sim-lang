@@ -5683,7 +5683,6 @@ var $author$project$HdlChecker$locateExpr = function (expr) {
 			return {from: i.from, to: i.to};
 	}
 };
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$HdlChecker$MismatchedTypes = F2(
 	function (a, b) {
 		return {$: 'MismatchedTypes', a: a, b: b};
@@ -6502,11 +6501,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 			case 'Call':
 				var callee = expr.a;
 				var args = expr.b;
-				var _v17 = A2($elm$core$Debug$log, 'AL -> args', args);
-				var _v18 = A2($elm$core$Debug$log, 'AL -> defs', defs);
-				var _v19 = A2($author$project$HdlChecker$getDef, defs, callee);
-				if (_v19.$ === 'Just') {
-					var calleeDef = _v19.a;
+				var _v17 = A2($author$project$HdlChecker$getDef, defs, callee);
+				if (_v17.$ === 'Just') {
+					var calleeDef = _v17.a;
 					if (calleeDef.$ === 'FuncDef') {
 						var params = calleeDef.a.params;
 						var outputs = calleeDef.a.outputs;
@@ -6527,9 +6524,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 							var paramTypeErrors = A3(
 								$elm$core$List$foldl,
 								F2(
-									function (_v22, problems) {
-										var param = _v22.a;
-										var arg = _v22.b;
+									function (_v20, problems) {
+										var param = _v20.a;
+										var arg = _v20.b;
 										return _Utils_ap(
 											A2(
 												$author$project$HdlChecker$matchTypes,
@@ -6539,9 +6536,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 									}),
 								_List_Nil,
 								A3($elm$core$List$map2, $elm$core$Tuple$pair, params, args));
-							var _v21 = retType.value;
-							if (_v21.$ === 'ErrorType') {
-								var retTypeProblems = _v21.a;
+							var _v19 = retType.value;
+							if (_v19.$ === 'ErrorType') {
+								var retTypeProblems = _v19.a;
 								return _Utils_ap(paramTypeErrors, retTypeProblems);
 							} else {
 								return paramTypeErrors;
@@ -6562,18 +6559,18 @@ var $author$project$HdlChecker$checkExpr = F2(
 				}
 			case 'Indexing':
 				var e = expr.a;
-				var _v23 = expr.b;
-				var from = _v23.a;
-				var to = _v23.b;
-				var _v24 = A2(
+				var _v21 = expr.b;
+				var from = _v21.a;
+				var to = _v21.b;
+				var _v22 = A2(
 					$author$project$HdlChecker$getType,
 					defs,
 					A2(
 						$author$project$HdlParser$Indexing,
 						e,
 						_Utils_Tuple2(from, to)));
-				if (_v24.$ === 'ErrorType') {
-					var problems = _v24.a;
+				if (_v22.$ === 'ErrorType') {
+					var problems = _v22.a;
 					return problems;
 				} else {
 					return _List_Nil;
@@ -6589,7 +6586,7 @@ var $author$project$HdlChecker$checkExpr = F2(
 					return A3(
 						$pzp1997$assoc_list$AssocList$foldl,
 						F3(
-							function (_v26, value, problems) {
+							function (_v24, value, problems) {
 								if (value.$ === 'ErrorType') {
 									var p = value.a;
 									return _Utils_ap(p, problems);
@@ -6855,14 +6852,14 @@ var $author$project$HdlChecker$checkDef = F3(
 							$elm$core$List$foldl,
 							F2(
 								function (defName, duplicates2) {
-									var _v5 = A2(
+									var _v1 = A2(
 										$elm_community$list_extra$List$Extra$find,
 										function (otherName) {
 											return _Utils_eq(otherName.value, defName.value);
 										},
 										$author$project$HdlChecker$getDefNames(other));
-									if (_v5.$ === 'Just') {
-										var otherName = _v5.a;
+									if (_v1.$ === 'Just') {
+										var otherName = _v1.a;
 										return A2(
 											$elm$core$List$cons,
 											A2($author$project$HdlChecker$DuplicatedName, otherName, defName),
@@ -6893,9 +6890,6 @@ var $author$project$HdlChecker$checkDef = F3(
 					_Utils_ap(paramDefs, locals));
 				var bodyType = A2($author$project$HdlChecker$getLocatedType, funcDefs, body);
 				var retTypeErrors = A2($author$project$HdlChecker$matchTypes, retType, bodyType);
-				var _v2 = A2($elm$core$Debug$log, 'AL -> locals', locals);
-				var _v3 = A2($elm$core$Debug$log, 'AL -> bodyType', bodyType);
-				var _v4 = A2($elm$core$Debug$log, 'AL -> retType', retType);
 				return _Utils_ap(
 					A3(
 						$elm$core$List$foldl,
@@ -6948,7 +6942,6 @@ var $author$project$HdlChecker$checkDef = F3(
 			}
 		}();
 		var problems = _Utils_ap(duplicatedNames, typeErrors);
-		var _v0 = A2($elm$core$Debug$log, 'AL -> def', def);
 		return problems;
 	});
 var $elm$core$List$drop = F2(
@@ -7082,7 +7075,6 @@ var $author$project$HdlChecker$check = function (defs) {
 					$elm$core$List$drop,
 					$elm$core$List$length(beforeDefs) + 1,
 					defs);
-				var _v1 = A2($elm$core$Debug$log, 'AL -> def', def);
 				return _Utils_ap(
 					A3(
 						$author$project$HdlChecker$checkDef,
@@ -7428,7 +7420,6 @@ var $author$project$HdlParser$checkIndent = A2(
 			$elm$parser$Parser$Advanced$succeed(
 				F2(
 					function (indentation, column) {
-						var _v0 = A2($elm$core$Debug$log, 'AL -> column', column);
 						return _Utils_cmp(indentation, column) < 1;
 					})),
 			$elm$parser$Parser$Advanced$getIndent),
@@ -8661,7 +8652,6 @@ var $author$project$HdlParser$indent = function (parser) {
 	return A2(
 		$elm$parser$Parser$Advanced$andThen,
 		function (newIndentation) {
-			var _v0 = A2($elm$core$Debug$log, 'AL -> newIndentation', newIndentation);
 			return A2($elm$parser$Parser$Advanced$withIndent, newIndentation, parser);
 		},
 		A2(
@@ -8834,9 +8824,9 @@ function $author$project$HdlParser$cyclic$bindingDef() {
 							A2(
 								$elm$parser$Parser$Advanced$ignorer,
 								$elm$parser$Parser$Advanced$succeed(
-									function (_v4) {
-										var defLocals = _v4.a;
-										var defBody = _v4.b;
+									function (_v3) {
+										var defLocals = _v3.a;
+										var defBody = _v3.b;
 										return $author$project$HdlParser$BindingDef(
 											{
 												body: defBody,
@@ -8930,7 +8920,7 @@ function $author$project$HdlParser$cyclic$defs() {
 							$author$project$HdlParser$sps)),
 						A2(
 						$elm$parser$Parser$Advanced$map,
-						function (_v3) {
+						function (_v2) {
 							return $elm$parser$Parser$Advanced$Done(
 								$elm$core$List$reverse(revDefs));
 						},
@@ -8955,9 +8945,9 @@ function $author$project$HdlParser$cyclic$funcDef() {
 								$elm$parser$Parser$Advanced$ignorer,
 								$elm$parser$Parser$Advanced$succeed(
 									F3(
-										function (defParams, defRetType, _v2) {
-											var defLocals = _v2.a;
-											var defBody = _v2.b;
+										function (defParams, defRetType, _v1) {
+											var defLocals = _v1.a;
+											var defBody = _v1.b;
 											return $author$project$HdlParser$FuncDef(
 												{
 													body: defBody,
@@ -9010,11 +9000,7 @@ function $author$project$HdlParser$cyclic$locals() {
 					$elm$parser$Parser$Advanced$ignorer,
 					A2(
 						$elm$parser$Parser$Advanced$ignorer,
-						$elm$parser$Parser$Advanced$succeed(
-							function (ds) {
-								var _v0 = A2($elm$core$Debug$log, 'AL -> ds', ds);
-								return ds;
-							}),
+						$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
 						$author$project$HdlParser$checkIndent),
 					$elm$parser$Parser$Advanced$keyword(
 						A2($elm$parser$Parser$Advanced$Token, 'let', $author$project$HdlParser$ExpectingLet))),
@@ -9030,7 +9016,7 @@ function $author$project$HdlParser$cyclic$locals() {
 							A2(
 								$elm$parser$Parser$Advanced$ignorer,
 								$elm$parser$Parser$Advanced$lazy(
-									function (_v1) {
+									function (_v0) {
 										return $author$project$HdlParser$cyclic$defs();
 									}),
 								$author$project$HdlParser$sps))),
@@ -9224,7 +9210,6 @@ var $author$project$HdlParser$showProblemContext = function (context) {
 	}
 };
 var $author$project$HdlParser$showProblemContextStack = function (contexts) {
-	var _v0 = A2($elm$core$Debug$log, 'AL -> contexts', contexts);
 	return A2(
 		$elm$core$String$join,
 		' of the ',

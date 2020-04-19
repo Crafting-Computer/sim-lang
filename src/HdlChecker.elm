@@ -68,7 +68,6 @@ check defs =
       List.foldl
         (\def ps ->
           let
-            _ = Debug.log "AL -> def" <| def
             beforeDefs =
               List.Extra.takeWhile ((/=) def) defs
             afterDefs =
@@ -246,7 +245,6 @@ sizeToString s =
 checkDef : List Def -> List Def -> Def -> List Problem
 checkDef beforeDefs afterDefs def =
   let
-    _ = Debug.log "AL -> def" <| def
     defNames =
       getDefNames def
     
@@ -278,18 +276,15 @@ checkDef beforeDefs afterDefs def =
       case def of
         FuncDef { params, locals, body, outputs } ->
           let
-            _ = Debug.log "AL -> locals" <| locals
             paramDefs =
               List.map paramToDef params
             
             funcDefs =
               allDefs ++ paramDefs ++ locals
 
-            _ = Debug.log "AL -> bodyType" <| bodyType
             bodyType =
               getLocatedType funcDefs body
             
-            _ = Debug.log "AL -> retType" <| retType
             retType =
               outputsToLocatedType params [] outputs
 
@@ -341,10 +336,6 @@ checkExpr defs expr =
         Nothing ->
           [ UndefinedName name ]
     Call callee args ->
-      let
-        _ = Debug.log "AL -> args" <| args
-        _ = Debug.log "AL -> defs" <| defs
-      in
       case getDef defs callee of
         Just calleeDef ->
           case calleeDef of

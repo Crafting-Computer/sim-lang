@@ -132,9 +132,6 @@ showDeadEndsHelper src (first, rests) =
 
 showProblemContextStack : List { row : Int, col : Int, context : Context } -> String
 showProblemContextStack contexts =
-  let
-    _ = Debug.log "AL -> contexts" <| contexts
-  in
   String.join " of the " <| List.map (.context >> showProblemContext) contexts
 
 
@@ -369,9 +366,6 @@ funcDef =
 checkIndent : HdlParser ()
 checkIndent =
   succeed (\indentation column ->
-    let
-      _ = Debug.log "AL -> column" <| column
-    in
     indentation <= column
     )
     |= getIndent
@@ -390,12 +384,7 @@ checkIndentHelp isIndented =
 locals : HdlParser (List Def)
 locals =
   inContext LocalsContext <|
-  succeed (\ds ->
-    let
-      _ = Debug.log "AL -> ds" <| ds
-    in
-    ds
-  )
+  succeed identity
     |. checkIndent
     |. keyword (Token "let" ExpectingLet)
     |. sps
@@ -415,9 +404,6 @@ indent parser =
   )
   |= getIndent
   |> andThen (\newIndentation ->
-    let
-      _ = Debug.log "AL -> newIndentation" <| newIndentation
-    in
     withIndent newIndentation parser
   )
 
