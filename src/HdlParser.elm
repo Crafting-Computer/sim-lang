@@ -554,6 +554,7 @@ bindingOrCall =
     |=  ( loop [] <| \revExprs ->
       oneOf
         [ succeed (\n -> Loop (n :: revExprs))
+          |. checkIndent
           |= oneOf
             [ binding
             , group
