@@ -128,18 +128,10 @@
       });
       // generate truth table for first def
       var def = defs[1];
+      console.log(def);
       var func = window[def.name];
       var params = def.params;
       var outputs = def.outputs;
-      var header = params.map(function(param) { return param.name; }).concat(
-        outputs.length === 1
-        ? (
-          "result"
-        )
-        : (
-          outputs.map(function(output) { return output.name; })
-        )
-      );
       // full truth table too large
       if (params.some(function(param) { return typeof param.size === "string"; })
         ||params.reduce(function(lengthProduct, currentParam) { return lengthProduct * currentParam.length; }, 1) > 32
@@ -164,7 +156,16 @@
       });
       var table = Object.create(null);
       table[def.name] = Object.create(null);
-      table[def.name].header = header;
+
+      var tableParams = params.map(function(param) { return param.name; })
+      var tableOutputs = (
+        outputs.length === 1
+        ? [ "result" ]
+        : outputs.map(function(output) { return output.name; })
+      );
+
+      table[def.name].params = tableParams;
+      table[def.name].outputs = tableOutputs;
       table[def.name].body = body;
       console.log(table);
       app.ports.receiveTruthTablePort.send(JSON.stringify(table));

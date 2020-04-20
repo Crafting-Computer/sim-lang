@@ -9715,17 +9715,23 @@ var $webbhuset$elm_json_decode$Json$Decode$Field$require = F3(
 var $author$project$Editor$decodeTruthTable = function () {
 	var decodeTable = A3(
 		$webbhuset$elm_json_decode$Json$Decode$Field$require,
-		'header',
+		'params',
 		$elm$json$Json$Decode$list($elm$json$Json$Decode$string),
-		function (header) {
+		function (params) {
 			return A3(
 				$webbhuset$elm_json_decode$Json$Decode$Field$require,
-				'body',
-				$elm$json$Json$Decode$list(
-					$elm$json$Json$Decode$list($elm$json$Json$Decode$int)),
-				function (body) {
-					return $elm$json$Json$Decode$succeed(
-						{body: body, header: header});
+				'outputs',
+				$elm$json$Json$Decode$list($elm$json$Json$Decode$string),
+				function (outputs) {
+					return A3(
+						$webbhuset$elm_json_decode$Json$Decode$Field$require,
+						'body',
+						$elm$json$Json$Decode$list(
+							$elm$json$Json$Decode$list($elm$json$Json$Decode$int)),
+						function (body) {
+							return $elm$json$Json$Decode$succeed(
+								{body: body, outputs: outputs, params: params});
+						});
 				});
 		});
 	return $elm$json$Json$Decode$dict(decodeTable);
@@ -9743,14 +9749,19 @@ var $author$project$Editor$update = F2(
 	function (msg, model) {
 		if (msg.$ === 'EditorValueChanged') {
 			var newValue = msg.a;
+			var hdlOutput = $author$project$Editor$compileHdl(newValue);
 			return _Utils_Tuple2(
 				_Utils_update(
 					model,
-					{
-						hdlOutput: $author$project$Editor$compileHdl(newValue),
-						hdlSource: newValue
-					}),
-				$elm$core$Platform$Cmd$none);
+					{hdlOutput: hdlOutput, hdlSource: newValue}),
+				function () {
+					if (hdlOutput.$ === 'Ok') {
+						var defs = hdlOutput.a;
+						return $author$project$Editor$generateTruthTable(defs);
+					} else {
+						return $elm$core$Platform$Cmd$none;
+					}
+				}());
 		} else {
 			var tableJson = msg.a;
 			return _Utils_Tuple2(
@@ -15381,26 +15392,7 @@ var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
 var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $mdgriffith$elm_ui$Internal$Model$AsRow = {$: 'AsRow'};
-var $mdgriffith$elm_ui$Internal$Model$asRow = $mdgriffith$elm_ui$Internal$Model$AsRow;
-var $mdgriffith$elm_ui$Element$row = F2(
-	function (attrs, children) {
-		return A4(
-			$mdgriffith$elm_ui$Internal$Model$element,
-			$mdgriffith$elm_ui$Internal$Model$asRow,
-			$mdgriffith$elm_ui$Internal$Model$div,
-			A2(
-				$elm$core$List$cons,
-				$mdgriffith$elm_ui$Internal$Model$htmlClass($mdgriffith$elm_ui$Internal$Style$classes.contentLeft + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.contentCenterY)),
-				A2(
-					$elm$core$List$cons,
-					$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink),
-					A2(
-						$elm$core$List$cons,
-						$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink),
-						attrs))),
-			$mdgriffith$elm_ui$Internal$Model$Unkeyed(children));
-	});
+var $elm$html$Html$caption = _VirtualDom_node('caption');
 var $mdgriffith$elm_ui$Internal$Model$SpacingStyle = F3(
 	function (a, b, c) {
 		return {$: 'SpacingStyle', a: a, b: b, c: c};
@@ -15420,12 +15412,10 @@ var $mdgriffith$elm_ui$Element$spacing = function (x) {
 			x,
 			x));
 };
-var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
-	return {$: 'Text', a: a};
-};
-var $mdgriffith$elm_ui$Element$text = function (content) {
-	return $mdgriffith$elm_ui$Internal$Model$Text(content);
-};
+var $elm$html$Html$table = _VirtualDom_node('table');
+var $elm$html$Html$td = _VirtualDom_node('td');
+var $elm$html$Html$th = _VirtualDom_node('th');
+var $elm$html$Html$thead = _VirtualDom_node('thead');
 var $elm$core$Basics$pow = _Basics_pow;
 var $icidasset$elm_binary$Binary$toDecimal = function (_v0) {
 	var bits = _v0.a;
@@ -15444,6 +15434,7 @@ var $icidasset$elm_binary$Binary$toDecimal = function (_v0) {
 			$elm$core$List$length(bits) - 1),
 		bits).a;
 };
+var $elm$html$Html$tr = _VirtualDom_node('tr');
 var $author$project$Editor$viewTruthTable = function (table) {
 	return A2(
 		$mdgriffith$elm_ui$Element$column,
@@ -15451,58 +15442,112 @@ var $author$project$Editor$viewTruthTable = function (table) {
 			[
 				$mdgriffith$elm_ui$Element$spacing(10)
 			]),
-		A3(
-			$elm$core$Dict$foldl,
-			F3(
-				function (defName, defTable, viewList) {
-					return A2(
-						$elm$core$List$cons,
-						A2(
-							$mdgriffith$elm_ui$Element$row,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$mdgriffith$elm_ui$Element$text(defName)
-								])),
-						A2(
-							$elm$core$List$cons,
-							A2(
-								$mdgriffith$elm_ui$Element$row,
-								_List_fromArray(
-									[
-										$mdgriffith$elm_ui$Element$spacing(10)
-									]),
-								A2(
-									$elm$core$List$map,
-									function (name) {
-										return $mdgriffith$elm_ui$Element$text(name);
-									},
-									defTable.header)),
-							_Utils_ap(
-								A2(
-									$elm$core$List$map,
-									function (row) {
-										return A2(
-											$mdgriffith$elm_ui$Element$row,
-											_List_fromArray(
-												[
-													$mdgriffith$elm_ui$Element$spacing(10)
-												]),
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$html(
+				A2(
+					$elm$html$Html$div,
+					_List_Nil,
+					A3(
+						$elm$core$Dict$foldl,
+						F3(
+							function (defName, defTable, viewList) {
+								var header = _Utils_ap(defTable.params, defTable.outputs);
+								return A2(
+									$elm$core$List$cons,
+									A2(
+										$elm$html$Html$table,
+										_List_fromArray(
+											[
+												A2($elm$html$Html$Attributes$style, 'table-layout', 'fixed'),
+												A2($elm$html$Html$Attributes$style, 'width', '100%'),
+												A2($elm$html$Html$Attributes$style, 'border', '1px grey solid'),
+												A2($elm$html$Html$Attributes$style, 'border-collapse', 'collapse')
+											]),
+										A2(
+											$elm$core$List$cons,
 											A2(
-												$elm$core$List$map,
-												function (value) {
-													return $mdgriffith$elm_ui$Element$text(
-														$elm$core$String$fromInt(
-															$icidasset$elm_binary$Binary$toDecimal(
-																$icidasset$elm_binary$Binary$fromDecimal(value))));
-												},
-												row));
-									},
-									defTable.body),
-								viewList)));
-				}),
-			_List_Nil,
-			table));
+												$elm$html$Html$caption,
+												_List_fromArray(
+													[
+														A2($elm$html$Html$Attributes$style, 'font-weight', 'bold'),
+														A2($elm$html$Html$Attributes$style, 'margin-bottom', '10px')
+													]),
+												_List_fromArray(
+													[
+														$elm$html$Html$text(defName)
+													])),
+											A2(
+												$elm$core$List$cons,
+												A2(
+													$elm$html$Html$thead,
+													_List_Nil,
+													A2(
+														$elm$core$List$map,
+														function (name) {
+															return A2(
+																$elm$html$Html$th,
+																_List_fromArray(
+																	[
+																		A2($elm$html$Html$Attributes$style, 'padding', '10px'),
+																		A2($elm$html$Html$Attributes$style, 'text-align', 'center'),
+																		A2(
+																		$elm$html$Html$Attributes$style,
+																		'width',
+																		$elm$core$String$fromFloat(
+																			100 / $elm$core$List$length(header)) + '%'),
+																		A2($elm$html$Html$Attributes$style, 'border', '1px grey solid'),
+																		A2(
+																		$elm$html$Html$Attributes$style,
+																		'background-color',
+																		A2($elm$core$List$member, name, defTable.params) ? 'lightgreen' : '#ffd8a7')
+																	]),
+																_List_fromArray(
+																	[
+																		$elm$html$Html$text(name)
+																	]));
+														},
+														header)),
+												A2(
+													$elm$core$List$map,
+													function (row) {
+														return A2(
+															$elm$html$Html$tr,
+															_List_fromArray(
+																[
+																	A2($elm$html$Html$Attributes$style, 'text-align', 'center')
+																]),
+															A2(
+																$elm$core$List$map,
+																function (value) {
+																	return A2(
+																		$elm$html$Html$td,
+																		_List_fromArray(
+																			[
+																				A2($elm$html$Html$Attributes$style, 'padding', '10px'),
+																				A2(
+																				$elm$html$Html$Attributes$style,
+																				'width',
+																				$elm$core$String$fromFloat(
+																					100 / $elm$core$List$length(row)) + '%'),
+																				A2($elm$html$Html$Attributes$style, 'border', '1px grey solid')
+																			]),
+																		_List_fromArray(
+																			[
+																				$elm$html$Html$text(
+																				$elm$core$String$fromInt(
+																					$icidasset$elm_binary$Binary$toDecimal(
+																						$icidasset$elm_binary$Binary$fromDecimal(value))))
+																			]));
+																},
+																row));
+													},
+													defTable.body)))),
+									viewList);
+							}),
+						_List_Nil,
+						table)))
+			]));
 };
 var $author$project$Editor$viewRightPanel = function (model) {
 	var _v0 = model.hdlOutput;

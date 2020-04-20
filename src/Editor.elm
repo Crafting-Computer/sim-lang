@@ -38,7 +38,8 @@ type Msg
 type alias TruthTable =
   Dict
     String
-    { header : List String
+    { params : List String
+    , outputs : List String
     , body : List (List Int)
     }
 
@@ -57,13 +58,21 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     EditorValueChanged newValue ->
+      let
+        hdlOutput =
+          compileHdl newValue
+      in
       ({ model
         | hdlSource =
           newValue
         , hdlOutput =
-          compileHdl newValue
+          hdlOutput
       }
-      , Cmd.none
+      , case hdlOutput of
+        Ok defs ->
+          generateTruthTable defs
+        Err _ ->
+          Cmd.none
       )
     TruthTableReceived tableJson ->
       ({ model
@@ -105,19 +114,58 @@ viewRightPanel model =
 viewTruthTable : TruthTable -> E.Element Msg
 viewTruthTable table =
   E.column [ E.spacing 10 ] <|
-  Dict.foldl
-    (\defName defTable viewList ->
-      E.row [] [ E.text defName ]
-      :: E.row [ E.spacing 10 ] (List.map (\name -> E.text name) defTable.header)
-      :: List.map (\row ->
-        E.row [ E.spacing 10 ] <|
-        List.map (\value -> E.text <| String.fromInt <| Binary.toDecimal <| Binary.fromDecimal value) row
+  [ E.html <|
+    Html.div [] <|
+    Dict.foldl
+      (\defName defTable viewList ->
+        let
+          header =
+            defTable.params ++ defTable.outputs
+        in
+        ( Html.table
+          [ Html.Attributes.style "table-layout" "fixed"
+          , Html.Attributes.style "width" "100%"
+          , Html.Attributes.style "border" "1px grey solid"
+          , Html.Attributes.style "border-collapse" "collapse"
+          ] <|
+          Html.caption [ Html.Attributes.style "font-weight" "bold", Html.Attributes.style "margin-bottom" "10px" ] [ Html.text defName ]
+          :: Html.thead []
+            (List.map
+              (\name ->
+                Html.th
+                [ Html.Attributes.style "padding" "10px"
+                , Html.Attributes.style "text-align" "center"
+                , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length header)) ++ "%"
+                , Html.Attributes.style "border" "1px grey solid"
+                , Html.Attributes.style "background-color" <|
+                  if List.member name defTable.params then
+                    "lightgreen"
+                  else
+                    "#ffd8a7"
+                ]
+                [ Html.text name ]
+              )
+            header
+            )
+          :: List.map (\row ->
+            Html.tr
+            [ Html.Attributes.style "text-align" "center"
+            ] <|
+            List.map (\value ->
+              Html.td
+              [ Html.Attributes.style "padding" "10px"
+              , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
+              , Html.Attributes.style "border" "1px grey solid"
+              ]
+              [ Html.text <| String.fromInt <| Binary.toDecimal <| Binary.fromDecimal value ]) row
+          )
+          defTable.body
+        )
+        :: viewList
       )
-      defTable.body
-      ++ viewList
-    )
-    []
-    table
+      []
+      table
+  ]
 
 
 init : () -> ( Model, Cmd Msg )
@@ -222,13 +270,14 @@ generateTruthTable defs =
 decodeTruthTable : Decoder TruthTable
 decodeTruthTable =
   let
-    decodeTable : Decoder { header : List String, body : List (List Int) }
     decodeTable =
-      Field.require "header" (Decode.list Decode.string) <| \header ->
+      Field.require "params" (Decode.list Decode.string) <| \params ->
+      Field.require "outputs" (Decode.list Decode.string) <| \outputs ->
       Field.require "body" (Decode.list <| Decode.list Decode.int) <| \body ->
 
       Decode.succeed
-        { header = header
+        { params = params
+        , outputs = outputs
         , body = body
         }
   in
