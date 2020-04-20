@@ -251,7 +251,7 @@
     app.ports.addTabPort.subscribe(function(newUnitIndex) {
       var newTabState = {
         viewState : undefined,
-        model : monaco.editor.createModel("", "hdl")
+        model : monaco.editor.createModel("{- Insert HDL code here -}", "hdl")
       }
       tabStates[newUnitIndex] = newTabState;
       changeTab(newUnitIndex);

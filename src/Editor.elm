@@ -181,7 +181,7 @@ addUnit name model =
   let
     newUnit =
       { name = name
-      , source = "{- Insert HDL code here -}"
+      , source = ""
       , output = Ok []
       , truthTable = Dict.empty
       }
