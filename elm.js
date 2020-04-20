@@ -9826,7 +9826,7 @@ var $author$project$Editor$addUnit = F2(
 		var newUnit = {
 			name: name,
 			output: $elm$core$Result$Ok(_List_Nil),
-			source: '{- Insert HDL code here -}',
+			source: '',
 			truthTable: $elm$core$Dict$empty
 		};
 		return _Utils_update(
