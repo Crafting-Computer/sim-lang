@@ -1,20 +1,61 @@
-module HdlEmitter exposing (emit)
+module HdlEmitter exposing (emit, DefOutput)
 
-import HdlParser exposing (Def(..), Expr(..), Param, BindingTarget(..))
+import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..))
 import AssocList as Dict
 
-emit : List Def -> String
+
+type alias DefOutput =
+  { name : String
+  , params : List ParamOutput
+  , outputs : List ParamOutput
+  , body : String
+  }
+
+
+type alias ParamOutput =
+  { name : String
+  , size : Size
+  }
+
+
+emit : List Def -> List DefOutput
 emit defs =
-  emitPrelude ++ "\n"
-  ++ String.join
-    "\n"
-    (List.map (emitDef 0) defs)
+  let
+    paramsToParamsOutput params =
+      List.map (\p -> { name = p.name.value, size = p.size.value }) params
+  in
+  emitPrelude
+  ++ List.map
+    (\def ->
+      case def of
+        FuncDef { name, params, outputs } ->
+          { name = name.value
+          , params = paramsToParamsOutput params
+          , outputs = paramsToParamsOutput outputs.value
+          , body = emitDef 0 def
+          }
+        BindingDef _ ->
+          { name = "BINDING IS NOT ALLOWED AT TOP LEVEL" -- TODO: ban binding at top level
+          , params = []
+          , outputs = []
+          , body = ""
+          }
+    )
+    defs
 
 
-emitPrelude : String
+emitPrelude : List DefOutput
 emitPrelude =
-  emitBlock 0
-  [ "function nand(a, b) { return ~(a & b); }"
+  let
+    nsize name =
+      { name = name, size = VarSize "n" Nothing }
+  in
+  -- function nand(a, b) { return ~(a & b); }
+  [ { name = "nand"
+  , params = [ nsize "a", nsize "b"]
+  , outputs = [ nsize "" ]
+  , body = "return ~(a & b);"
+  }
   ]
 
 
@@ -32,26 +73,25 @@ emitDef : Int -> Def -> String
 emitDef indent def =
   case def of
     FuncDef { name, params, locals, body } ->
+      let
+        emittedBody =
+          [ String.join "\n" <| List.map (emitDef <| indent + 1) locals
+          , "  return " ++ emitExpr body ++ ";"
+          ]
+      in
       emitBlock indent
-        [ "function " ++ name.value ++ "(" ++ String.join ", " (List.map emitParam params) ++ ") {"
-        , String.join "\n" <| List.map (emitDef <| indent + 1) locals
-        , "  return " ++ emitExpr body ++ ";"
-        , "}"
-        ]
+        ( case indent of
+          0 ->
+            emittedBody
+          _ ->
+            ("function " ++ name.value ++ "(" ++ String.join ", " (List.map emitParam params) ++ ") {")
+            :: emittedBody
+            ++ [ "}" ]
+        )
     BindingDef { name, locals, body } ->
       let
         emittedName =
-          case name of
-            BindingName n ->
-              n.value
-            BindingRecord r ->
-              Dict.foldl
-                (\k v str ->
-                  str ++ k.value ++ " : " ++ v.value ++ ", "
-                )
-                "{ "
-                r
-              ++ " }"
+          emitBindingTarget name
       in
       case locals of
         [] ->
@@ -64,6 +104,21 @@ emitDef indent def =
             , "  return " ++ emitExpr body ++ ";"
             , "}();"
             ]
+
+
+emitBindingTarget : BindingTarget -> String
+emitBindingTarget target =
+  case target of
+    BindingName n ->
+      n.value
+    BindingRecord r ->
+      Dict.foldl
+        (\k v str ->
+          str ++ k.value ++ " : " ++ v.value ++ ", "
+        )
+        "{ "
+        r
+      ++ " }"
 
 
 emitIndentation : Int -> String

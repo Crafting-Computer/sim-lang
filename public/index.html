@@ -103,12 +103,97 @@
 
     var app = Elm.Editor.init({ node: document.getElementById('rightPanel') });
 
-    app.ports.setEditorValue.subscribe(function(newValue) {
+    app.ports.setEditorValuePort.subscribe(function(newValue) {
       editor.setValue(newValue);
     });
 
+    // type Def =
+    // { name : string
+    // , params : Param[]
+    // , outputs : Param[]
+    // , body : string
+    // }
+    // type Param =
+    // { name : string
+    // , size : Size
+    // }
+    // type Size = number | string
+    app.ports.generateTruthTablePort.subscribe(function(defs) {
+      // declare defs
+      defs.forEach(function(def) {
+        window[def.name] = new Function(
+          def.params.map(function(param) { return param.name; }),
+          def.body
+        );
+      });
+      // generate truth table for first def
+      var def = defs[1];
+      var func = window[def.name];
+      var params = def.params;
+      var outputs = def.outputs;
+      var header = params.map(function(param) { return param.name; }).concat(
+        outputs.length === 1
+        ? (
+          "result"
+        )
+        : (
+          outputs.map(function(output) { return output.name; })
+        )
+      );
+      // full truth table too large
+      if (params.some(function(param) { return typeof param.size === "string"; })
+        ||params.reduce(function(lengthProduct, currentParam) { return lengthProduct * currentParam.length; }, 1) > 32
+      ) {
+        var body = generateInputs(params.map(function(param) {
+          return { ...param, size : 1 };
+        }));
+      } else {
+        var body = generateInputs(params);
+      }
+      body = body.map(function(row) {
+        var results = func(...row);
+        var resultList = [];
+        if (outputs.length === 1) {
+          resultList = [ results ];
+        } else {
+          outputs.forEach(function(output) {
+            resultList.push(results[output.name]);
+          });
+        }
+        return row.concat(resultList);
+      });
+      var table = Object.create(null);
+      table[def.name] = Object.create(null);
+      table[def.name].header = header;
+      table[def.name].body = body;
+      console.log(table);
+      app.ports.receiveTruthTablePort.send(JSON.stringify(table));
+    });
+
+    function generateInputs(params) {
+      var table = [];
+      if (params.length === 1) {
+        var upperBound = 2 ** params[0].size;
+        for (var i = 0; i < upperBound; i++) {
+          table.push([i]);
+        }
+      } else if (params.length > 1) {
+        var headTable = generateInputs(params.slice(0, 1));
+        var restsTable = generateInputs(params.slice(1));
+        
+        headTable.forEach(function(headRow) {
+          restsTable.forEach(function(restsRow) {
+            var clonedRestsRow = restsRow.slice();
+            clonedRestsRow.unshift(headRow[0]);
+            table.push(clonedRestsRow);
+          });
+        });
+      }
+      return table
+    }
+
     editor.onDidChangeModelContent((event) => {
-      app.ports.editorValueChanged.send(editor.getValue());
+      app.ports.editorValueChangedPort.send(editor.getValue());
     });
   </script>
 
