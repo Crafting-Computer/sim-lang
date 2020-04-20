@@ -5311,6 +5311,7 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $author$project$HdlChecker$DuplicatedName = F2(
 	function (a, b) {
 		return {$: 'DuplicatedName', a: a, b: b};
@@ -7095,6 +7096,22 @@ var $author$project$HdlChecker$check = function (defs) {
 					$Gizra$elm_all_set$EverySet$fromList(ps))));
 	}
 };
+var $author$project$HdlEmitter$emitBindingTarget = function (target) {
+	if (target.$ === 'BindingName') {
+		var n = target.a;
+		return n.value;
+	} else {
+		var r = target.a;
+		return A3(
+			$pzp1997$assoc_list$AssocList$foldl,
+			F3(
+				function (k, v, str) {
+					return str + (k.value + (' : ' + (v.value + ', ')));
+				}),
+			'{ ',
+			r) + ' }';
+	}
+};
 var $elm$core$Bitwise$and = _Bitwise_and;
 var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
 var $elm$core$String$repeatHelp = F3(
@@ -7169,45 +7186,41 @@ var $author$project$HdlEmitter$emitDef = F2(
 			var params = def.a.params;
 			var locals = def.a.locals;
 			var body = def.a.body;
+			var emittedBody = _List_fromArray(
+				[
+					A2(
+					$elm$core$String$join,
+					'\n',
+					A2(
+						$elm$core$List$map,
+						$author$project$HdlEmitter$emitDef(indent + 1),
+						locals)),
+					'  return ' + ($author$project$HdlEmitter$emitExpr(body) + ';')
+				]);
 			return A2(
 				$author$project$HdlEmitter$emitBlock,
 				indent,
-				_List_fromArray(
-					[
-						'function ' + (name.value + ('(' + (A2(
-						$elm$core$String$join,
-						', ',
-						A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params)) + ') {'))),
-						A2(
-						$elm$core$String$join,
-						'\n',
-						A2(
-							$elm$core$List$map,
-							$author$project$HdlEmitter$emitDef(indent + 1),
-							locals)),
-						'  return ' + ($author$project$HdlEmitter$emitExpr(body) + ';'),
-						'}'
-					]));
+				function () {
+					if (!indent) {
+						return emittedBody;
+					} else {
+						return A2(
+							$elm$core$List$cons,
+							'function ' + (name.value + ('(' + (A2(
+								$elm$core$String$join,
+								', ',
+								A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params)) + ') {'))),
+							_Utils_ap(
+								emittedBody,
+								_List_fromArray(
+									['}'])));
+					}
+				}());
 		} else {
 			var name = def.a.name;
 			var locals = def.a.locals;
 			var body = def.a.body;
-			var emittedName = function () {
-				if (name.$ === 'BindingName') {
-					var n = name.a;
-					return n.value;
-				} else {
-					var r = name.a;
-					return A3(
-						$pzp1997$assoc_list$AssocList$foldl,
-						F3(
-							function (k, v, str) {
-								return str + (k.value + (' : ' + (v.value + ', ')));
-							}),
-						'{ ',
-						r) + ' }';
-				}
-			}();
+			var emittedName = $author$project$HdlEmitter$emitBindingTarget(name);
 			if (!locals.b) {
 				return $author$project$HdlEmitter$emitIndentation(indent) + ('var ' + (emittedName + (' = ' + ($author$project$HdlEmitter$emitExpr(body) + ';'))));
 			} else {
@@ -7232,19 +7245,59 @@ var $author$project$HdlEmitter$emitDef = F2(
 			}
 		}
 	});
-var $author$project$HdlEmitter$emitPrelude = A2(
-	$author$project$HdlEmitter$emitBlock,
-	0,
-	_List_fromArray(
-		['function nand(a, b) { return ~(a & b); }']));
+var $author$project$HdlEmitter$emitPrelude = function () {
+	var nsize = function (name) {
+		return {
+			name: name,
+			size: A2($author$project$HdlParser$VarSize, 'n', $elm$core$Maybe$Nothing)
+		};
+	};
+	return _List_fromArray(
+		[
+			{
+			body: 'return ~(a & b);',
+			name: 'nand',
+			outputs: _List_fromArray(
+				[
+					nsize('')
+				]),
+			params: _List_fromArray(
+				[
+					nsize('a'),
+					nsize('b')
+				])
+		}
+		]);
+}();
 var $author$project$HdlEmitter$emit = function (defs) {
-	return $author$project$HdlEmitter$emitPrelude + ('\n' + A2(
-		$elm$core$String$join,
-		'\n',
+	var paramsToParamsOutput = function (params) {
+		return A2(
+			$elm$core$List$map,
+			function (p) {
+				return {name: p.name.value, size: p.size.value};
+			},
+			params);
+	};
+	return _Utils_ap(
+		$author$project$HdlEmitter$emitPrelude,
 		A2(
 			$elm$core$List$map,
-			$author$project$HdlEmitter$emitDef(0),
-			defs)));
+			function (def) {
+				if (def.$ === 'FuncDef') {
+					var name = def.a.name;
+					var params = def.a.params;
+					var outputs = def.a.outputs;
+					return {
+						body: A2($author$project$HdlEmitter$emitDef, 0, def),
+						name: name.value,
+						outputs: paramsToParamsOutput(outputs.value),
+						params: paramsToParamsOutput(params)
+					};
+				} else {
+					return {body: '', name: 'BINDING IS NOT ALLOWED AT TOP LEVEL', outputs: _List_Nil, params: _List_Nil};
+				}
+			},
+			defs));
 };
 var $author$project$HdlParser$ExpectingEOF = {$: 'ExpectingEOF'};
 var $author$project$HdlParser$BindingDefContext = function (a) {
@@ -9513,7 +9566,7 @@ var $author$project$Editor$compileHdl = function (src) {
 		var _v1 = $author$project$HdlChecker$check(program);
 		if (_v1.$ === 'Ok') {
 			return $elm$core$Result$Ok(
-				'🏭 Generated JS code:\n\n' + $author$project$HdlEmitter$emit(program));
+				$author$project$HdlEmitter$emit(program));
 		} else {
 			var problems = _v1.a;
 			return $elm$core$Result$Err(
@@ -9521,36 +9574,196 @@ var $author$project$Editor$compileHdl = function (src) {
 		}
 	}
 };
+var $author$project$Editor$generateTruthTablePort = _Platform_outgoingPort('generateTruthTablePort', $elm$core$Basics$identity);
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $elm$json$Json$Encode$list = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				$elm$core$List$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
 var $elm$json$Json$Encode$string = _Json_wrap;
-var $author$project$Editor$setEditorValue = _Platform_outgoingPort('setEditorValue', $elm$json$Json$Encode$string);
+var $author$project$Editor$generateTruthTable = function (defs) {
+	var encodeSize = function (size) {
+		if (size.$ === 'IntSize') {
+			var i = size.a;
+			return $elm$json$Json$Encode$int(i);
+		} else {
+			var n = size.a;
+			return $elm$json$Json$Encode$string(n);
+		}
+	};
+	var encodeParamOutput = function (param) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'name',
+					$elm$json$Json$Encode$string(param.name)),
+					_Utils_Tuple2(
+					'size',
+					encodeSize(param.size))
+				]));
+	};
+	var encodeDefOutput = function (def) {
+		return $elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'name',
+					$elm$json$Json$Encode$string(def.name)),
+					_Utils_Tuple2(
+					'params',
+					A2($elm$json$Json$Encode$list, encodeParamOutput, def.params)),
+					_Utils_Tuple2(
+					'outputs',
+					A2($elm$json$Json$Encode$list, encodeParamOutput, def.outputs)),
+					_Utils_Tuple2(
+					'body',
+					$elm$json$Json$Encode$string(def.body))
+				]));
+	};
+	return $author$project$Editor$generateTruthTablePort(
+		A2($elm$json$Json$Encode$list, encodeDefOutput, defs));
+};
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Editor$setEditorValuePort = _Platform_outgoingPort('setEditorValuePort', $elm$json$Json$Encode$string);
 var $author$project$Editor$init = function (_v0) {
-	var hdlSource = '{- sample full adder -}\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nor a[n] b[n] -> [n] =\n  nand (not a) (not b)\n\nnot a[n] -> [n] =\n  nand a a\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n\n-- test out full adder\nadd_1_1_0 = full_adder 1 1 0\n  ';
+	var hdlSource = '{- sample full adder -}\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nor a[n] b[n] -> [n] =\n  nand (not a) (not b)\n\nnot a[n] -> [n] =\n  nand a a\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n  ';
 	var hdlOutput = $author$project$Editor$compileHdl(hdlSource);
 	return _Utils_Tuple2(
-		{hdlOutput: hdlOutput, hdlSource: hdlSource},
-		$author$project$Editor$setEditorValue(hdlSource));
+		{hdlOutput: hdlOutput, hdlSource: hdlSource, truthTable: $elm$core$Dict$empty},
+		$elm$core$Platform$Cmd$batch(
+			_List_fromArray(
+				[
+					$author$project$Editor$setEditorValuePort(hdlSource),
+					function () {
+					if (hdlOutput.$ === 'Ok') {
+						var defs = hdlOutput.a;
+						return $author$project$Editor$generateTruthTable(defs);
+					} else {
+						return $elm$core$Platform$Cmd$none;
+					}
+				}()
+				])));
 };
 var $author$project$Editor$EditorValueChanged = function (a) {
 	return {$: 'EditorValueChanged', a: a};
 };
-var $elm$json$Json$Decode$string = _Json_decodeString;
-var $author$project$Editor$editorValueChanged = _Platform_incomingPort('editorValueChanged', $elm$json$Json$Decode$string);
-var $author$project$Editor$subscriptions = function (model) {
-	return $author$project$Editor$editorValueChanged($author$project$Editor$EditorValueChanged);
+var $author$project$Editor$TruthTableReceived = function (a) {
+	return {$: 'TruthTableReceived', a: a};
 };
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$json$Json$Decode$string = _Json_decodeString;
+var $author$project$Editor$editorValueChangedPort = _Platform_incomingPort('editorValueChangedPort', $elm$json$Json$Decode$string);
+var $author$project$Editor$receiveTruthTablePort = _Platform_incomingPort('receiveTruthTablePort', $elm$json$Json$Decode$string);
+var $author$project$Editor$subscriptions = function (model) {
+	return $elm$core$Platform$Sub$batch(
+		_List_fromArray(
+			[
+				$author$project$Editor$editorValueChangedPort($author$project$Editor$EditorValueChanged),
+				$author$project$Editor$receiveTruthTablePort($author$project$Editor$TruthTableReceived)
+			]));
+};
+var $elm$json$Json$Decode$decodeString = _Json_runOnString;
+var $elm$core$Dict$fromList = function (assocs) {
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (_v0, dict) {
+				var key = _v0.a;
+				var value = _v0.b;
+				return A3($elm$core$Dict$insert, key, value, dict);
+			}),
+		$elm$core$Dict$empty,
+		assocs);
+};
+var $elm$json$Json$Decode$keyValuePairs = _Json_decodeKeyValuePairs;
+var $elm$json$Json$Decode$dict = function (decoder) {
+	return A2(
+		$elm$json$Json$Decode$map,
+		$elm$core$Dict$fromList,
+		$elm$json$Json$Decode$keyValuePairs(decoder));
+};
+var $elm$json$Json$Decode$int = _Json_decodeInt;
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $webbhuset$elm_json_decode$Json$Decode$Field$require = F3(
+	function (fieldName, valueDecoder, continuation) {
+		return A2(
+			$elm$json$Json$Decode$andThen,
+			continuation,
+			A2($elm$json$Json$Decode$field, fieldName, valueDecoder));
+	});
+var $author$project$Editor$decodeTruthTable = function () {
+	var decodeTable = A3(
+		$webbhuset$elm_json_decode$Json$Decode$Field$require,
+		'header',
+		$elm$json$Json$Decode$list($elm$json$Json$Decode$string),
+		function (header) {
+			return A3(
+				$webbhuset$elm_json_decode$Json$Decode$Field$require,
+				'body',
+				$elm$json$Json$Decode$list(
+					$elm$json$Json$Decode$list($elm$json$Json$Decode$int)),
+				function (body) {
+					return $elm$json$Json$Decode$succeed(
+						{body: body, header: header});
+				});
+		});
+	return $elm$json$Json$Decode$dict(decodeTable);
+}();
+var $elm$core$Result$withDefault = F2(
+	function (def, result) {
+		if (result.$ === 'Ok') {
+			var a = result.a;
+			return a;
+		} else {
+			return def;
+		}
+	});
 var $author$project$Editor$update = F2(
 	function (msg, model) {
-		var newValue = msg.a;
-		return _Utils_Tuple2(
-			_Utils_update(
-				model,
-				{
-					hdlOutput: $author$project$Editor$compileHdl(newValue),
-					hdlSource: newValue
-				}),
-			$elm$core$Platform$Cmd$none);
+		if (msg.$ === 'EditorValueChanged') {
+			var newValue = msg.a;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{
+						hdlOutput: $author$project$Editor$compileHdl(newValue),
+						hdlSource: newValue
+					}),
+				$elm$core$Platform$Cmd$none);
+		} else {
+			var tableJson = msg.a;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{
+						truthTable: A2(
+							$elm$core$Result$withDefault,
+							model.truthTable,
+							A2($elm$json$Json$Decode$decodeString, $author$project$Editor$decodeTruthTable, tableJson))
+					}),
+				$elm$core$Platform$Cmd$none);
+		}
 	});
 var $mdgriffith$elm_ui$Internal$Model$Unkeyed = function (a) {
 	return {$: 'Unkeyed', a: a};
@@ -12033,28 +12246,6 @@ var $mdgriffith$elm_ui$Internal$Model$staticRoot = function (opts) {
 					]),
 				_List_Nil);
 	}
-};
-var $elm$json$Json$Encode$list = F2(
-	function (func, entries) {
-		return _Json_wrap(
-			A3(
-				$elm$core$List$foldl,
-				_Json_addEntry(func),
-				_Json_emptyArray(_Utils_Tuple0),
-				entries));
-	});
-var $elm$json$Json$Encode$object = function (pairs) {
-	return _Json_wrap(
-		A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v0, obj) {
-					var k = _v0.a;
-					var v = _v0.b;
-					return A3(_Json_addField, k, v, obj);
-				}),
-			_Json_emptyObject(_Utils_Tuple0),
-			pairs));
 };
 var $mdgriffith$elm_ui$Internal$Model$fontName = function (font) {
 	switch (font.$) {
@@ -15190,24 +15381,144 @@ var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $mdgriffith$elm_ui$Internal$Model$unstyled = A2($elm$core$Basics$composeL, $mdgriffith$elm_ui$Internal$Model$Unstyled, $elm$core$Basics$always);
 var $mdgriffith$elm_ui$Element$html = $mdgriffith$elm_ui$Internal$Model$unstyled;
 var $elm$html$Html$pre = _VirtualDom_node('pre');
-var $author$project$Editor$viewOutput = function (output) {
-	return $mdgriffith$elm_ui$Element$html(
-		A2(
-			$elm$html$Html$pre,
+var $mdgriffith$elm_ui$Internal$Model$AsRow = {$: 'AsRow'};
+var $mdgriffith$elm_ui$Internal$Model$asRow = $mdgriffith$elm_ui$Internal$Model$AsRow;
+var $mdgriffith$elm_ui$Element$row = F2(
+	function (attrs, children) {
+		return A4(
+			$mdgriffith$elm_ui$Internal$Model$element,
+			$mdgriffith$elm_ui$Internal$Model$asRow,
+			$mdgriffith$elm_ui$Internal$Model$div,
+			A2(
+				$elm$core$List$cons,
+				$mdgriffith$elm_ui$Internal$Model$htmlClass($mdgriffith$elm_ui$Internal$Style$classes.contentLeft + (' ' + $mdgriffith$elm_ui$Internal$Style$classes.contentCenterY)),
+				A2(
+					$elm$core$List$cons,
+					$mdgriffith$elm_ui$Element$width($mdgriffith$elm_ui$Element$shrink),
+					A2(
+						$elm$core$List$cons,
+						$mdgriffith$elm_ui$Element$height($mdgriffith$elm_ui$Element$shrink),
+						attrs))),
+			$mdgriffith$elm_ui$Internal$Model$Unkeyed(children));
+	});
+var $mdgriffith$elm_ui$Internal$Model$SpacingStyle = F3(
+	function (a, b, c) {
+		return {$: 'SpacingStyle', a: a, b: b, c: c};
+	});
+var $mdgriffith$elm_ui$Internal$Flag$spacing = $mdgriffith$elm_ui$Internal$Flag$flag(3);
+var $mdgriffith$elm_ui$Internal$Model$spacingName = F2(
+	function (x, y) {
+		return 'spacing-' + ($elm$core$String$fromInt(x) + ('-' + $elm$core$String$fromInt(y)));
+	});
+var $mdgriffith$elm_ui$Element$spacing = function (x) {
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$spacing,
+		A3(
+			$mdgriffith$elm_ui$Internal$Model$SpacingStyle,
+			A2($mdgriffith$elm_ui$Internal$Model$spacingName, x, x),
+			x,
+			x));
+};
+var $mdgriffith$elm_ui$Internal$Model$Text = function (a) {
+	return {$: 'Text', a: a};
+};
+var $mdgriffith$elm_ui$Element$text = function (content) {
+	return $mdgriffith$elm_ui$Internal$Model$Text(content);
+};
+var $elm$core$Basics$pow = _Basics_pow;
+var $icidasset$elm_binary$Binary$toDecimal = function (_v0) {
+	var bits = _v0.a;
+	return A3(
+		$elm$core$List$foldl,
+		F2(
+			function (bit, _v1) {
+				var x = _v1.a;
+				var exponent = _v1.b;
+				return _Utils_Tuple2(
+					(A2($elm$core$Basics$pow, 2, exponent) * A3($icidasset$elm_binary$Binary$ifThenElse, bit, 1, 0)) + x,
+					exponent - 1);
+			}),
+		_Utils_Tuple2(
+			0,
+			$elm$core$List$length(bits) - 1),
+		bits).a;
+};
+var $author$project$Editor$viewTruthTable = function (table) {
+	return A2(
+		$mdgriffith$elm_ui$Element$column,
+		_List_fromArray(
+			[
+				$mdgriffith$elm_ui$Element$spacing(10)
+			]),
+		A3(
+			$elm$core$Dict$foldl,
+			F3(
+				function (defName, defTable, viewList) {
+					return A2(
+						$elm$core$List$cons,
+						A2(
+							$mdgriffith$elm_ui$Element$row,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$mdgriffith$elm_ui$Element$text(defName)
+								])),
+						A2(
+							$elm$core$List$cons,
+							A2(
+								$mdgriffith$elm_ui$Element$row,
+								_List_fromArray(
+									[
+										$mdgriffith$elm_ui$Element$spacing(10)
+									]),
+								A2(
+									$elm$core$List$map,
+									function (name) {
+										return $mdgriffith$elm_ui$Element$text(name);
+									},
+									defTable.header)),
+							_Utils_ap(
+								A2(
+									$elm$core$List$map,
+									function (row) {
+										return A2(
+											$mdgriffith$elm_ui$Element$row,
+											_List_fromArray(
+												[
+													$mdgriffith$elm_ui$Element$spacing(10)
+												]),
+											A2(
+												$elm$core$List$map,
+												function (value) {
+													return $mdgriffith$elm_ui$Element$text(
+														$elm$core$String$fromInt(
+															$icidasset$elm_binary$Binary$toDecimal(
+																$icidasset$elm_binary$Binary$fromDecimal(value))));
+												},
+												row));
+									},
+									defTable.body),
+								viewList)));
+				}),
 			_List_Nil,
-			_List_fromArray(
-				[
-					$elm$html$Html$text(
-					function () {
-						if (output.$ === 'Ok') {
-							var str = output.a;
-							return str;
-						} else {
-							var str = output.a;
-							return str;
-						}
-					}())
-				])));
+			table));
+};
+var $author$project$Editor$viewRightPanel = function (model) {
+	var _v0 = model.hdlOutput;
+	if (_v0.$ === 'Ok') {
+		return $author$project$Editor$viewTruthTable(model.truthTable);
+	} else {
+		var str = _v0.a;
+		return $mdgriffith$elm_ui$Element$html(
+			A2(
+				$elm$html$Html$pre,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$elm$html$Html$text(str)
+					])));
+	}
 };
 var $author$project$Editor$view = function (model) {
 	return A2(
@@ -15218,14 +15529,14 @@ var $author$project$Editor$view = function (model) {
 				A2($elm$html$Html$Attributes$style, 'margin', '0 20px')),
 				$mdgriffith$elm_ui$Element$htmlAttribute(
 				A2($elm$html$Html$Attributes$style, 'width', '45vw')),
-				$mdgriffith$elm_ui$Element$Font$size(14)
+				$mdgriffith$elm_ui$Element$Font$size(16)
 			]),
 		A2(
 			$mdgriffith$elm_ui$Element$column,
 			_List_Nil,
 			_List_fromArray(
 				[
-					$author$project$Editor$viewOutput(model.hdlOutput)
+					$author$project$Editor$viewRightPanel(model)
 				])));
 };
 var $author$project$Editor$main = $elm$browser$Browser$element(
