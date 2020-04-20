@@ -5,9 +5,9 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
   <link rel="stylesheet" data-name="vs/editor/editor.main" href="../node_modules/monaco-editor/min/vs/editor/editor.main.css">
 </head>
-<body style="overflow: hidden;">
+<body style="overflow: hidden; background-color: rgb(231, 231, 231);">
 
-  <main style="display: flex; flex-direction: row; margin: 20px 10px 0px 10px; height: 100%">
+  <main style="display: flex; flex-direction: row; margin: 52px 10px 0px 10px !important; height: 100%;">
     <div id="editor" style="width: 49vw; height: 90vh; border: grey 1px solid; margin: 0 20px;"></div>
     <div id="rightPanel" style="width: 40vw; height: 90vh"></div>
   </main>
@@ -19,7 +19,7 @@
   <script src="public/elm.js"></script>
 
   <script>
-
+    /////////////////////////////////// language support for HDL ////////////////////////////////
     // Register a new language
     monaco.languages.register({ id: 'hdl', extensions: [ '.hdl' ] });
 
@@ -95,17 +95,41 @@
       ],
     });
 
+
+    /////////////////////////////// initialize monaco editor ///////////////////////////////
+
     var editor = monaco.editor.create(document.getElementById("editor"), {
       theme: "vs",
       value: "",
       language: 'hdl'
     });
 
+    // initialize tab states
+    var tabStates = [];
+    var currentUnitIndex = 0;
+
+    tabStates[currentUnitIndex] = {
+      viewState : undefined,
+      model : monaco.editor.createModel("", "hdl"),
+    }
+
+    editor.setModel(tabStates[currentUnitIndex].model);
+
+
+    /////////////////////////////////// initialize elm app /////////////////////////////////////////
+
     var app = Elm.Editor.init({ node: document.getElementById('rightPanel') });
 
     app.ports.setEditorValuePort.subscribe(function(newValue) {
       editor.setValue(newValue);
     });
+
+    editor.onDidChangeModelContent(function(event) {
+      app.ports.editorValueChangedPort.send(editor.getValue());
+    });
+
+
+    ///////////////////////////////// handle truth table generation //////////////////////////////
 
     // type Def =
     // { name : string
@@ -193,8 +217,48 @@
       return table
     }
 
-    editor.onDidChangeModelContent((event) => {
-      app.ports.editorValueChangedPort.send(editor.getValue());
+
+    //////////////////////////////////// handle change tab //////////////////////////////////
+    
+    app.ports.changeTabPort.subscribe(function(desiredUnitName) {
+      changeTab(desiredUnitName);
+    });
+
+    function saveCurrentTabState() {
+      console.log("saving current tab @ " + currentUnitIndex);
+      tabStates[currentUnitIndex] = {
+        viewState : editor.saveViewState(),
+        model : editor.getModel(),
+      }
+    }
+
+    function changeTab(desiredUnitIndex) {
+      saveCurrentTabState();
+      // switch to desired tab
+      var desiredTabState = tabStates[desiredUnitIndex];
+      console.log("desired tab state : ", desiredTabState);
+      if (!desiredTabState.model.isDisposed()) {
+        editor.setModel(desiredTabState.model);
+      }
+      if (desiredTabState.viewState !== undefined) {
+        editor.restoreViewState(desiredTabState.viewState);
+      }
+      editor.focus();
+      currentUnitIndex = desiredUnitIndex;
+      console.log("current unit @ " + currentUnitIndex);
+    }
+
+    app.ports.addTabPort.subscribe(function(newUnitIndex) {
+      var newTabState = {
+        viewState : undefined,
+        model : monaco.editor.createModel("", "hdl")
+      }
+      tabStates[newUnitIndex] = newTabState;
+      changeTab(newUnitIndex);
+    });
+
+    monaco.editor.onWillDisposeModel(function(model) {
+      console.log("monaco attempting to dispose model...");
     });
   </script>
 
