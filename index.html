@@ -5,11 +5,11 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
   <link rel="stylesheet" data-name="vs/editor/editor.main" href="../node_modules/monaco-editor/min/vs/editor/editor.main.css">
 </head>
-<body>
+<body style="overflow: hidden;">
 
-  <main style="display: flex; flex-direction: row; margin: 20px 20px;">
-    <div id="editor" style="width: 45vw; height: 90vh; border: grey 1px solid; margin: 0 20px;"></div>
-    <div id="rightPanel"></div>
+  <main style="display: flex; flex-direction: row; margin: 20px 10px 0px 10px; height: 100%">
+    <div id="editor" style="width: 49vw; height: 90vh; border: grey 1px solid; margin: 0 20px;"></div>
+    <div id="rightPanel" style="width: 40vw; height: 90vh"></div>
   </main>
 
   <script>var require = { paths: { 'vs': '../node_modules/monaco-editor/min/vs' } };</script>
