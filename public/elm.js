@@ -8711,7 +8711,7 @@ var $author$project$HdlParser$indent = function (parser) {
 			$elm$parser$Parser$Advanced$keeper,
 			$elm$parser$Parser$Advanced$succeed(
 				function (indentation) {
-					return indentation + 2;
+					return indentation + 4;
 				}),
 			$elm$parser$Parser$Advanced$getIndent));
 };
@@ -15558,7 +15558,10 @@ var $author$project$Editor$viewRightPanel = function (model) {
 		return $mdgriffith$elm_ui$Element$html(
 			A2(
 				$elm$html$Html$pre,
-				_List_Nil,
+				_List_fromArray(
+					[
+						A2($elm$html$Html$Attributes$style, 'white-space', 'pre-wrap')
+					]),
 				_List_fromArray(
 					[
 						$elm$html$Html$text(str)
@@ -15571,7 +15574,7 @@ var $author$project$Editor$view = function (model) {
 		_List_fromArray(
 			[
 				$mdgriffith$elm_ui$Element$htmlAttribute(
-				A2($elm$html$Html$Attributes$style, 'margin', '0 20px')),
+				A2($elm$html$Html$Attributes$style, 'margin', '0 10px')),
 				$mdgriffith$elm_ui$Element$htmlAttribute(
 				A2($elm$html$Html$Attributes$style, 'width', '45vw')),
 				$mdgriffith$elm_ui$Element$Font$size(16)

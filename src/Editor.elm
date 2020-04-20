@@ -95,7 +95,7 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
   E.layout
-    [ E.htmlAttribute <| Html.Attributes.style "margin" "0 20px"
+    [ E.htmlAttribute <| Html.Attributes.style "margin" "0 10px"
     , E.htmlAttribute <| Html.Attributes.style "width" "45vw"
     , Font.size 16
     ] <|
@@ -108,7 +108,7 @@ viewRightPanel : Model -> E.Element Msg
 viewRightPanel model =
   case model.hdlOutput of
     Ok _ -> viewTruthTable model.truthTable
-    Err str -> E.html <| Html.pre [] [ Html.text str ]
+    Err str -> E.html <| Html.pre [ Html.Attributes.style "white-space" "pre-wrap" ] [ Html.text str ]
 
 
 viewTruthTable : TruthTable -> E.Element Msg
