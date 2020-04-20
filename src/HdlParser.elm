@@ -400,7 +400,7 @@ locals =
 indent : HdlParser a -> HdlParser a
 indent parser =
   succeed (\indentation ->
-    indentation + 2
+    indentation + 4
   )
   |= getIndent
   |> andThen (\newIndentation ->
