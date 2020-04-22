@@ -102,7 +102,7 @@ reserved =
 
 parse : String -> Result (List (DeadEnd Context Problem)) (List Def)
 parse src =
-  run (succeed identity |= defs |. end ExpectingEOF) src
+  run (succeed identity |= withIndent 0 defs |. end ExpectingEOF) src
 
 
 showDeadEnds : String -> List (DeadEnd Context Problem) -> String
@@ -294,8 +294,8 @@ defs =
 
 bindingDef : HdlParser Def
 bindingDef =
-  succeed identity
-    |. checkIndent
+  checkIndent
+  <| (succeed identity
     |= oneOf
       [ backtrackable <| map BindingName name
       , succeed (BindingRecord << (\locatedList ->
@@ -338,12 +338,13 @@ bindingDef =
           |= expr
         )
     )
+  )
 
 
 funcDef : HdlParser Def
 funcDef =
-  succeed identity
-    |. checkIndent
+  checkIndent
+  <| (succeed identity
     |= name
     |> andThen
     (\funcName -> inContext (FuncDefContext funcName) <|
@@ -370,31 +371,32 @@ funcDef =
           |= expr
         )
     )
+  )
 
 
-checkIndent : HdlParser ()
-checkIndent =
+checkIndent : HdlParser a -> HdlParser a
+checkIndent parser =
   succeed (\indentation column ->
-    indentation <= column
+    (parser, indentation < column, column - 1)
     )
     |= getIndent
     |= getCol
     |> andThen checkIndentHelp
 
 
-checkIndentHelp : Bool -> HdlParser ()
-checkIndentHelp isIndented =
+checkIndentHelp : (HdlParser a, Bool, Int) -> HdlParser a
+checkIndentHelp (parser, isIndented, actualIndentation) =
   if isIndented then
-    succeed ()
+    withIndent actualIndentation parser
   else
     problem ExpectingIndent
 
 
 locals : HdlParser (List Def)
 locals =
-  inContext LocalsContext <|
+  checkIndent
+  <| (inContext LocalsContext <|
   succeed identity
-    |. checkIndent
     |. keyword (Token "let" ExpectingLet)
     |. sps
     |= (indent <|
@@ -402,14 +404,16 @@ locals =
         |= lazy (\_ -> defs)
         |. sps
     )
-    |. checkIndent
-    |. keyword (Token "in" ExpectingIn)
+    |. (checkIndent
+    <| keyword (Token "in" ExpectingIn)
+    )
+  )
 
 
 indent : HdlParser a -> HdlParser a
 indent parser =
   succeed (\indentation ->
-    indentation + 4
+    indentation + 1
   )
   |= getIndent
   |> andThen (\newIndentation ->
@@ -477,14 +481,14 @@ intLiteral =
 
 group : HdlParser Expr
 group =
+  checkIndent <|
   succeed (\g i ->
     case i of
       Just indexes ->
         Indexing g indexes
       Nothing ->
         g
-  )
-    |. checkIndent
+    )
     |. token (Token "(" ExpectingLeftParen)
     |= lazy (\_ -> expr)
     |. token (Token ")" ExpectingRightParen)
@@ -519,6 +523,7 @@ integer =
 
 binding : HdlParser Expr
 binding =
+  checkIndent <|
   succeed (\n i ->
     case i of
       Just indexes ->
@@ -526,7 +531,6 @@ binding =
       Nothing ->
         Binding n
     )
-    |. checkIndent
     |= name
     |= optional indexing
 
@@ -538,8 +542,8 @@ bindingOrCall =
     |. sps
     |=  ( loop [] <| \revExprs ->
       oneOf
-        [ succeed (\n -> Loop (n :: revExprs))
-          |. checkIndent
+        [ checkIndent <|
+          succeed (\n -> Loop (n :: revExprs))
           |= oneOf
             [ binding
             , group

@@ -34,8 +34,8 @@ source =
   """
 recursive =
     let
-        b = c
-        c = b
+      b = c
+      c = b
     in
     c
   """
