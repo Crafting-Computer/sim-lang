@@ -151,7 +151,7 @@ suite =
         \_ ->
           let
             src =
-              "a = 199"
+              "f i -> [1] = let a = 199 in i"
             expected =
               Ok ()
           in
@@ -160,7 +160,7 @@ suite =
         \_ ->
           let
             src =
-              "a = 0xFF"
+              "f i -> [1] = let a = 0xFF in i"
             expected =
               Ok ()
           in
@@ -169,7 +169,7 @@ suite =
         \_ ->
           let
             src =
-              "a = 0b1011101"
+              "f i -> [1] = let a = 0b1011101 in i"
             expected =
               Ok ()
           in
@@ -178,7 +178,7 @@ suite =
         \_ ->
           let
             src =
-              "r = { a = 0, b = 10 }"
+              "f i -> [1] = let r = { a = 0, b = 10 } in i"
             expected =
               Ok ()
           in
@@ -187,7 +187,7 @@ suite =
       \_ ->
         let
           src =
-            "a = nand 28 29"
+            "f i -> [1] = let a = nand 28 29 in i"
           expected =
             Ok ()
         in
@@ -196,7 +196,7 @@ suite =
       \_ ->
         let
           src =
-            "a = nand 0x23 0b00100011"
+            "f i -> [1] = let a = nand 0x23 0b00100011 in i"
           expected =
             Ok ()
         in
@@ -207,7 +207,7 @@ suite =
         \_ ->
           let
             src =
-              "a = nand 0 0"
+              "f i -> [1] = let a = nand 0 0 in i"
             expected =
               Ok ()
           in
@@ -257,21 +257,9 @@ suite =
         Err [FromIndexBiggerThanToIndex { from = (1,28), to = (1,29), value = 2 } { from = (1,31), to = (1,32), value = 1 }]
       ]
       , describe "BindingNotAllowedAtTopLevel"
-      [ Test.test "binding not allowed at top level" <|
-        \_ ->
-          let
-            src =
-              "my_binding = nand 0 0"
-            expected =
-              Err [BindingNotAllowedAtTopLevel (BindingName { from = (1,1), to = (1,11), value = "my_binding" })]
-            result =
-              case HdlParser.parse src of
-                Err deadEnds -> -- parse error should never happen when testing the checker
-                  Err [ UndefinedName <| HdlParser.fakeLocated <| HdlParser.showDeadEnds src deadEnds]
-                Ok program ->
-                  HdlChecker.check program
-          in
-          Expect.equal expected result
+      [ test "binding not allowed at top level"
+        "my_binding = nand 0 0" <|
+        Err [BindingNotAllowedAtTopLevel (BindingName { from = (1,1), to = (1,11), value = "my_binding" })]
       ]
     ]
 
@@ -286,24 +274,4 @@ check src =
     Err deadEnds -> -- parse error should never happen when testing the checker
       Err [ UndefinedName <| HdlParser.fakeLocated <| HdlParser.showDeadEnds src deadEnds]
     Ok program ->
-      case HdlChecker.check program of
-        Err problems ->
-          let
-            filteredProblems =
-              List.filter
-              (\problem ->
-                case problem of
-                  BindingNotAllowedAtTopLevel _ ->
-                    False
-                  _ ->
-                    True
-              )
-              problems
-          in
-          case filteredProblems of
-            [] ->
-              Ok ()
-            _ ->
-              Err filteredProblems
-        Ok _ ->
-          Ok ()
+      HdlChecker.check program 
