@@ -3,7 +3,7 @@ module Main exposing (main)
 import Html exposing (div, p, pre, text)
 import HdlParser exposing (parse, showDeadEnds)
 import HdlChecker exposing (check)
-import HdlEmitter exposing (emit)
+import HdlEmitter exposing (emitString)
 
 
 -- MAIN
@@ -32,42 +32,12 @@ source =
   -- nand_in_another_name a
   -- """
   """
-half_adder a b -> { sum, carry } =
-  let
-    sum = xor a b
-    carry = and a b
-  in
-  { sum = sum, carry = carry }
-
-full_adder a b c -> { sum, carry } =
-  let
-    { sum = s1, carry = c1 } = half_adder a b
-    { sum = s2, carry = c2 } = half_adder s1 c
-    c3 = or c1 c2
-  in
-  { sum = s2, carry = c3 }
-
-xor a[n] b[n] -> [n] =
-  let
-    nand_a_b = nand a b
-  in
-  nand
-  (nand a nand_a_b)
-  (nand b nand_a_b)
-
-not a[1] -> [1] =
-  nand a a
-
-or a[1] b[1] -> [1] =
-  nand (not a) (not b)
-
-and a[n] b[n] -> [n] =
-  let
-    nand_a_b = nand a b
-  in
-  nand nand_a_b nand_a_b
-
-and_0_0 = and 0 0
+recursive =
+    let
+        b = c
+        c = b
+    in
+    c
   """
   -- "half_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }"
   -- """
@@ -95,7 +65,7 @@ main =
             Ok _ ->
               "✔️ Passed checker.\n\n"
               ++ "🏭 Generated JS code:\n\n"
-              ++ emit program
+              ++ emitString program
             Err problems ->
               "❌ Check error.\n"
               ++ HdlChecker.showProblems source problems

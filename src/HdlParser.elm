@@ -1,4 +1,4 @@
-module HdlParser exposing (parse, fakeLocated, showDeadEnds, showProblemLocation, showProblemLocationRange, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+module HdlParser exposing (parse, fakeLocated, showDeadEnds, showProblemLocation, showProblemLocationRange, bindingTargetToString, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
 
 
 import Parser.Advanced exposing (..)
@@ -25,7 +25,7 @@ type Def
 
 type BindingTarget
   = BindingName (Located String)
-  | BindingRecord (Dict (Located String) (Located String))
+  | BindingRecord (Located (Dict (Located String) (Located String)))
 
 
 type Expr
@@ -141,24 +141,28 @@ showProblemContext context =
     BindingDefContext bindingName ->
       let
         nameStr =
-          case bindingName of
-            BindingName n ->
-              n.value
-            BindingRecord r ->
-              "{ "
-              ++ (String.join ", " <|
-              List.map
-                (\(k, v) ->
-                  k.value ++ " = " ++ v.value
-                )
-                (Dict.toList r)
-              ) ++ " }"
+          bindingTargetToString bindingName
       in
       "`" ++ nameStr ++ "`" ++ " definition"
     FuncDefContext funcName ->
       "`" ++ funcName.value ++ "`" ++ " definition"
     LocalsContext ->
       "local definitions"
+
+
+bindingTargetToString : BindingTarget -> String
+bindingTargetToString target =
+  case target of
+    BindingName n ->
+      n.value
+    BindingRecord r ->
+      Dict.foldl
+        (\k v str ->
+          str ++ k.value ++ " : " ++ v.value ++ ", "
+        )
+        "{ "
+        r.value
+      ++ " }"
 
 
 showProblemLocation : Int -> Int -> String -> String
@@ -294,7 +298,12 @@ bindingDef =
     |. checkIndent
     |= oneOf
       [ backtrackable <| map BindingName name
-      , succeed (BindingRecord << Dict.fromList) |= sequence
+      , succeed (BindingRecord << (\locatedList ->
+        { from = locatedList.from
+        , to = locatedList.to
+        , value = Dict.fromList locatedList.value
+        }))
+      |= located (sequence
         { start = Token "{" ExpectingLeftBrace
         , separator = Token "," ExpectingComma
         , end = Token "}" ExpectingRightBrace
@@ -307,7 +316,7 @@ bindingDef =
             |. sps
             |= name
         , trailing = Forbidden
-        }
+        })
       ]
     |> andThen
     (\bindingName ->

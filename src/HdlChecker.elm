@@ -1,6 +1,6 @@
 module HdlChecker exposing (Problem(..), Type(..), check, showProblems)
 
-import HdlParser exposing (fakeLocated, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
+import HdlParser exposing (fakeLocated, bindingTargetToString, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
 import List.Extra
 import Set
@@ -18,6 +18,7 @@ type Problem
   | ExpectingFunctionGotBinding (Located String) BindingTarget -- functionName bindingName
   | MismatchedTypes (Located Type) (Located Type)
   | ConflictingVarSizeArgs Param (Located Type) (Located Type) -- param previousArgType currentArgType
+  | BindingNotAllowedAtTopLevel BindingTarget -- bindingName
 
 type Type
   = BusType Size
@@ -73,7 +74,7 @@ check defs =
             afterDefs =
               List.drop (List.length beforeDefs + 1) defs
           in
-          checkDef (prelude ++ beforeDefs) afterDefs def ++ ps
+          checkDef (prelude ++ beforeDefs) afterDefs 0 def ++ ps
         )
         []
         defs
@@ -188,6 +189,17 @@ showProblem src problem =
       ++ showLocation src previousArgType ++ "\n"
       ++ "but you implied a different size of " ++ typeToString currentArgType.value ++ " here:\n"
       ++ showLocation src currentArgType
+    BindingNotAllowedAtTopLevel bindingName ->
+      "I found a binding called `" ++ bindingTargetToString bindingName ++ "` at the top level of this unit here:\n"
+      ++ (case bindingName of
+          BindingName n ->
+            showLocation src n
+          BindingRecord r ->
+            showLocation src r
+        )
+        ++ "\n"
+      ++ "but you are not allowed to define binding at the top level.\n"
+      ++ "Hint: Try defining a function instead of a binding."
 
 
 showLocation : String -> Located a -> String
@@ -242,8 +254,8 @@ sizeToString s =
   ++ "]"
 
 
-checkDef : List Def -> List Def -> Def -> List Problem
-checkDef beforeDefs afterDefs def =
+checkDef : List Def -> List Def -> Int -> Def -> List Problem
+checkDef beforeDefs afterDefs level def =
   let
     defNames =
       getDefNames def
@@ -299,26 +311,32 @@ checkDef beforeDefs afterDefs def =
                 afterLocal =
                   List.filter ((/=) local) locals ++ afterDefs
               in
-              checkDef beforeLocal afterLocal local ++ localErrs
+              checkDef beforeLocal afterLocal (level + 1) local ++ localErrs
             )
             []
             locals
           ++ retTypeErrors
         
-        BindingDef { locals, body } ->
-          List.foldl
-            (\local localErrs ->
-              let
-                beforeLocal =
-                  beforeDefs ++ [ def ]
-                afterLocal =
-                  List.filter ((/=) local) locals ++ afterDefs
-              in
-              checkDef beforeLocal afterLocal local ++ localErrs
-            )
-            []
-            locals
-          ++ checkExpr (allDefs ++ locals) body
+        BindingDef { name, locals, body } ->
+          let
+            _ = Debug.log "AL -> level" <| level
+          in
+          if level <= 0 then
+            [ BindingNotAllowedAtTopLevel name ]
+          else
+            List.foldl
+              (\local localErrs ->
+                let
+                  beforeLocal =
+                    beforeDefs ++ [ def ]
+                  afterLocal =
+                    List.filter ((/=) local) locals ++ afterDefs
+                in
+                checkDef beforeLocal afterLocal (level + 1) local ++ localErrs
+              )
+              []
+              locals
+            ++ checkExpr (allDefs ++ locals) body
 
     problems =
       duplicatedNames ++ typeErrors
@@ -328,6 +346,9 @@ checkDef beforeDefs afterDefs def =
 
 checkExpr : List Def -> Expr -> List Problem
 checkExpr defs expr =
+  let
+    _ = Debug.log "AL -> defs" <| defs
+  in
   case expr of
     Binding name ->
       case getDef defs name of
@@ -640,7 +661,7 @@ getType defs expr =
                       Maybe.withDefault t <|
                         Maybe.andThen (\(k, _) -> Dict.get k.value rt) <|
                           List.Extra.find (\(_, v) -> v.value == bindingName.value) <|
-                            Dict.toList r
+                            Dict.toList r.value
                     _ ->
                       t
         Nothing ->
@@ -719,7 +740,7 @@ getDef defs bindingName =
                 BindingName n ->
                   [ n.value ]
                 BindingRecord r ->
-                  List.map .value <| Dict.values r
+                  List.map .value <| Dict.values r.value
       in
       List.member bindingName.value defNames
     )
@@ -745,4 +766,4 @@ getDefNames def =
         BindingName n ->
           [ n ]
         BindingRecord r ->
-          Dict.values r
+          Dict.values r.value

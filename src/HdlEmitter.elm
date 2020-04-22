@@ -1,6 +1,6 @@
-module HdlEmitter exposing (emit, DefOutput)
+module HdlEmitter exposing (emit, emitString, DefOutput)
 
-import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..))
+import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..), bindingTargetToString)
 import AssocList as Dict
 
 
@@ -16,6 +16,24 @@ type alias ParamOutput =
   { name : String
   , size : Size
   }
+
+
+emitString : List Def -> String
+emitString defs =
+  let
+    defOutputs =
+      emit defs
+  in
+  emitBlock 0 <|
+  List.map
+    (\def ->
+      emitBlock 0
+      [ "function " ++ def.name ++ "(" ++ (String.join ", " <| List.map .name def.params) ++ ") {"
+      , "  " ++ def.body
+      , "}"
+      ]
+    )
+    defOutputs
 
 
 emit : List Def -> List DefOutput
@@ -91,7 +109,7 @@ emitDef indent def =
     BindingDef { name, locals, body } ->
       let
         emittedName =
-          emitBindingTarget name
+          bindingTargetToString name
       in
       case locals of
         [] ->
@@ -104,21 +122,6 @@ emitDef indent def =
             , "  return " ++ emitExpr body ++ ";"
             , "}();"
             ]
-
-
-emitBindingTarget : BindingTarget -> String
-emitBindingTarget target =
-  case target of
-    BindingName n ->
-      n.value
-    BindingRecord r ->
-      Dict.foldl
-        (\k v str ->
-          str ++ k.value ++ " : " ++ v.value ++ ", "
-        )
-        "{ "
-        r
-      ++ " }"
 
 
 emitIndentation : Int -> String

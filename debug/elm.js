@@ -4571,6 +4571,9 @@ var $elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
+var $author$project$HdlChecker$BindingNotAllowedAtTopLevel = function (a) {
+	return {$: 'BindingNotAllowedAtTopLevel', a: a};
+};
 var $author$project$HdlChecker$DuplicatedName = F2(
 	function (a, b) {
 		return {$: 'DuplicatedName', a: a, b: b};
@@ -4926,7 +4929,7 @@ var $author$project$HdlChecker$getDef = F2(
 								function ($) {
 									return $.value;
 								},
-								$pzp1997$assoc_list$AssocList$values(r));
+								$pzp1997$assoc_list$AssocList$values(r.value));
 						}
 					}
 				}();
@@ -5819,11 +5822,12 @@ var $icidasset$elm_binary$Binary$width = function (_v0) {
 };
 var $author$project$HdlChecker$checkExpr = F2(
 	function (defs, expr) {
+		var _v15 = A2($elm$core$Debug$log, 'AL -> defs', defs);
 		switch (expr.$) {
 			case 'Binding':
 				var name = expr.a;
-				var _v16 = A2($author$project$HdlChecker$getDef, defs, name);
-				if (_v16.$ === 'Just') {
+				var _v17 = A2($author$project$HdlChecker$getDef, defs, name);
+				if (_v17.$ === 'Just') {
 					return _List_Nil;
 				} else {
 					return _List_fromArray(
@@ -5834,11 +5838,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 			case 'Call':
 				var callee = expr.a;
 				var args = expr.b;
-				var _v17 = A2($elm$core$Debug$log, 'AL -> args', args);
-				var _v18 = A2($elm$core$Debug$log, 'AL -> defs', defs);
-				var _v19 = A2($author$project$HdlChecker$getDef, defs, callee);
-				if (_v19.$ === 'Just') {
-					var calleeDef = _v19.a;
+				var _v18 = A2($author$project$HdlChecker$getDef, defs, callee);
+				if (_v18.$ === 'Just') {
+					var calleeDef = _v18.a;
 					if (calleeDef.$ === 'FuncDef') {
 						var params = calleeDef.a.params;
 						var outputs = calleeDef.a.outputs;
@@ -5859,9 +5861,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 							var paramTypeErrors = A3(
 								$elm$core$List$foldl,
 								F2(
-									function (_v22, problems) {
-										var param = _v22.a;
-										var arg = _v22.b;
+									function (_v21, problems) {
+										var param = _v21.a;
+										var arg = _v21.b;
 										return _Utils_ap(
 											A2(
 												$author$project$HdlChecker$matchTypes,
@@ -5871,9 +5873,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 									}),
 								_List_Nil,
 								A3($elm$core$List$map2, $elm$core$Tuple$pair, params, args));
-							var _v21 = retType.value;
-							if (_v21.$ === 'ErrorType') {
-								var retTypeProblems = _v21.a;
+							var _v20 = retType.value;
+							if (_v20.$ === 'ErrorType') {
+								var retTypeProblems = _v20.a;
 								return _Utils_ap(paramTypeErrors, retTypeProblems);
 							} else {
 								return paramTypeErrors;
@@ -5894,18 +5896,18 @@ var $author$project$HdlChecker$checkExpr = F2(
 				}
 			case 'Indexing':
 				var e = expr.a;
-				var _v23 = expr.b;
-				var from = _v23.a;
-				var to = _v23.b;
-				var _v24 = A2(
+				var _v22 = expr.b;
+				var from = _v22.a;
+				var to = _v22.b;
+				var _v23 = A2(
 					$author$project$HdlChecker$getType,
 					defs,
 					A2(
 						$author$project$HdlParser$Indexing,
 						e,
 						_Utils_Tuple2(from, to)));
-				if (_v24.$ === 'ErrorType') {
-					var problems = _v24.a;
+				if (_v23.$ === 'ErrorType') {
+					var problems = _v23.a;
 					return problems;
 				} else {
 					return _List_Nil;
@@ -5921,7 +5923,7 @@ var $author$project$HdlChecker$checkExpr = F2(
 					return A3(
 						$pzp1997$assoc_list$AssocList$foldl,
 						F3(
-							function (_v26, value, problems) {
+							function (_v25, value, problems) {
 								if (value.$ === 'ErrorType') {
 									var p = value.a;
 									return _Utils_ap(p, problems);
@@ -5996,7 +5998,7 @@ var $author$project$HdlChecker$getType = F2(
 												var v = _v6.b;
 												return _Utils_eq(v.value, bindingName.value);
 											},
-											$pzp1997$assoc_list$AssocList$toList(r))));
+											$pzp1997$assoc_list$AssocList$toList(r.value))));
 							} else {
 								return t;
 							}
@@ -6142,7 +6144,7 @@ var $author$project$HdlChecker$getDefNames = function (def) {
 				[n]);
 		} else {
 			var r = name.a;
-			return $pzp1997$assoc_list$AssocList$values(r);
+			return $pzp1997$assoc_list$AssocList$values(r.value);
 		}
 	}
 };
@@ -6175,8 +6177,8 @@ var $author$project$HdlChecker$paramToDef = function (p) {
 			size: $elm$core$Maybe$Just(p.size)
 		});
 };
-var $author$project$HdlChecker$checkDef = F3(
-	function (beforeDefs, afterDefs, def) {
+var $author$project$HdlChecker$checkDef = F4(
+	function (beforeDefs, afterDefs, level, def) {
 		var defNames = $author$project$HdlChecker$getDefNames(def);
 		var duplicatedNames = A3(
 			$elm$core$List$foldl,
@@ -6187,14 +6189,14 @@ var $author$project$HdlChecker$checkDef = F3(
 							$elm$core$List$foldl,
 							F2(
 								function (defName, duplicates2) {
-									var _v5 = A2(
+									var _v2 = A2(
 										$elm_community$list_extra$List$Extra$find,
 										function (otherName) {
 											return _Utils_eq(otherName.value, defName.value);
 										},
 										$author$project$HdlChecker$getDefNames(other));
-									if (_v5.$ === 'Just') {
-										var otherName = _v5.a;
+									if (_v2.$ === 'Just') {
+										var otherName = _v2.a;
 										return A2(
 											$elm$core$List$cons,
 											A2($author$project$HdlChecker$DuplicatedName, otherName, defName),
@@ -6225,9 +6227,6 @@ var $author$project$HdlChecker$checkDef = F3(
 					_Utils_ap(paramDefs, locals));
 				var bodyType = A2($author$project$HdlChecker$getLocatedType, funcDefs, body);
 				var retTypeErrors = A2($author$project$HdlChecker$matchTypes, retType, bodyType);
-				var _v2 = A2($elm$core$Debug$log, 'AL -> locals', locals);
-				var _v3 = A2($elm$core$Debug$log, 'AL -> bodyType', bodyType);
-				var _v4 = A2($elm$core$Debug$log, 'AL -> retType', retType);
 				return _Utils_ap(
 					A3(
 						$elm$core$List$foldl,
@@ -6243,16 +6242,21 @@ var $author$project$HdlChecker$checkDef = F3(
 										locals),
 									afterDefs);
 								return _Utils_ap(
-									A3($author$project$HdlChecker$checkDef, beforeLocal, afterLocal, local),
+									A4($author$project$HdlChecker$checkDef, beforeLocal, afterLocal, level + 1, local),
 									localErrs);
 							}),
 						_List_Nil,
 						locals),
 					retTypeErrors);
 			} else {
+				var name = def.a.name;
 				var locals = def.a.locals;
 				var body = def.a.body;
-				return _Utils_ap(
+				var _v1 = A2($elm$core$Debug$log, 'AL -> level', level);
+				return (level <= 0) ? _List_fromArray(
+					[
+						$author$project$HdlChecker$BindingNotAllowedAtTopLevel(name)
+					]) : _Utils_ap(
 					A3(
 						$elm$core$List$foldl,
 						F2(
@@ -6268,7 +6272,7 @@ var $author$project$HdlChecker$checkDef = F3(
 										locals),
 									afterDefs);
 								return _Utils_ap(
-									A3($author$project$HdlChecker$checkDef, beforeLocal, afterLocal, local),
+									A4($author$project$HdlChecker$checkDef, beforeLocal, afterLocal, level + 1, local),
 									localErrs);
 							}),
 						_List_Nil,
@@ -6280,7 +6284,6 @@ var $author$project$HdlChecker$checkDef = F3(
 			}
 		}();
 		var problems = _Utils_ap(duplicatedNames, typeErrors);
-		var _v0 = A2($elm$core$Debug$log, 'AL -> def', def);
 		return problems;
 	});
 var $elm$core$List$drop = F2(
@@ -6414,12 +6417,12 @@ var $author$project$HdlChecker$check = function (defs) {
 					$elm$core$List$drop,
 					$elm$core$List$length(beforeDefs) + 1,
 					defs);
-				var _v1 = A2($elm$core$Debug$log, 'AL -> def', def);
 				return _Utils_ap(
-					A3(
+					A4(
 						$author$project$HdlChecker$checkDef,
 						_Utils_ap($author$project$HdlChecker$prelude, beforeDefs),
 						afterDefs,
+						0,
 						def),
 					ps);
 			}),
@@ -6436,6 +6439,22 @@ var $author$project$HdlChecker$check = function (defs) {
 	}
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $author$project$HdlParser$bindingTargetToString = function (target) {
+	if (target.$ === 'BindingName') {
+		var n = target.a;
+		return n.value;
+	} else {
+		var r = target.a;
+		return A3(
+			$pzp1997$assoc_list$AssocList$foldl,
+			F3(
+				function (k, v, str) {
+					return str + (k.value + (' : ' + (v.value + ', ')));
+				}),
+			'{ ',
+			r.value) + ' }';
+	}
+};
 var $elm$core$Bitwise$and = _Bitwise_and;
 var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
 var $elm$core$String$repeatHelp = F3(
@@ -6510,45 +6529,41 @@ var $author$project$HdlEmitter$emitDef = F2(
 			var params = def.a.params;
 			var locals = def.a.locals;
 			var body = def.a.body;
+			var emittedBody = _List_fromArray(
+				[
+					A2(
+					$elm$core$String$join,
+					'\n',
+					A2(
+						$elm$core$List$map,
+						$author$project$HdlEmitter$emitDef(indent + 1),
+						locals)),
+					'  return ' + ($author$project$HdlEmitter$emitExpr(body) + ';')
+				]);
 			return A2(
 				$author$project$HdlEmitter$emitBlock,
 				indent,
-				_List_fromArray(
-					[
-						'function ' + (name.value + ('(' + (A2(
-						$elm$core$String$join,
-						', ',
-						A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params)) + ') {'))),
-						A2(
-						$elm$core$String$join,
-						'\n',
-						A2(
-							$elm$core$List$map,
-							$author$project$HdlEmitter$emitDef(indent + 1),
-							locals)),
-						'  return ' + ($author$project$HdlEmitter$emitExpr(body) + ';'),
-						'}'
-					]));
+				function () {
+					if (!indent) {
+						return emittedBody;
+					} else {
+						return A2(
+							$elm$core$List$cons,
+							'function ' + (name.value + ('(' + (A2(
+								$elm$core$String$join,
+								', ',
+								A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params)) + ') {'))),
+							_Utils_ap(
+								emittedBody,
+								_List_fromArray(
+									['}'])));
+					}
+				}());
 		} else {
 			var name = def.a.name;
 			var locals = def.a.locals;
 			var body = def.a.body;
-			var emittedName = function () {
-				if (name.$ === 'BindingName') {
-					var n = name.a;
-					return n.value;
-				} else {
-					var r = name.a;
-					return A3(
-						$pzp1997$assoc_list$AssocList$foldl,
-						F3(
-							function (k, v, str) {
-								return str + (k.value + (' : ' + (v.value + ', ')));
-							}),
-						'{ ',
-						r) + ' }';
-				}
-			}();
+			var emittedName = $author$project$HdlParser$bindingTargetToString(name);
 			if (!locals.b) {
 				return $author$project$HdlEmitter$emitIndentation(indent) + ('var ' + (emittedName + (' = ' + ($author$project$HdlEmitter$emitExpr(body) + ';'))));
 			} else {
@@ -6573,19 +6588,87 @@ var $author$project$HdlEmitter$emitDef = F2(
 			}
 		}
 	});
-var $author$project$HdlEmitter$emitPrelude = A2(
-	$author$project$HdlEmitter$emitBlock,
-	0,
-	_List_fromArray(
-		['function nand(a, b) { return ~(a & b); }']));
+var $author$project$HdlEmitter$emitPrelude = function () {
+	var nsize = function (name) {
+		return {
+			name: name,
+			size: A2($author$project$HdlParser$VarSize, 'n', $elm$core$Maybe$Nothing)
+		};
+	};
+	return _List_fromArray(
+		[
+			{
+			body: 'return ~(a & b);',
+			name: 'nand',
+			outputs: _List_fromArray(
+				[
+					nsize('')
+				]),
+			params: _List_fromArray(
+				[
+					nsize('a'),
+					nsize('b')
+				])
+		}
+		]);
+}();
 var $author$project$HdlEmitter$emit = function (defs) {
-	return $author$project$HdlEmitter$emitPrelude + ('\n' + A2(
-		$elm$core$String$join,
-		'\n',
+	var paramsToParamsOutput = function (params) {
+		return A2(
+			$elm$core$List$map,
+			function (p) {
+				return {name: p.name.value, size: p.size.value};
+			},
+			params);
+	};
+	return _Utils_ap(
+		$author$project$HdlEmitter$emitPrelude,
 		A2(
 			$elm$core$List$map,
-			$author$project$HdlEmitter$emitDef(0),
-			defs)));
+			function (def) {
+				if (def.$ === 'FuncDef') {
+					var name = def.a.name;
+					var params = def.a.params;
+					var outputs = def.a.outputs;
+					return {
+						body: A2($author$project$HdlEmitter$emitDef, 0, def),
+						name: name.value,
+						outputs: paramsToParamsOutput(outputs.value),
+						params: paramsToParamsOutput(params)
+					};
+				} else {
+					return {body: '', name: 'BINDING IS NOT ALLOWED AT TOP LEVEL', outputs: _List_Nil, params: _List_Nil};
+				}
+			},
+			defs));
+};
+var $author$project$HdlEmitter$emitString = function (defs) {
+	var defOutputs = $author$project$HdlEmitter$emit(defs);
+	return A2(
+		$author$project$HdlEmitter$emitBlock,
+		0,
+		A2(
+			$elm$core$List$map,
+			function (def) {
+				return A2(
+					$author$project$HdlEmitter$emitBlock,
+					0,
+					_List_fromArray(
+						[
+							'function ' + (def.name + ('(' + (A2(
+							$elm$core$String$join,
+							', ',
+							A2(
+								$elm$core$List$map,
+								function ($) {
+									return $.name;
+								},
+								def.params)) + ') {'))),
+							'  ' + def.body,
+							'}'
+						]));
+			},
+			defOutputs));
 };
 var $author$project$HdlParser$ExpectingEOF = {$: 'ExpectingEOF'};
 var $author$project$HdlParser$BindingDefContext = function (a) {
@@ -6761,7 +6844,6 @@ var $author$project$HdlParser$checkIndent = A2(
 			$elm$parser$Parser$Advanced$succeed(
 				F2(
 					function (indentation, column) {
-						var _v0 = A2($elm$core$Debug$log, 'AL -> column', column);
 						return _Utils_cmp(indentation, column) < 1;
 					})),
 			$elm$parser$Parser$Advanced$getIndent),
@@ -8000,14 +8082,13 @@ var $author$project$HdlParser$indent = function (parser) {
 	return A2(
 		$elm$parser$Parser$Advanced$andThen,
 		function (newIndentation) {
-			var _v0 = A2($elm$core$Debug$log, 'AL -> newIndentation', newIndentation);
 			return A2($elm$parser$Parser$Advanced$withIndent, newIndentation, parser);
 		},
 		A2(
 			$elm$parser$Parser$Advanced$keeper,
 			$elm$parser$Parser$Advanced$succeed(
 				function (indentation) {
-					return indentation + 2;
+					return indentation + 4;
 				}),
 			$elm$parser$Parser$Advanced$getIndent));
 };
@@ -8173,9 +8254,9 @@ function $author$project$HdlParser$cyclic$bindingDef() {
 							A2(
 								$elm$parser$Parser$Advanced$ignorer,
 								$elm$parser$Parser$Advanced$succeed(
-									function (_v4) {
-										var defLocals = _v4.a;
-										var defBody = _v4.b;
+									function (_v3) {
+										var defLocals = _v3.a;
+										var defBody = _v3.b;
 										return $author$project$HdlParser$BindingDef(
 											{
 												body: defBody,
@@ -8215,29 +8296,39 @@ function $author$project$HdlParser$cyclic$bindingDef() {
 						A2(
 						$elm$parser$Parser$Advanced$keeper,
 						$elm$parser$Parser$Advanced$succeed(
-							A2($elm$core$Basics$composeL, $author$project$HdlParser$BindingRecord, $pzp1997$assoc_list$AssocList$fromList)),
-						$elm$parser$Parser$Advanced$sequence(
-							{
-								end: A2($elm$parser$Parser$Advanced$Token, '}', $author$project$HdlParser$ExpectingRightBrace),
-								item: A2(
-									$elm$parser$Parser$Advanced$keeper,
-									A2(
+							A2(
+								$elm$core$Basics$composeL,
+								$author$project$HdlParser$BindingRecord,
+								function (locatedList) {
+									return {
+										from: locatedList.from,
+										to: locatedList.to,
+										value: $pzp1997$assoc_list$AssocList$fromList(locatedList.value)
+									};
+								})),
+						$author$project$HdlParser$located(
+							$elm$parser$Parser$Advanced$sequence(
+								{
+									end: A2($elm$parser$Parser$Advanced$Token, '}', $author$project$HdlParser$ExpectingRightBrace),
+									item: A2(
 										$elm$parser$Parser$Advanced$keeper,
-										$elm$parser$Parser$Advanced$succeed($elm$core$Tuple$pair),
 										A2(
-											$elm$parser$Parser$Advanced$ignorer,
+											$elm$parser$Parser$Advanced$keeper,
+											$elm$parser$Parser$Advanced$succeed($elm$core$Tuple$pair),
 											A2(
 												$elm$parser$Parser$Advanced$ignorer,
-												A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps),
-												$elm$parser$Parser$Advanced$token(
-													A2($elm$parser$Parser$Advanced$Token, '=', $author$project$HdlParser$ExpectingEqual))),
-											$author$project$HdlParser$sps)),
-									$author$project$HdlParser$name),
-								separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
-								spaces: $author$project$HdlParser$sps,
-								start: A2($elm$parser$Parser$Advanced$Token, '{', $author$project$HdlParser$ExpectingLeftBrace),
-								trailing: $elm$parser$Parser$Advanced$Forbidden
-							}))
+												A2(
+													$elm$parser$Parser$Advanced$ignorer,
+													A2($elm$parser$Parser$Advanced$ignorer, $author$project$HdlParser$name, $author$project$HdlParser$sps),
+													$elm$parser$Parser$Advanced$token(
+														A2($elm$parser$Parser$Advanced$Token, '=', $author$project$HdlParser$ExpectingEqual))),
+												$author$project$HdlParser$sps)),
+										$author$project$HdlParser$name),
+									separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
+									spaces: $author$project$HdlParser$sps,
+									start: A2($elm$parser$Parser$Advanced$Token, '{', $author$project$HdlParser$ExpectingLeftBrace),
+									trailing: $elm$parser$Parser$Advanced$Forbidden
+								})))
 					]))));
 }
 function $author$project$HdlParser$cyclic$defs() {
@@ -8269,7 +8360,7 @@ function $author$project$HdlParser$cyclic$defs() {
 							$author$project$HdlParser$sps)),
 						A2(
 						$elm$parser$Parser$Advanced$map,
-						function (_v3) {
+						function (_v2) {
 							return $elm$parser$Parser$Advanced$Done(
 								$elm$core$List$reverse(revDefs));
 						},
@@ -8294,9 +8385,9 @@ function $author$project$HdlParser$cyclic$funcDef() {
 								$elm$parser$Parser$Advanced$ignorer,
 								$elm$parser$Parser$Advanced$succeed(
 									F3(
-										function (defParams, defRetType, _v2) {
-											var defLocals = _v2.a;
-											var defBody = _v2.b;
+										function (defParams, defRetType, _v1) {
+											var defLocals = _v1.a;
+											var defBody = _v1.b;
 											return $author$project$HdlParser$FuncDef(
 												{
 													body: defBody,
@@ -8349,11 +8440,7 @@ function $author$project$HdlParser$cyclic$locals() {
 					$elm$parser$Parser$Advanced$ignorer,
 					A2(
 						$elm$parser$Parser$Advanced$ignorer,
-						$elm$parser$Parser$Advanced$succeed(
-							function (ds) {
-								var _v0 = A2($elm$core$Debug$log, 'AL -> ds', ds);
-								return ds;
-							}),
+						$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
 						$author$project$HdlParser$checkIndent),
 					$elm$parser$Parser$Advanced$keyword(
 						A2($elm$parser$Parser$Advanced$Token, 'let', $author$project$HdlParser$ExpectingLet))),
@@ -8369,7 +8456,7 @@ function $author$project$HdlParser$cyclic$locals() {
 							A2(
 								$elm$parser$Parser$Advanced$ignorer,
 								$elm$parser$Parser$Advanced$lazy(
-									function (_v1) {
+									function (_v0) {
 										return $author$project$HdlParser$cyclic$defs();
 									}),
 								$author$project$HdlParser$sps))),
@@ -8536,25 +8623,7 @@ var $author$project$HdlParser$showProblemContext = function (context) {
 	switch (context.$) {
 		case 'BindingDefContext':
 			var bindingName = context.a;
-			var nameStr = function () {
-				if (bindingName.$ === 'BindingName') {
-					var n = bindingName.a;
-					return n.value;
-				} else {
-					var r = bindingName.a;
-					return '{ ' + (A2(
-						$elm$core$String$join,
-						', ',
-						A2(
-							$elm$core$List$map,
-							function (_v2) {
-								var k = _v2.a;
-								var v = _v2.b;
-								return k.value + (' = ' + v.value);
-							},
-							$pzp1997$assoc_list$AssocList$toList(r))) + ' }');
-				}
-			}();
+			var nameStr = $author$project$HdlParser$bindingTargetToString(bindingName);
 			return '`' + (nameStr + ('`' + ' definition'));
 		case 'FuncDefContext':
 			var funcName = context.a;
@@ -8564,7 +8633,6 @@ var $author$project$HdlParser$showProblemContext = function (context) {
 	}
 };
 var $author$project$HdlParser$showProblemContextStack = function (contexts) {
-	var _v0 = A2($elm$core$Debug$log, 'AL -> contexts', contexts);
 	return A2(
 		$elm$core$String$join,
 		' of the ',
@@ -8840,11 +8908,22 @@ var $author$project$HdlChecker$showProblem = F2(
 				var expectedType = problem.a;
 				var actualType = problem.b;
 				return 'I\'m expecting to find the type ' + ($author$project$HdlChecker$typeToString(expectedType.value) + (' here:\n' + (A2($author$project$HdlChecker$showLocation, src, actualType) + ('\n' + ('but got the type ' + ($author$project$HdlChecker$typeToString(actualType.value) + '.\n'))))));
-			default:
+			case 'ConflictingVarSizeArgs':
 				var param = problem.a;
 				var previousArgType = problem.b;
 				var currentArgType = problem.c;
 				return 'I\'m stuck part way in figuring out the size of a bus.\n' + ('You previously implied that the size should be ' + ($author$project$HdlChecker$typeToString(previousArgType.value) + (' here:\n' + (A2($author$project$HdlChecker$showLocation, src, previousArgType) + ('\n' + ('but you implied a different size of ' + ($author$project$HdlChecker$typeToString(currentArgType.value) + (' here:\n' + A2($author$project$HdlChecker$showLocation, src, currentArgType)))))))));
+			default:
+				var bindingName = problem.a;
+				return 'I found a binding called `' + ($author$project$HdlParser$bindingTargetToString(bindingName) + ('` at the top level of this unit here:\n' + (function () {
+					if (bindingName.$ === 'BindingName') {
+						var n = bindingName.a;
+						return A2($author$project$HdlChecker$showLocation, src, n);
+					} else {
+						var r = bindingName.a;
+						return A2($author$project$HdlChecker$showLocation, src, r);
+					}
+				}() + ('\n' + ('but you are not allowed to define binding at the top level.\n' + 'Hint: Try defining a function instead of a binding.')))));
 		}
 	});
 var $author$project$HdlChecker$showProblems = F2(
@@ -8857,7 +8936,7 @@ var $author$project$HdlChecker$showProblems = F2(
 				$author$project$HdlChecker$showProblem(src),
 				problems));
 	});
-var $author$project$Main$source = '\nhalf_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }\n\nfull_adder a b c -> { sum, carry } =\n  let\n    { sum = s1, carry = c1 } = half_adder a b\n    { sum = s2, carry = c2 } = half_adder s1 c\n    c3 = or c1 c2\n  in\n  { sum = s2, carry = c3 }\n\nxor a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand\n  (nand a nand_a_b)\n  (nand b nand_a_b)\n\nnot a[1] -> [1] =\n  nand a a\n\nor a[1] b[1] -> [1] =\n  nand (not a) (not b)\n\nand a[n] b[n] -> [n] =\n  let\n    nand_a_b = nand a b\n  in\n  nand nand_a_b nand_a_b\n\nand_0_0 = and 0 0\n  ';
+var $author$project$Main$source = '\nrecursive =\n    let\n        b = c\n        c = b\n    in\n    c\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$main = function () {
@@ -8915,7 +8994,7 @@ var $author$project$Main$main = function () {
 							function () {
 								var _v1 = $author$project$HdlChecker$check(program);
 								if (_v1.$ === 'Ok') {
-									return '✔️ Passed checker.\n\n' + ('🏭 Generated JS code:\n\n' + $author$project$HdlEmitter$emit(program));
+									return '✔️ Passed checker.\n\n' + ('🏭 Generated JS code:\n\n' + $author$project$HdlEmitter$emitString(program));
 								} else {
 									var problems = _v1.a;
 									return '❌ Check error.\n' + A2($author$project$HdlChecker$showProblems, $author$project$Main$source, problems);
