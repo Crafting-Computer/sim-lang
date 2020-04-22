@@ -3,7 +3,7 @@ module CheckerTest exposing (suite)
 import Test exposing (Test, describe)
 import Expect
 import HdlChecker exposing (Type(..), Problem(..))
-import HdlParser exposing (Size(..))
+import HdlParser exposing (Size(..), BindingTarget(..))
 import AssocList as Dict
 
 suite : Test
@@ -216,18 +216,18 @@ suite =
         \_ ->
           let
             src =
-              "a = nand 0"
+              "f i -> [1] = let a = nand 0 in i"
             expected =
-              Err [WrongCallArity { from = (1,5), to = (1,9), value = "nand" } [{ name = { from = (-1,-1), to = (-1,-1), value = "a" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } },{ name = { from = (-1,-1), to = (-1,-1), value = "b" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } }] [{ from = (1,10), to = (1,11), value = BusType (IntSize 1) }]]
+              Err [WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ name = { from = (-1,-1), to = (-1,-1), value = "a" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } },{ name = { from = (-1,-1), to = (-1,-1), value = "b" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } }] [{ from = (1,27), to = (1,28), value = BusType (IntSize 1) }]]
           in
           Expect.equal expected (check src)
       , Test.test "call arity too big" <|
         \_ ->
           let
             src =
-              "a = nand 0 0 0"
+              "f i -> [1] = let a = nand 0 0 0 in i"
             expected =
-              Err [WrongCallArity { from = (1,5), to = (1,9), value = "nand" } [{ name = { from = (-1,-1), to = (-1,-1), value = "a" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } },{ name = { from = (-1,-1), to = (-1,-1), value = "b" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } }] [{ from = (1,10), to = (1,11), value = BusType (IntSize 1) }, { from = (1,12), to = (1,13), value = BusType (IntSize 1) },{ from = (1,14), to = (1,15), value = BusType (IntSize 1) }]]
+              Err [WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ name = { from = (-1,-1), to = (-1,-1), value = "a" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } },{ name = { from = (-1,-1), to = (-1,-1), value = "b" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } }] [{ from = (1,27), to = (1,28), value = BusType (IntSize 1) }, { from = (1,29), to = (1,30), value = BusType (IntSize 1) },{ from = (1,31), to = (1,32), value = BusType (IntSize 1) }]]
           in
           Expect.equal expected (check src)
       ]
@@ -256,6 +256,23 @@ suite =
         "first4 bus[3] -> [2] = bus[2..1]" <|
         Err [FromIndexBiggerThanToIndex { from = (1,28), to = (1,29), value = 2 } { from = (1,31), to = (1,32), value = 1 }]
       ]
+      , describe "BindingNotAllowedAtTopLevel"
+      [ Test.test "binding not allowed at top level" <|
+        \_ ->
+          let
+            src =
+              "my_binding = nand 0 0"
+            expected =
+              Err [BindingNotAllowedAtTopLevel (BindingName { from = (1,1), to = (1,11), value = "my_binding" })]
+            result =
+              case HdlParser.parse src of
+                Err deadEnds -> -- parse error should never happen when testing the checker
+                  Err [ UndefinedName <| HdlParser.fakeLocated <| HdlParser.showDeadEnds src deadEnds]
+                Ok program ->
+                  HdlChecker.check program
+          in
+          Expect.equal expected result
+      ]
     ]
 
 test : String -> String -> Result (List HdlChecker.Problem) () -> Test
@@ -269,4 +286,24 @@ check src =
     Err deadEnds -> -- parse error should never happen when testing the checker
       Err [ UndefinedName <| HdlParser.fakeLocated <| HdlParser.showDeadEnds src deadEnds]
     Ok program ->
-      HdlChecker.check program
+      case HdlChecker.check program of
+        Err problems ->
+          let
+            filteredProblems =
+              List.filter
+              (\problem ->
+                case problem of
+                  BindingNotAllowedAtTopLevel _ ->
+                    False
+                  _ ->
+                    True
+              )
+              problems
+          in
+          case filteredProblems of
+            [] ->
+              Ok ()
+            _ ->
+              Err filteredProblems
+        Ok _ ->
+          Ok ()

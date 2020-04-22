@@ -5684,6 +5684,7 @@ var $author$project$HdlChecker$locateExpr = function (expr) {
 			return {from: i.from, to: i.to};
 	}
 };
+var $elm$core$Debug$log = _Debug_log;
 var $author$project$HdlChecker$MismatchedTypes = F2(
 	function (a, b) {
 		return {$: 'MismatchedTypes', a: a, b: b};
@@ -6487,11 +6488,12 @@ var $icidasset$elm_binary$Binary$width = function (_v0) {
 };
 var $author$project$HdlChecker$checkExpr = F2(
 	function (defs, expr) {
+		var _v15 = A2($elm$core$Debug$log, 'AL -> defs', defs);
 		switch (expr.$) {
 			case 'Binding':
 				var name = expr.a;
-				var _v16 = A2($author$project$HdlChecker$getDef, defs, name);
-				if (_v16.$ === 'Just') {
+				var _v17 = A2($author$project$HdlChecker$getDef, defs, name);
+				if (_v17.$ === 'Just') {
 					return _List_Nil;
 				} else {
 					return _List_fromArray(
@@ -6502,9 +6504,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 			case 'Call':
 				var callee = expr.a;
 				var args = expr.b;
-				var _v17 = A2($author$project$HdlChecker$getDef, defs, callee);
-				if (_v17.$ === 'Just') {
-					var calleeDef = _v17.a;
+				var _v18 = A2($author$project$HdlChecker$getDef, defs, callee);
+				if (_v18.$ === 'Just') {
+					var calleeDef = _v18.a;
 					if (calleeDef.$ === 'FuncDef') {
 						var params = calleeDef.a.params;
 						var outputs = calleeDef.a.outputs;
@@ -6525,9 +6527,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 							var paramTypeErrors = A3(
 								$elm$core$List$foldl,
 								F2(
-									function (_v20, problems) {
-										var param = _v20.a;
-										var arg = _v20.b;
+									function (_v21, problems) {
+										var param = _v21.a;
+										var arg = _v21.b;
 										return _Utils_ap(
 											A2(
 												$author$project$HdlChecker$matchTypes,
@@ -6537,9 +6539,9 @@ var $author$project$HdlChecker$checkExpr = F2(
 									}),
 								_List_Nil,
 								A3($elm$core$List$map2, $elm$core$Tuple$pair, params, args));
-							var _v19 = retType.value;
-							if (_v19.$ === 'ErrorType') {
-								var retTypeProblems = _v19.a;
+							var _v20 = retType.value;
+							if (_v20.$ === 'ErrorType') {
+								var retTypeProblems = _v20.a;
 								return _Utils_ap(paramTypeErrors, retTypeProblems);
 							} else {
 								return paramTypeErrors;
@@ -6560,18 +6562,18 @@ var $author$project$HdlChecker$checkExpr = F2(
 				}
 			case 'Indexing':
 				var e = expr.a;
-				var _v21 = expr.b;
-				var from = _v21.a;
-				var to = _v21.b;
-				var _v22 = A2(
+				var _v22 = expr.b;
+				var from = _v22.a;
+				var to = _v22.b;
+				var _v23 = A2(
 					$author$project$HdlChecker$getType,
 					defs,
 					A2(
 						$author$project$HdlParser$Indexing,
 						e,
 						_Utils_Tuple2(from, to)));
-				if (_v22.$ === 'ErrorType') {
-					var problems = _v22.a;
+				if (_v23.$ === 'ErrorType') {
+					var problems = _v23.a;
 					return problems;
 				} else {
 					return _List_Nil;
@@ -6587,7 +6589,7 @@ var $author$project$HdlChecker$checkExpr = F2(
 					return A3(
 						$pzp1997$assoc_list$AssocList$foldl,
 						F3(
-							function (_v24, value, problems) {
+							function (_v25, value, problems) {
 								if (value.$ === 'ErrorType') {
 									var p = value.a;
 									return _Utils_ap(p, problems);
@@ -16125,7 +16127,6 @@ var $mdgriffith$elm_ui$Element$Input$HiddenLabel = function (a) {
 	return {$: 'HiddenLabel', a: a};
 };
 var $mdgriffith$elm_ui$Element$Input$labelHidden = $mdgriffith$elm_ui$Element$Input$HiddenLabel;
-var $elm$core$Debug$log = _Debug_log;
 var $elm$html$Html$Events$onBlur = function (msg) {
 	return A2(
 		$elm$html$Html$Events$on,
