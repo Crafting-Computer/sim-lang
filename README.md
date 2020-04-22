@@ -46,5 +46,10 @@ Run editor:
 elm-live src/Editor.elm --start-page public/index.html -- --output=public/elm.js
 ```
 
+Run Hdl compiler on a source string:
+```
+elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
+```
+
 # License
 MIT
