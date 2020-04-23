@@ -19,6 +19,7 @@ type Problem
   | MismatchedTypes (Located Type) (Located Type)
   | ConflictingVarSizeArgs Param (Located Type) (Located Type) -- param previousArgType currentArgType
   | BindingNotAllowedAtTopLevel BindingTarget -- bindingName
+  | BadRecursiveBindingDefinition BindingTarget (Located String) -- targetName dependentName
 
 type Type
   = BusType Size
@@ -200,6 +201,18 @@ showProblem src problem =
         ++ "\n"
       ++ "but you are not allowed to define binding at the top level.\n"
       ++ "Hint: Try defining a function instead of a binding."
+    BadRecursiveBindingDefinition targetName dependentName ->
+      "I found a bad recursive definition when you tried to define `" ++ bindingTargetToString targetName ++ "` here:\n"
+      ++ (case targetName of
+          BindingName n ->
+            showLocation src n
+          BindingRecord r ->
+            showLocation src r
+        )
+        ++ "\n"
+      ++ "in terms of `" ++ dependentName.value ++ "` itself used here:\n"
+      ++ showLocation src dependentName
+
 
 
 showLocation : String -> Located a -> String
@@ -642,6 +655,9 @@ getType : List Def -> Expr -> Type
 getType defs expr =
   case expr of
     Binding bindingName ->
+      let
+        _ = Debug.log "AL -> bindingName" <| bindingName
+      in
       case getDef defs bindingName of
         Just def ->
           case def of
@@ -650,9 +666,13 @@ getType defs expr =
             BindingDef { name, body, size } ->
               case size of
                 Just s ->
+                  let
+                    _ = Debug.log "AL -> s" <| s
+                  in
                   BusType s.value
                 Nothing ->
                   let
+                    _ = Debug.log "AL -> t" <| t
                     t =
                       getType (List.filter ((/=) def) defs) body
                   in
@@ -662,6 +682,46 @@ getType defs expr =
                         Maybe.andThen (\(k, _) -> Dict.get k.value rt) <|
                           List.Extra.find (\(_, v) -> v.value == bindingName.value) <|
                             Dict.toList r.value
+                    (ErrorType errs, _) ->
+                      let
+                        targetNames =
+                          case name of
+                            BindingName n ->
+                              [n.value]
+                            BindingRecord r ->
+                              List.map .value <| Dict.keys r.value
+                        errorLocatedNames =
+                          List.foldl
+                            (\err names ->
+                              case err of
+                                UndefinedName n ->
+                                  n :: names
+                                _ ->
+                                  names
+                            )
+                            []
+                            errs
+                      in
+                      ErrorType <|
+                        List.filter
+                          (\err ->
+                            case err of
+                              UndefinedName n ->
+                                not <| List.member n.value targetNames
+                              _ ->
+                                True
+                          )
+                          errs
+                        ++ List.foldl
+                          (\n badRecursiveDefProblems ->
+                            case List.Extra.find (\errorLocatedName -> errorLocatedName.value == n) errorLocatedNames of
+                              Just errorLocatedName ->
+                                BadRecursiveBindingDefinition name errorLocatedName :: badRecursiveDefProblems
+                              Nothing ->
+                                badRecursiveDefProblems
+                          )
+                          []
+                          targetNames
                     _ ->
                       t
         Nothing ->

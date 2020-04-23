@@ -31,13 +31,24 @@ source =
   -- in
   -- nand_in_another_name a
   -- """
+--   """
+-- recursive i -> [1] =
+--     let
+--         b = c
+--         d = b
+--         c = d
+--     in
+--     nand i c
+--   """
   """
-recursive =
-    let
-      b = c
-      c = b
-    in
-    c
+  s_r_latch s r -> [1] =
+      let
+          q =
+              nand s not_q
+          not_q =
+              nand r q
+      in
+      q
   """
   -- "half_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }"
   -- """

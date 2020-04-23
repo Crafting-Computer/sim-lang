@@ -261,6 +261,17 @@ suite =
         "my_binding = nand 0 0" <|
         Err [BindingNotAllowedAtTopLevel (BindingName { from = (1,1), to = (1,11), value = "my_binding" })]
       ]
+      , describe "BadRecursiveDefinition"
+      [ test "two mutal dependence"
+        "recursive i -> [1] =\n let\n  b = c\n  c = b\n in\n nand i c" <|
+        Err [BadRecursiveBindingDefinition (BindingName { from = (4,3), to = (4,4), value = "c" }) { from = (3,7), to = (3,8), value = "c" }]
+      , test "three mutal dependence"
+        "recursive i -> [1] =\n let\n  b = c\n  d = b\n  c = d\n in\n nand i c" <|
+        Err [BadRecursiveBindingDefinition (BindingName { from = (5,3), to = (5,4), value = "c" }) { from = (3,7), to = (3,8), value = "c" }]
+      , test "four mutal dependence"
+        "recursive i -> [1] =\n let\n  b = c\n  d = b\n  c = e\n  e = d\n in\n nand i c" <|
+        Err [BadRecursiveBindingDefinition (BindingName { from = (5,3), to = (5,4), value = "c" }) { from = (3,7), to = (3,8), value = "c" }]
+      ]
     ]
 
 test : String -> String -> Result (List HdlChecker.Problem) () -> Test
