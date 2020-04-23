@@ -221,7 +221,7 @@ makeUnderline row minCol maxCol =
 
 toUnderlineChar : Int -> Int -> Int -> Char
 toUnderlineChar minCol maxCol col =
-  if minCol <= col && col <= maxCol then
+  if minCol <= col && col < maxCol then
     '^'
   else
     ' '
