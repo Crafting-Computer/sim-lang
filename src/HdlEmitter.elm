@@ -66,7 +66,7 @@ emitPrelude : List DefOutput
 emitPrelude =
   let
     nsize name =
-      { name = name, size = VarSize "n" Nothing }
+      { name = name, size = VarSize "n" }
   in
   -- function nand(a, b) { return ~(a & b); }
   [ { name = "nand"
@@ -94,7 +94,7 @@ emitDef indent def =
       let
         emittedBody =
           [ String.join "\n" <| List.map (emitDef <| indent + 1) locals
-          , "  return " ++ emitExpr body ++ ";"
+          , "  return " ++ emitExpr body.value ++ ";"
           ]
       in
       emitBlock indent
@@ -109,17 +109,17 @@ emitDef indent def =
     BindingDef { name, locals, body } ->
       let
         emittedName =
-          bindingTargetToString name
+          bindingTargetToString name.value
       in
       case locals of
         [] ->
-          emitIndentation indent ++ "var " ++ emittedName ++ " = " ++ emitExpr body ++ ";"
+          emitIndentation indent ++ "var " ++ emittedName ++ " = " ++ emitExpr body.value ++ ";"
         locs ->
           emitBlock indent
             [ "var " ++ emittedName ++ " ="
             , "function () {"
             , String.join "\n" <| List.map (emitDef <| indent + 1) locs
-            , "  return " ++ emitExpr body ++ ";"
+            , "  return " ++ emitExpr body.value ++ ";"
             , "}();"
             ]
 
@@ -144,13 +144,13 @@ emitExpr e =
     Binding name ->
       name.value
     Call callee args ->
-      callee.value ++ "(" ++ (String.join ", " <| List.map emitExpr args) ++ ")"
+      callee.value ++ "(" ++ (String.join ", " <| List.map (emitExpr << .value) args) ++ ")"
     Indexing expr (from, to) ->
-      "(" ++ "(" ++ emitExpr expr ++ ")" ++ " << " ++ String.fromInt from.value ++ " >>> " ++ String.fromInt to.value ++ ")"
+      "(" ++ "(" ++ emitExpr expr.value ++ ")" ++ " << " ++ String.fromInt from.value ++ " >>> " ++ String.fromInt to.value ++ ")"
     Record r ->
       Dict.foldl
         (\k v str ->
-          str ++ k.value ++ " : " ++ emitExpr v ++ ", "
+          str ++ k.value ++ " : " ++ emitExpr v.value ++ ", "
         )
         "{ "
         r.value

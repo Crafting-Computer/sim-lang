@@ -1,4 +1,4 @@
-module HdlParser exposing (parse, fakeLocated, showDeadEnds, showProblemLocation, showProblemLocationRange, bindingTargetToString, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+module HdlParser exposing (parse, fakeLocated, withLocation, showDeadEnds, showProblemLocation, showProblemLocationRange, bindingTargetToString, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
 
 
 import Parser.Advanced exposing (..)
@@ -13,26 +13,26 @@ type Def
     , params : List Param
     , outputs : Located (List Param)
     , locals : List Def
-    , body : Expr
+    , body : Located Expr
     }
   | BindingDef
-    { name : BindingTarget
+    { name : Located BindingTarget
     , locals : List Def
-    , body : Expr
+    , body : Located Expr
     , size : Maybe (Located Size)
     }
 
 
 type BindingTarget
-  = BindingName (Located String)
-  | BindingRecord (Located (Dict (Located String) (Located String)))
+  = BindingName String
+  | BindingRecord (Dict (Located String) (Located String))
 
 
 type Expr
   = Binding (Located String)
-  | Call (Located String) (List Expr)
-  | Indexing Expr (Located Int, Located Int)
-  | Record (Located (Dict (Located String) Expr))
+  | Call (Located String) (List (Located Expr))
+  | Indexing (Located Expr) (Located Int, Located Int)
+  | Record (Located (Dict (Located String) (Located Expr)))
   | IntLiteral (Located Int)
 
 
@@ -44,7 +44,7 @@ type alias Param =
 
 type Size
   = IntSize Int
-  | VarSize String (Maybe Int)
+  | VarSize String
 
 
 type Problem
@@ -70,7 +70,7 @@ type Problem
 
 
 type Context
-  = BindingDefContext BindingTarget
+  = BindingDefContext (Located BindingTarget)
   | FuncDefContext (Located String)
   | LocalsContext
 
@@ -141,7 +141,7 @@ showProblemContext context =
     BindingDefContext bindingName ->
       let
         nameStr =
-          bindingTargetToString bindingName
+          bindingTargetToString bindingName.value
       in
       "`" ++ nameStr ++ "`" ++ " definition"
     FuncDefContext funcName ->
@@ -154,14 +154,14 @@ bindingTargetToString : BindingTarget -> String
 bindingTargetToString target =
   case target of
     BindingName n ->
-      n.value
+      n
     BindingRecord r ->
       Dict.foldl
         (\k v str ->
           str ++ k.value ++ " : " ++ v.value ++ ", "
         )
         "{ "
-        r.value
+        r
       ++ " }"
 
 
@@ -297,12 +297,11 @@ bindingDef =
   checkIndent
   <| (succeed identity
     |= oneOf
-      [ backtrackable <| map BindingName name
-      , succeed (BindingRecord << (\locatedList ->
-        { from = locatedList.from
-        , to = locatedList.to
-        , value = Dict.fromList locatedList.value
-        }))
+      [ backtrackable <| map (\n -> withLocation n <| BindingName n.value) name
+      , succeed (\locatedList -> withLocation locatedList <|
+        BindingRecord <|
+          Dict.fromList locatedList.value
+      )
       |= located (sequence
         { start = Token "{" ExpectingLeftBrace
         , separator = Token "," ExpectingComma
@@ -335,7 +334,7 @@ bindingDef =
           succeed Tuple.pair
           |= optional locals
           |. sps
-          |= expr
+          |= located expr
         )
     )
   )
@@ -368,7 +367,7 @@ funcDef =
           succeed Tuple.pair
           |= optional locals
           |. sps
-          |= expr
+          |= located expr
         )
     )
   )
@@ -449,11 +448,12 @@ record =
         |. sps
         |. token (Token "=" ExpectingEqual)
         |. sps
-        |= oneOf
+        |= (located <| oneOf
           [ group
           , bindingOrCall
           , intLiteral
           ]
+        )
     , trailing = Forbidden
     }
     )
@@ -487,10 +487,10 @@ group =
       Just indexes ->
         Indexing g indexes
       Nothing ->
-        g
+        g.value
     )
     |. token (Token "(" ExpectingLeftParen)
-    |= lazy (\_ -> expr)
+    |= lazy (\_ -> located expr)
     |. token (Token ")" ExpectingRightParen)
     |= optional indexing
 
@@ -527,7 +527,7 @@ binding =
   succeed (\n i ->
     case i of
       Just indexes ->
-        Indexing (Binding n) indexes
+        Indexing (withLocation n <| Binding n) indexes
       Nothing ->
         Binding n
     )
@@ -544,12 +544,13 @@ bindingOrCall =
       oneOf
         [ checkIndent <|
           succeed (\n -> Loop (n :: revExprs))
-          |= oneOf
+          |= (located <| oneOf
             [ binding
             , group
             , record
             , intLiteral
             ]
+          )
           |. sps
         , succeed ()
           |> map (\_ -> Done (List.reverse revExprs))
@@ -562,7 +563,7 @@ bindingOrCall =
             succeed
               (\i -> case i of
                 Just indexes ->
-                  Indexing (Binding callee) indexes
+                  Indexing (withLocation callee <| Binding callee) indexes
                 Nothing ->
                   Binding callee
               )
@@ -636,7 +637,7 @@ size =
     |. sps
     |= (located <| oneOf
       [ map IntSize integer
-      , map (\n -> VarSize n.value Nothing) name
+      , map (\n -> VarSize n.value) name
       ])
     |. sps
     |. token (Token "]" ExpectingRightBracket)
@@ -675,4 +676,15 @@ fakeLocated value =
   { from = (-1, -1)
   , to = (-1, -1)
   , value = value
+  }
+
+
+withLocation : Located a -> b -> Located b
+withLocation loc value =
+  { from =
+    loc.from
+  , to =
+    loc.to
+  , value =
+    value
   }

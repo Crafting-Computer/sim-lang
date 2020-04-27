@@ -1,46 +1,31 @@
-module HdlChecker exposing (Problem(..), Type(..), check, showProblems)
+module HdlChecker exposing (Problem(..), Type(..), SizeComparator(..), check, showProblems)
 
-import HdlParser exposing (fakeLocated, bindingTargetToString, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
+import HdlParser exposing (fakeLocated, bindingTargetToString, withLocation, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
 import List.Extra
-import Set
-import EverySet
 import Binary
+import EverySet
+import Tuple3
 
 type Problem
   = DuplicatedName (Located String) (Located String)
   | UndefinedName (Located String)
-  | WrongCallArity (Located String) (List Param) (List (Located Type)) -- callee params argTypes
+  | WrongCallArity (Located String) (List (Located Type)) (List (Located Type)) -- callee paramTypes argTypes
   | InvalidIndexingTarget (Located Type) (Located Int, Located Int) -- targetType indices
-  | IndexOutOfBounds Int (Located Int) (Located Int) -- expectedBusSize from to
   | FromIndexBiggerThanToIndex (Located Int) (Located Int) -- from to
-  | ExpectingBindingGotFunction (Located String) (Located String) -- bindingName functioName
-  | ExpectingFunctionGotBinding (Located String) BindingTarget -- functionName bindingName
+  | ExpectingRecord (Located Type)
   | MismatchedTypes (Located Type) (Located Type)
-  | ConflictingVarSizeArgs Param (Located Type) (Located Type) -- param previousArgType currentArgType
-  | BindingNotAllowedAtTopLevel BindingTarget -- bindingName
-  | BadRecursiveBindingDefinition BindingTarget (Located String) -- targetName dependentName
-
-type Type
-  = BusType Size
-  | RecordType (Dict String Type)
-  | ErrorType (List Problem)
-
-
-type alias Location =
-  { from : (Int, Int)
-  , to : (Int, Int)    
-  }
+  | BindingNotAllowedAtTopLevel (Located BindingTarget) -- bindingName
 
 
 prelude : List Def
 prelude =
   [ preludeFuncDef
     "nand"
-    [ { name = "a", size = VarSize "n" Nothing }
-    , { name = "b", size = VarSize "n" Nothing }
+    [ { name = "a", size = VarSize "n" }
+    , { name = "b", size = VarSize "n" }
     ]
-    [ { name = "out", size = VarSize "n" Nothing }
+    [ { name = "out", size = VarSize "n" }
     ]
   ]
 
@@ -59,8 +44,385 @@ preludeFuncDef name params outputs =
       , size = fakeLocated p.size
       }) outputs
     , locals = []
-    , body = Binding (fakeLocated "<built-in function>")
+    , body = fakeLocated <| Binding (fakeLocated "<built-in function>")
     }
+
+
+-- Environment and next type variable's id
+type alias Ctx =
+  { nextId : Int
+  , level : Int
+  , env : Env
+  }
+
+
+type alias TVarId =
+  String
+
+
+emptyCtx : Ctx
+emptyCtx =
+  { nextId = 0
+  , level = 0
+  , env = Dict.empty
+  }
+
+
+addToCtx : String -> Located Type -> Ctx -> Ctx
+addToCtx n t c =
+  { c
+    | env =
+      Dict.insert n t c.env
+  }
+
+
+newTVar : Located a -> Ctx -> (Located Type, Ctx)
+newTVar location ctx =
+  ( withLocation location <| TVar ("T" ++ String.fromInt ctx.nextId)
+  , { ctx
+    | nextId =
+      ctx.nextId + 1
+    }
+  )
+
+
+-- Map identifier to their type
+type alias Env =
+  Dict String (Located Type)
+
+
+-- Map type variable id to type
+type Subst
+  = Subst (Dict String (Located Type))
+  | SubstError (List Problem)
+
+
+emptySubst : Subst
+emptySubst =
+  Subst <| Dict.empty
+
+
+combineSubsts : Subst -> Subst -> Subst
+combineSubsts subst1 subst2 =
+  case (subst1, subst2) of
+    (Subst s1, Subst s2) ->
+      Subst <| Dict.union
+        (Dict.map
+          (\k v -> applySubstToType subst1 v)
+          s2
+        )
+        s1
+    
+    (Subst _, SubstError _) ->
+      subst2
+    
+    (SubstError _, Subst _) ->
+      subst1
+    
+    (SubstError s1, SubstError s2) ->
+      SubstError (s2 ++ s1)
+
+
+
+applySubstToType : Subst -> (Located Type) -> (Located Type)
+applySubstToType subst t =
+  case t.value of
+    TBus size _ ->
+      let
+        name =
+          case size of
+            VarSize n ->
+              n
+
+            IntSize _ ->
+              nameFromLocated t
+      in
+      case subst of
+        Subst s ->
+          case Dict.get name s of
+            Just busType ->
+              busType
+            
+            Nothing ->
+              t
+
+        SubstError _ ->
+          t
+    
+    TRecord r ->
+      withLocation t <|
+        TRecord <|
+        Dict.map
+          (\k v -> applySubstToType subst v)
+          r
+    
+    TFun from to ->
+      withLocation t <|
+        TFun (applySubstToType subst from) (applySubstToType subst to)
+    
+    TVar id ->
+      case subst of
+        Subst s ->
+          case Dict.get id s of
+            Just varType ->
+              varType
+            Nothing ->
+              t
+
+        SubstError _ ->
+          t
+    
+
+applySubstToCtx : Subst -> Ctx -> Ctx
+applySubstToCtx subst ctx =
+  { ctx
+    | env =
+      Dict.map
+        (\k v -> applySubstToType subst v)
+        ctx.env
+  }
+
+
+match : Located Type -> Located Type -> List Problem
+match expectedType actualType =
+  let
+    _ = Debug.log "AL -> actualType" <| actualType
+    _ = Debug.log "AL -> expectedType" <| expectedType
+    mismatch =
+      [ MismatchedTypes expectedType actualType ]
+    
+    success =
+      []
+  in
+  case (expectedType.value, actualType.value) of
+    (TBus b1 c1, TBus b2 c2) ->
+      case (b1, b2) of
+        (VarSize n1, VarSize n2) ->
+          if n1 /= n2 then
+            mismatch
+          else
+            success
+        
+        (VarSize _, IntSize _) ->
+          mismatch
+        
+        (IntSize _, VarSize _) ->
+          mismatch
+        
+        (IntSize i1, IntSize i2) ->
+          let
+            matchSuccess =
+              case (c1, c2) of
+                (EqualToSize, EqualToSize) ->
+                  i1 == i2
+                
+                (EqualToSize, GreaterThanSize) ->
+                  i1 > i2
+
+                (GreaterThanSize, EqualToSize) ->
+                  i2 > i1
+
+                (GreaterThanSize, GreaterThanSize) ->
+                  i2 >= i1
+          in
+          if matchSuccess then
+            success
+          else
+            mismatch
+    
+    (TRecord r1, TRecord r2) ->
+      if Dict.isEmpty <| Dict.union (Dict.diff r1 r2) (Dict.diff r2 r1) then
+        Dict.foldl
+          (\k v1 resultMatch ->
+            let
+              v2 =
+                -- impossible Maybe
+                Maybe.withDefault v1 <| Dict.get k r2
+            in
+            resultMatch ++ match v1 v2
+          )
+          []
+          r1
+      else
+        mismatch
+
+    (TFun from1 to1, TFun from2 to2) ->
+      let
+        fromMatch =
+          match from1 from2
+        
+        toMatch =
+          match to1 to2
+      in
+      fromMatch ++ toMatch
+
+    (TVar v1, TVar v2) ->
+      if v1 /= v2 then
+        mismatch
+      else
+        success
+    
+    (TVar _, _) ->
+      mismatch
+
+    (_, TVar _) ->
+      mismatch
+
+    _ ->
+      mismatch
+
+
+unify : Located Type -> Located Type -> Subst
+unify t1 t2 =
+  let
+    mismatch =
+      SubstError [ MismatchedTypes t1 t2 ]
+  in
+  case (t1.value, t2.value) of
+    (TBus b1 c1, TBus b2 c2) ->
+      case (b1, b2) of
+        (VarSize n1, VarSize _) ->
+          Subst <| Dict.singleton n1 t2
+        
+        (VarSize n1, IntSize _) ->
+          Subst <| Dict.singleton n1 t2
+        
+        (IntSize _, VarSize n2) ->
+          Subst <| Dict.singleton n2 t1
+        
+        (IntSize i1, IntSize i2) ->
+          let
+            n1 =
+              nameFromLocated t1
+            
+            n2 =
+              nameFromLocated t2
+
+            subst1 =
+              Subst <| Dict.singleton n2 t1
+
+            subst2 =
+              Subst <| Dict.singleton n1 t2
+          in
+          case (c1, c2) of
+            (GreaterThanSize, GreaterThanSize) ->
+              if i1 >= i2 then
+                subst1
+              else
+                subst2
+            
+            (GreaterThanSize, EqualToSize) ->
+              if i1 >= i2 then
+                mismatch
+              else
+                subst2
+            
+            (EqualToSize, GreaterThanSize) ->
+              if i2 >= i1 then
+                mismatch
+              else
+                subst1
+
+            (EqualToSize, EqualToSize) ->
+              if i1 /= i2 then
+                mismatch
+              else
+                emptySubst
+    
+    (TRecord r1, TRecord r2) ->
+      if Dict.isEmpty <| Dict.union (Dict.diff r1 r2) (Dict.diff r2 r1) then
+        Dict.foldl
+          (\k v1 resultSubst ->
+            let
+              v2 =
+                -- impossible Maybe
+                Maybe.withDefault v1 <| Dict.get k r2
+            in
+            combineSubsts resultSubst (unify v1 v2)
+          )
+          emptySubst
+          r1
+      else
+        mismatch
+
+    (TFun from1 to1, TFun from2 to2) ->
+      let
+        fromSubst =
+          unify from1 from2
+        
+        toSubst =
+          unify to1 to2
+      in
+      combineSubsts fromSubst toSubst
+
+    (TVar v1, _) ->
+      varBind (withLocation t1 v1) t2
+    
+    (_, TVar v2) ->
+      varBind (withLocation t2 v2) t1
+
+    _ ->
+      mismatch
+
+
+nameFromLocated : Located a -> String
+nameFromLocated i =
+  let
+    locationToString (row, col) =
+      String.fromInt row ++ "_" ++ String.fromInt col
+  in
+  "_located_" ++ locationToString i.from ++ "_" ++ locationToString i.to
+
+
+varBind : Located TVarId -> Located Type -> Subst
+varBind id1 t =
+  let
+    testContains =
+      if contains id1.value t.value then
+        SubstError [ MismatchedTypes (withLocation id1 <| TVar id1.value) t ]
+      else
+        Subst <|
+          Dict.singleton id1.value t
+  in
+  case t.value of
+    TVar id2 ->
+      if id1.value == id2 then
+        emptySubst
+      else
+        testContains
+    
+    _ ->
+      testContains
+
+
+contains : TVarId -> Type -> Bool
+contains id1 t =
+  case t of
+    TVar id2 ->
+      id1 == id2
+
+    TFun from to ->
+      contains id1 from.value || contains id1 to.value
+    
+    _ ->
+      False
+
+
+type Type
+  = TBus Size SizeComparator
+  | TRecord (Dict String (Located Type))
+  | TFun (Located Type) (Located Type)
+  | TVar TVarId
+
+
+type SizeComparator
+  = GreaterThanSize
+  | EqualToSize
+
+
+impossibleLocatedType : Located Type
+impossibleLocatedType =
+  fakeLocated <| TVar "impossible"
 
 
 check : List Def -> Result (List Problem) ()
@@ -70,12 +432,28 @@ check defs =
       List.foldl
         (\def ps ->
           let
-            beforeDefs =
-              List.Extra.takeWhile ((/=) def) defs
-            afterDefs =
-              List.drop (List.length beforeDefs + 1) defs
+            otherDefs =
+              prelude ++ List.filter ((/=) def) defs
+            
+            ctx =
+              List.foldl
+                (\d nextCtx ->
+                  case d of
+                    FuncDef { name, params, outputs } ->
+                      addToCtx name.value (createTFun params outputs) nextCtx
+
+                    BindingDef _ ->
+                      nextCtx
+                )
+                emptyCtx
+                otherDefs
           in
-          checkDef (prelude ++ beforeDefs) afterDefs 0 def ++ ps
+          case inferDef ctx def of
+            Err defProblems ->
+              defProblems ++ ps
+            
+            Ok _ ->
+              ps
         )
         []
         defs
@@ -84,7 +462,471 @@ check defs =
     [] ->
       Ok ()
     ps ->
-      Err <| List.reverse <| EverySet.toList <| EverySet.fromList ps
+      Err <|
+        List.filter -- filter out mismatched types containing TVar
+        (\p ->
+          case p of
+            MismatchedTypes t1 t2 ->
+              case (t1.value, t2.value) of
+                (TVar _, _) ->
+                  False
+                
+                (_, TVar _) ->
+                  False
+                
+                _ ->
+                  True
+            
+            _ ->
+              True
+        )
+        <| List.reverse <| EverySet.toList <| EverySet.fromList ps
+
+
+inferDef : Ctx -> Def -> Result (List Problem) (Located Type, Ctx, Subst)
+inferDef ctx def =
+  case def of
+    BindingDef { name, locals, body } ->
+      if ctx.level <= 0 then
+        Err [ BindingNotAllowedAtTopLevel name ]
+      else
+        inferLocalsAndBody ctx locals body
+    
+    FuncDef { params, outputs, locals, body } ->
+      let
+        paramCtx =
+          List.foldl
+            (\p resultParamCtx ->
+              let
+                paramName =
+                  p.name.value
+                
+                (paramType, nextCtx) =
+                  newTVar p.size resultParamCtx
+              in
+              addToCtx paramName paramType nextCtx
+            )
+            ctx
+            params
+      in
+      inferLocalsAndBody paramCtx locals body |>
+      Result.andThen
+        (\(outputType1, outputCtx1, outputSubst) ->
+          let
+            outputCtx =
+              applySubstToCtx outputSubst outputCtx1
+            
+            declaredFuncType =
+              createTFun params outputs
+
+            paramTypes =
+              List.map
+                (\p ->
+                  case Dict.get p.name.value outputCtx.env of
+                    Just t ->
+                      t
+                    Nothing ->
+                      impossibleLocatedType -- impossible
+                )
+                params
+
+            outputType =
+              applySubstToType outputSubst outputType1
+
+            _ = Debug.log "AL -> actualFuncType" <| actualFuncType
+            actualFuncType =
+              createTFunFromTypes paramTypes outputType
+            
+            _ = Debug.log "AL -> funcSubst" <| funcSubst
+
+            funcSubst =
+              unify declaredFuncType actualFuncType
+
+            resultFuncType =
+              applySubstToType funcSubst actualFuncType
+              
+            resultSubst =
+              combineSubsts outputSubst funcSubst
+          in
+          case match declaredFuncType resultFuncType of
+            [] ->
+              Ok (resultFuncType, outputCtx, resultSubst)
+
+            matchErrs ->
+              Err matchErrs
+        )
+
+
+inferLocalsAndBody : Ctx -> List Def -> Located Expr -> Result (List Problem) (Located Type, Ctx, Subst)
+inferLocalsAndBody ctx locals body =
+  inferDefs (incrementLevel ctx) locals |>
+  Result.andThen
+    (\(localCtx, localSubst) ->
+      let
+        _ = Debug.log "AL -> localCtx" <| localCtx
+      in
+      inferExpr localCtx body |>
+      Result.map
+        (\(bodyType, bodyCtx, bodySubst) ->
+          let
+            resultCtx =
+              bodyCtx
+
+            resultSubst =
+              combineSubsts localSubst bodySubst
+          in
+          ( applySubstToType resultSubst bodyType
+          , resultCtx
+          , resultSubst
+          )
+        )
+    )
+  
+
+
+inferExpr : Ctx -> Located Expr -> Result (List Problem) (Located Type, Ctx, Subst)
+inferExpr ctx expr =
+  case expr.value of
+    Binding name ->
+      case Dict.get name.value ctx.env of
+        Just t ->
+          Ok (t, ctx, emptySubst)
+        
+        Nothing ->
+          Err [ UndefinedName name ]
+      
+    
+    IntLiteral size ->
+      Ok ( withLocation size <| TBus (IntSize <| Binary.width <| Binary.fromDecimal size.value) EqualToSize
+      , ctx
+      , emptySubst
+      )
+    
+    Indexing e (from, to) ->
+      inferExpr ctx e |>
+      Result.andThen
+        (\(t, resultCtx, s1) ->
+          let
+            (indexingType, s2) =
+              case t.value of
+                TBus size _ ->
+                  if from.value > to.value then
+                    ( Err [ FromIndexBiggerThanToIndex from to ]
+                    , emptySubst
+                    )
+                  else
+                    case size of
+                      IntSize s ->
+                        if to.value >= s then
+                          ( Ok t
+                          , Subst <| Dict.singleton (nameFromLocated t) (withLocation e <| TBus (IntSize to.value) GreaterThanSize)
+                          )
+                        else
+                          ( Ok <| withLocation expr <| TBus (IntSize (to.value - from.value + 1)) EqualToSize
+                          , emptySubst
+                          )
+                      
+                      VarSize n ->
+                        ( Ok <| withLocation expr <| TBus (IntSize (to.value - from.value + 1)) EqualToSize
+                        , Subst <|
+                          Dict.singleton
+                          n
+                          (withLocation e <| TBus (IntSize to.value) GreaterThanSize)
+                        )
+                
+                TRecord _ ->
+                  ( Err [ InvalidIndexingTarget t (from, to) ]
+                  , emptySubst
+                  )
+                
+                TFun _ _ ->
+                  ( Err [ InvalidIndexingTarget t (from, to) ]
+                  , emptySubst
+                  )
+
+                TVar n ->
+                  if from.value > to.value then
+                    ( Err [ FromIndexBiggerThanToIndex from to ]
+                    , emptySubst
+                    )
+                  else
+                    ( Ok <| withLocation expr <| TBus (IntSize (to.value - from.value + 1)) EqualToSize
+                    , Subst <|
+                      Dict.singleton
+                      n
+                      (withLocation e <| TBus (IntSize to.value) GreaterThanSize)
+                    )
+                
+            resultSubst =
+              combineSubsts s1 s2
+          in
+          Result.map (\indexingT -> (indexingT, resultCtx, resultSubst)) indexingType
+        )
+
+    Record r ->
+      Result.map (Tuple3.mapFirst (withLocation r << TRecord)) <|
+        Dict.foldl
+          (\k v result ->
+            Result.andThen
+            (\(resultDict, resultCtx, resultSubst) ->
+              inferExpr resultCtx v |>
+                Result.map
+                (\(t, nextCtx, nextSubst) ->
+                  ( Dict.insert k.value t resultDict
+                  , nextCtx
+                  , combineSubsts resultSubst nextSubst
+                  )
+                )
+            )
+            result
+          )
+          (Ok (Dict.empty, ctx, emptySubst))
+          r.value
+
+    Call callee args ->
+      inferExpr ctx (withLocation callee <| Binding callee) |>
+      Result.andThen
+        (\(funcType, c1, s1) ->
+          List.foldl
+            (\arg argResult ->
+              Result.andThen
+              (\(nextTypes, nextCtx, nextSubst) ->
+                inferExpr (applySubstToCtx nextSubst nextCtx) arg |>
+                Result.map
+                (Tuple3.mapFirst
+                  (\t ->
+                    nextTypes ++ [ t ]
+                  )
+                )
+              )
+              argResult
+            )
+            (Ok ([], c1, emptySubst))
+            args |>
+          Result.andThen
+            (\(argTypes, c2, s2) ->
+              let
+                (outputType, c3) =
+                  newTVar expr c2
+                
+                s3 =
+                  combineSubsts s1 s2
+                
+                s4 =
+                  unify
+                    funcType
+                    (createTFunFromTypes argTypes outputType)
+                
+                funcType1 =
+                  applySubstToType s4 funcType
+
+                paramTypes =
+                  paramTypesFromTFun funcType1
+              in
+              if List.length paramTypes /= List.length argTypes then
+                Err [ WrongCallArity callee paramTypes argTypes ]
+              else
+                let
+                  callResult =
+                    List.foldl
+                      (\argType result ->
+                        Result.andThen
+                          (\(nextType, nextSubst) ->
+                            case nextType.value of
+                              TFun fromType toType ->
+                                Ok ( toType
+                                , unify (applySubstToType nextSubst fromType) argType
+                                )
+
+                              _ ->
+                                Err [ MismatchedTypes nextType argType ]
+                          )
+                          result
+                      )
+                      (Ok (funcType1, combineSubsts s3 s4))
+                      argTypes
+                in
+                Result.map
+                  (\(resultType, resultSubst) ->
+                    ( applySubstToType resultSubst resultType
+                    , c3
+                    , resultSubst
+                    )
+                  )
+                  callResult
+            )
+        )
+
+
+paramTypesFromTFun : Located Type -> List (Located Type)
+paramTypesFromTFun funcType =
+  case funcType.value of
+    TFun from to ->
+      from :: paramTypesFromTFun to
+    
+    _ ->
+      [ ]
+
+
+incrementLevel : Ctx -> Ctx
+incrementLevel ctx =
+  { ctx
+    | level =
+      ctx.level + 1
+  }
+
+
+inferDefs : Ctx -> List Def -> Result (List Problem) (Ctx, Subst)
+inferDefs ctx defs =
+  let
+    declaredCtx =
+      List.foldl
+        (\d nextCtx ->
+          case d of
+            FuncDef { name, params, outputs } ->
+              addToCtx name.value (createTFun params outputs) nextCtx
+
+            BindingDef { name } ->
+              let
+                bindings =
+                  case name.value of
+                    BindingName n ->
+                      [ withLocation name n ]
+                    
+                    BindingRecord r ->
+                      Dict.values r
+                
+                bindingCtx =
+                  List.foldl
+                    (\binding ctx1 ->
+                      let
+                        (t, ctx2) =
+                          newTVar binding ctx1
+                      in
+                      addToCtx binding.value t ctx2
+                    )
+                    nextCtx
+                    bindings
+              in
+              bindingCtx
+        )
+        ctx
+        defs
+  in
+  List.foldl
+    (\def result ->
+      Result.andThen
+        (\(resultCtx, resultSubst) ->
+          inferDef resultCtx def |>
+          Result.andThen
+            (\(defType, defCtx, defSubst) ->
+              let
+                nextSubst =
+                  combineSubsts resultSubst defSubst
+              in
+              case def of
+                FuncDef { name } ->
+                  Ok ( addToCtx name.value defType <| defCtx
+                  , nextSubst
+                  )
+                
+                BindingDef { name } ->
+                  case name.value of
+                    BindingName n ->
+                      Ok ( addToCtx n defType <| defCtx
+                      , nextSubst
+                      )
+                    
+                    BindingRecord r ->
+                      case defType.value of
+                        TRecord typeRecord ->
+                          Ok ( Dict.foldl
+                            (\k v nextCtx ->
+                              case Dict.get k.value typeRecord of
+                                Just t ->
+                                  addToCtx v.value t nextCtx
+                                Nothing ->
+                                  nextCtx
+                            )
+                            defCtx
+                            r
+                          , nextSubst
+                          )
+                        
+                        _ ->
+                          Err <| [ ExpectingRecord defType ]
+            )
+        )
+        result
+      )
+      (Ok (declaredCtx, emptySubst))
+      defs
+
+
+createTFunFromTypes : List (Located Type) -> Located Type -> Located Type
+createTFunFromTypes paramTypes outputType =
+  let
+    createTFunHelper : List (Located Type) -> Located Type
+    createTFunHelper types =
+      case types of
+        [ singleType ] ->
+          singleType
+        
+        fromType :: restTypes ->
+          { from =
+            fromType.from
+          , to =
+            Maybe.withDefault fromType.to <| Maybe.map .to <| List.Extra.last restTypes
+          , value =
+            TFun fromType (createTFunHelper restTypes)
+          }
+        
+        [] ->
+          impossibleLocatedType -- impossible
+  in
+  createTFunHelper (paramTypes ++ [ outputType ])
+
+
+createTFun : List Param -> Located (List Param) -> Located Type
+createTFun params outputs =
+  let
+    paramTypes =
+      List.map paramToLocatedType params
+    
+    outputType =
+      paramsToTRecord outputs
+  in
+  createTFunFromTypes paramTypes outputType
+  
+  
+paramsToTRecord : Located (List Param) -> Located Type
+paramsToTRecord params =
+  let
+    paramTypes =
+      List.map paramToLocatedType params.value
+    
+    paramNames =
+      List.map (\p -> p.name.value) params.value
+  in
+  case paramTypes of
+    [ singleType ] ->
+      singleType
+    
+    _ ->
+      withLocation params <|
+        TRecord <| Dict.fromList <| List.reverse <| 
+          List.map2 Tuple.pair paramNames paramTypes
+
+
+
+paramToLocatedType : Param -> Located Type
+paramToLocatedType p =
+  withLocation p.size <| paramToType p
+
+
+paramToType : Param -> Type
+paramToType p =
+  TBus p.size.value EqualToSize
 
 
 showProblems : String -> List Problem -> String
@@ -105,14 +947,12 @@ showProblem src problem =
       "I found an undefined name `" ++ undefinedName.value ++ "` here:\n"
       ++ showLocation src undefinedName ++ "\n"
       ++ "Hint: Try defining `" ++ undefinedName.value ++ "` before use."
-    WrongCallArity callee params locatedArgTypes ->
+    WrongCallArity callee paramTypes locatedArgTypes ->
       let
-        paramTypes =
-          List.map (paramToLocatedType >> .value) params
         argTypes =
-          List.map (.value) locatedArgTypes
+          List.map .value locatedArgTypes
         paramLength =
-          List.length params
+          List.length paramTypes
         argLength =
           List.length argTypes
       in
@@ -132,13 +972,13 @@ showProblem src problem =
             difference ->
               String.fromInt difference ++ " arguments"
           )
-          ++ " of type " ++ (String.join " and " <| List.map typeToString <| List.drop argLength paramTypes) ++ " to match the parameter types."
+          ++ " of type " ++ (String.join " and " <| List.map (typeToString << .value) <| List.drop argLength paramTypes) ++ " to match the parameter types."
         else
           "Try dropping " ++ String.fromInt (argLength - paramLength) ++ " arguments to match the parameter size."
         )
     InvalidIndexingTarget targetType (from, to) ->
       case targetType.value of
-        RecordType _ ->
+        TRecord _ ->
           "Are you trying to get a value of a record at some index? This doesn't work as you can only index into a bus type.\n"
           ++ showLocationRange src from to ++ "\n"
           ++ "Hint: Try destructing the record to get the values inside:\n\n"
@@ -148,71 +988,54 @@ showProblem src problem =
           "Are you trying to slice an integer? This is not allowed.\n"
           ++ showLocationRange src from to ++ "\n"
           ++ "Hint: Try specifying the integer value you want directly."
-    IndexOutOfBounds busSize from to ->
-      let
-        (indexName, indexValue) =
-          if from.value == to.value then
-            ( "index"
-            , String.fromInt from.value
-            )
-          else if from.value >= busSize then
-            ("start index"
-            , String.fromInt from.value
-            )
-          else
-            ("end index"
-            , String.fromInt to.value
-            )
-      in
-      "I found that you stepped out of bounds when indexing a bus of size " ++ String.fromInt busSize ++ ".\n"
-      ++ "The " ++ indexName ++ " " ++ indexValue ++ " is greater than the highest bus index " ++ String.fromInt (busSize - 1) ++ ".\n"
-      ++ showLocationRange src from to ++ "\n"
-      ++ "Hint: Try limiting the " ++ indexName ++ " to between 0 and " ++ String.fromInt (busSize - 1) ++ "."
     FromIndexBiggerThanToIndex from to ->
       "I found that the start index " ++ String.fromInt from.value ++ " is greater than " ++ " the end index " ++ String.fromInt to.value ++ ".\n"
       ++ showLocationRange src from to ++ "\n"
       ++ "Hint: Try limiting the start index to between 0 and " ++ (String.fromInt <| to.value) ++ "."
-    ExpectingBindingGotFunction bindingName functionName ->
-      "I'm expecting a binding for the name `" ++ bindingName.value ++ "` but got a function.\n"
-      ++ showLocation src bindingName ++ "\n"
-      ++ "Hint: Try referencing a binding instead of a function or calling the function `" ++ bindingName.value ++ "` with arguments."
-    ExpectingFunctionGotBinding functionName bindingName ->
-      "I'm expecting a function for the name `" ++ functionName.value ++ "` but got a binding.\n"
-      ++ showLocation src functionName ++ "\n"
-      ++ "Hint: Try referencing a function instead of a binding."
     MismatchedTypes expectedType actualType ->
-      "I'm expecting to find the type " ++ typeToString expectedType.value ++ " here:\n"
-      ++ showLocation src actualType ++ "\n"
-      ++ "but got the type " ++ typeToString actualType.value ++ ".\n"
-    ConflictingVarSizeArgs param previousArgType currentArgType ->
-      "I'm stuck part way in figuring out the size of a bus.\n"
-      ++ "You previously implied that the size should be " ++ typeToString previousArgType.value ++ " here:\n"
-      ++ showLocation src previousArgType ++ "\n"
-      ++ "but you implied a different size of " ++ typeToString currentArgType.value ++ " here:\n"
-      ++ showLocation src currentArgType
+      let
+        (prettyExpectedType, prettyActualType) =
+          prettifyTypes expectedType actualType
+      in
+      "I'm expecting to find the type " ++ typeToString prettyExpectedType.value ++ " here:\n"
+      ++ showLocation src prettyActualType ++ "\n"
+      ++ "but got the type " ++ typeToString prettyActualType.value ++ ".\n"
     BindingNotAllowedAtTopLevel bindingName ->
-      "I found a binding called `" ++ bindingTargetToString bindingName ++ "` at the top level of this unit here:\n"
-      ++ (case bindingName of
-          BindingName n ->
-            showLocation src n
-          BindingRecord r ->
-            showLocation src r
-        )
-        ++ "\n"
+      "I found a binding called `" ++ bindingTargetToString bindingName.value ++ "` at the top level of this unit here:\n"
+      ++ showLocation src bindingName ++ "\n"
       ++ "but you are not allowed to define binding at the top level.\n"
       ++ "Hint: Try defining a function instead of a binding."
-    BadRecursiveBindingDefinition targetName dependentName ->
-      "I found a bad recursive definition when you tried to define `" ++ bindingTargetToString targetName ++ "` here:\n"
-      ++ (case targetName of
-          BindingName n ->
-            showLocation src n
-          BindingRecord r ->
-            showLocation src r
-        )
-        ++ "\n"
-      ++ "in terms of `" ++ dependentName.value ++ "` itself used here:\n"
-      ++ showLocation src dependentName
+    ExpectingRecord recordType ->
+      "I'm expecting a record here:\n"
+      ++ showLocation src recordType
 
+
+prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
+prettifyTypes t1 t2 =
+  let
+    subst =
+      prettifyTypesHelper t1 t2
+  in
+  (applySubstToType subst t1, applySubstToType subst t2)
+
+
+prettifyTypesHelper : Located Type -> Located Type -> Subst
+prettifyTypesHelper t1 t2 =
+  case (t1.value, t2.value) of
+    (TRecord r1, TRecord r2) ->
+      Dict.foldl
+        (\k v1 resultSubst ->
+          let
+            v2 =
+              Maybe.withDefault v1 <| Dict.get k r2
+          in
+          combineSubsts resultSubst (unify v1 v2)
+        )
+        emptySubst
+        r1
+    
+    _ ->
+      emptySubst
 
 
 showLocation : String -> Located a -> String
@@ -240,20 +1063,43 @@ showLocationRange src start end =
 typeToString : Type -> String
 typeToString t =
   case t of
-    BusType s ->
-      sizeToString s
-    RecordType r ->
+    TBus s c ->
+      case s of
+        VarSize _ ->
+          sizeToString s
+
+        IntSize i ->
+          case c of
+            GreaterThanSize ->
+              "[" ++ String.fromInt (i + 1) ++ "]"
+            
+            EqualToSize ->
+              sizeToString s
+      
+    
+    TRecord r ->
       "{ " ++
       ( String.join ", " <|
         List.map
           (\(k, v) ->
-            k ++ " = " ++ typeToString v
+            k ++ " = " ++ typeToString v.value
           )
           (Dict.toList r)
       ) ++ " }"
-    ErrorType _ ->
-      "Type Error"
-
+    
+    TFun from to ->
+      let
+        fromType =
+          typeToString from.value
+        
+        toType =
+          typeToString to.value
+      in
+      fromType ++ " -> " ++ toType
+    
+    TVar id ->
+      id
+    
 
 sizeToString : Size -> String
 sizeToString s =
@@ -261,569 +1107,7 @@ sizeToString s =
   ++ (case s of
     IntSize i ->
       String.fromInt i
-    VarSize n i ->
+    VarSize n ->
       n
   )
   ++ "]"
-
-
-checkDef : List Def -> List Def -> Int -> Def -> List Problem
-checkDef beforeDefs afterDefs level def =
-  let
-    defNames =
-      getDefNames def
-    
-    duplicatedNames =
-      List.foldl
-        (\other duplicates1 ->
-          List.foldl
-            (\defName duplicates2 ->
-              case List.Extra.find
-                (\otherName -> otherName.value == defName.value)
-                (getDefNames other)
-              of
-                Just otherName ->
-                  DuplicatedName otherName defName :: duplicates2
-                Nothing ->
-                  duplicates2
-            )
-            []
-            defNames
-          ++ duplicates1
-        )
-        []
-        beforeDefs
-
-    allDefs =
-      beforeDefs ++ (def :: afterDefs)
-
-    typeErrors =
-      case def of
-        FuncDef { params, locals, body, outputs } ->
-          let
-            paramDefs =
-              List.map paramToDef params
-            
-            funcDefs =
-              allDefs ++ paramDefs ++ locals
-
-            bodyType =
-              getLocatedType funcDefs body
-            
-            retType =
-              outputsToLocatedType params [] outputs
-
-            retTypeErrors =
-              matchTypes retType bodyType
-          in
-          List.foldl
-            (\local localErrs ->
-              let
-                beforeLocal =
-                  beforeDefs ++ (def :: paramDefs)
-                afterLocal =
-                  List.filter ((/=) local) locals ++ afterDefs
-              in
-              checkDef beforeLocal afterLocal (level + 1) local ++ localErrs
-            )
-            []
-            locals
-          ++ retTypeErrors
-        
-        BindingDef { name, locals, body } ->
-          let
-            _ = Debug.log "AL -> level" <| level
-          in
-          if level <= 0 then
-            [ BindingNotAllowedAtTopLevel name ]
-          else
-            List.foldl
-              (\local localErrs ->
-                let
-                  beforeLocal =
-                    beforeDefs ++ [ def ]
-                  afterLocal =
-                    List.filter ((/=) local) locals ++ afterDefs
-                in
-                checkDef beforeLocal afterLocal (level + 1) local ++ localErrs
-              )
-              []
-              locals
-            ++ checkExpr (allDefs ++ locals) body
-
-    problems =
-      duplicatedNames ++ typeErrors
-  in
-  problems
-
-
-checkExpr : List Def -> Expr -> List Problem
-checkExpr defs expr =
-  let
-    _ = Debug.log "AL -> defs" <| defs
-  in
-  case expr of
-    Binding name ->
-      case getDef defs name of
-        Just _ ->
-          []
-        Nothing ->
-          [ UndefinedName name ]
-    Call callee args ->
-      case getDef defs callee of
-        Just calleeDef ->
-          case calleeDef of
-            FuncDef { params, outputs, body } ->
-              let
-                argTypes =
-                  List.map (getLocatedType defs) args
-              in
-              if List.length params /= List.length args then
-                [ WrongCallArity callee params argTypes ]
-              else
-                let
-                  paramTypeErrors =
-                    List.foldl
-                      (\(param, arg) problems ->
-                        matchTypes (paramToLocatedType param) (getLocatedType defs arg) ++ problems
-                      )
-                      []
-                      (List.map2 Tuple.pair params args)
-                  
-                  retType =
-                    outputsToLocatedType params argTypes outputs
-                in
-                case retType.value of
-                  ErrorType retTypeProblems ->
-                    paramTypeErrors ++ retTypeProblems
-                  _ ->
-                    paramTypeErrors
-
-            BindingDef { name } ->
-              [ ExpectingFunctionGotBinding callee name ]
-
-        Nothing ->
-          [ UndefinedName callee ]
-
-    Indexing e (from, to) ->
-      case getType defs (Indexing e (from, to)) of
-        ErrorType problems ->
-          problems
-        _ ->
-          []
-    
-    Record r ->
-      let
-        t =
-          getType defs (Record r)
-      in
-      case t of
-        RecordType record ->
-          Dict.foldl
-            (\_ value problems ->
-              case value of
-                ErrorType p ->
-                  p ++ problems
-                _ ->
-                  problems
-            )
-            []
-            record
-        _ ->
-          []
-
-    IntLiteral _ ->
-      []
-
-
-paramToLocatedType : Param -> Located Type
-paramToLocatedType p =
-  { from = p.name.from
-  , to = p.size.to
-  , value = BusType p.size.value
-  }
-
-
-outputsToLocatedType : List Param -> List (Located Type) -> Located (List Param) -> Located Type
-outputsToLocatedType params argTypes outputs =
-  let
-    t =
-      outputsToType params argTypes outputs.value
-  in
-  { from = outputs.from
-  , to = outputs.to
-  , value = t
-  }
-
-
-outputsToType : List Param -> List (Located Type) -> List Param -> Type
-outputsToType params argTypes outputs =
-  let
-    (varSizeSubstitutions, _, substitutionProblems) =
-      List.foldl
-        (\(p, a) (sizeSubsts, argSubsts, problems) ->
-          let
-            prev =
-              (sizeSubsts, argSubsts, problems) 
-          in
-          case p.size.value of
-            VarSize n s1 ->
-              case a.value of
-                BusType s2 ->
-                  case Dict.get n sizeSubsts of
-                    Just s3 ->
-                      if s3 /= s2 then -- substitution conflict
-                        let
-                          prevArg =
-                            Maybe.withDefault a <| Dict.get n argSubsts
-                        in
-                        (sizeSubsts, argSubsts, ConflictingVarSizeArgs p prevArg a :: problems)
-                      else
-                        prev
-                    Nothing ->
-                      (Dict.insert n s2 sizeSubsts, Dict.insert n a argSubsts, problems)
-                _ ->
-                  prev
-            IntSize _ ->
-              prev
-        )
-        (Dict.empty, Dict.empty, [])
-        (List.map2 Tuple.pair params argTypes)
-    
-    substituteOutputVarSize s =
-      case s of
-        VarSize n _ as varSize ->
-          case Dict.get n varSizeSubstitutions of
-            Just s1 ->
-              s1
-            Nothing ->
-              varSize
-        IntSize s1 ->
-          IntSize s1
-
-    outputType =
-      case outputs of
-        [ single ] ->
-          BusType <| substituteOutputVarSize single.size.value
-        many ->
-          RecordType <|
-            Dict.fromList <|
-              List.map
-                (\{name, size} ->
-                  (name.value, BusType <| substituteOutputVarSize size.value)
-                )
-                many
-  in
-  case substitutionProblems of
-    [] ->
-      outputType
-    _ ->
-      ErrorType substitutionProblems
-
-
-matchTypes : Located Type -> Located Type -> List Problem
-matchTypes expected actual =
-  let
-    problem =
-      [ MismatchedTypes expected actual ]
-    success =
-      []
-  in
-  case (expected.value, actual.value) of
-    (BusType expectedSize, BusType actualSize) ->
-      let
-        matchIntSize s1 s2 =
-          if s1 /= s2 then
-            problem
-          else
-            success
-      in
-      case (expectedSize, actualSize) of
-        (IntSize s1, IntSize s2) ->
-          matchIntSize s1 s2
-        (IntSize s1, VarSize _ s2) ->
-          case s2 of
-            Nothing ->
-              problem
-            Just s3 ->
-              matchIntSize s1 s3
-        (VarSize _ s1, IntSize s2) ->
-          case s1 of
-            Nothing ->
-              success
-            Just s3 ->
-              matchIntSize s3 s2
-        (VarSize n1 s1, VarSize n2 s2) ->
-          -- TODO: update variable size value
-          if n1 == n2 then
-            success
-          else
-            case (s1, s2) of
-              (Just s3, Just s4) ->
-                matchIntSize s3 s4
-              _ ->
-                problem
-
-  
-    (RecordType expectedRecord, RecordType actualRecord) ->
-      if Set.diff
-        (Set.fromList <| Dict.keys expectedRecord)
-        (Set.fromList <| Dict.keys actualRecord)
-        /= Set.empty
-      then
-        problem
-      else
-        List.foldl
-          (\key problems ->
-            let
-              expectedType =
-                Dict.get key expectedRecord
-              actualType =
-                Dict.get key actualRecord
-            in
-            case (expectedType, actualType) of
-              (Nothing, _) ->
-                success -- impossible
-              (_, Nothing) ->
-                success --impossible
-              (Just t1, Just t2) ->
-                matchTypes -- TODO: locate each key and value in RecordType
-                  { from = expected.from
-                  , to = expected.to
-                  , value = t1
-                  }
-                  { from = actual.from
-                  , to = actual.to
-                  , value = t2
-                  }
-                ++ problems
-          )
-          []
-          (Dict.keys expectedRecord)
-
-    (ErrorType p1, ErrorType p2) ->
-      p1 ++ p2
-
-    (ErrorType p1, _) ->
-      p1
-    
-    (_, ErrorType p2) ->
-      p2
-    
-    _ ->
-      problem
-
-
-getLocatedType : List Def -> Expr -> Located Type
-getLocatedType defs expr =
-  let
-    exprLocation =
-      locateExpr expr
-  in
-  { from = exprLocation.from
-  , to = exprLocation.to
-  , value = getType defs expr
-  }
-
-
-locateExpr : Expr -> Location
-locateExpr expr =
-  case expr of
-    Binding bindingName ->
-      { from = bindingName.from
-      , to = bindingName.to
-      }
-    Call callee args ->
-      { from = callee.from
-      , to = Maybe.withDefault callee.to <| Maybe.map (.to << locateExpr) <| List.Extra.last args
-      }
-    Indexing e (_, to) ->
-      { from = .from <| locateExpr e
-      , to = to.to
-      }
-    Record r ->
-      { from = r.from
-      , to = r.to
-      }
-
-    IntLiteral i ->
-      { from = i.from
-      , to = i.to
-      }
-
-getType : List Def -> Expr -> Type
-getType defs expr =
-  case expr of
-    Binding bindingName ->
-      let
-        _ = Debug.log "AL -> bindingName" <| bindingName
-      in
-      case getDef defs bindingName of
-        Just def ->
-          case def of
-            FuncDef { name } ->
-              ErrorType [ ExpectingBindingGotFunction bindingName name ]
-            BindingDef { name, body, size } ->
-              case size of
-                Just s ->
-                  let
-                    _ = Debug.log "AL -> s" <| s
-                  in
-                  BusType s.value
-                Nothing ->
-                  let
-                    _ = Debug.log "AL -> t" <| t
-                    t =
-                      getType (List.filter ((/=) def) defs) body
-                  in
-                  case (t, name) of
-                    (RecordType rt, BindingRecord r) ->
-                      Maybe.withDefault t <|
-                        Maybe.andThen (\(k, _) -> Dict.get k.value rt) <|
-                          List.Extra.find (\(_, v) -> v.value == bindingName.value) <|
-                            Dict.toList r.value
-                    (ErrorType errs, _) ->
-                      let
-                        targetNames =
-                          case name of
-                            BindingName n ->
-                              [n.value]
-                            BindingRecord r ->
-                              List.map .value <| Dict.keys r.value
-                        errorLocatedNames =
-                          List.foldl
-                            (\err names ->
-                              case err of
-                                UndefinedName n ->
-                                  n :: names
-                                _ ->
-                                  names
-                            )
-                            []
-                            errs
-                      in
-                      ErrorType <|
-                        List.filter
-                          (\err ->
-                            case err of
-                              UndefinedName n ->
-                                not <| List.member n.value targetNames
-                              _ ->
-                                True
-                          )
-                          errs
-                        ++ List.foldl
-                          (\n badRecursiveDefProblems ->
-                            case List.Extra.find (\errorLocatedName -> errorLocatedName.value == n) errorLocatedNames of
-                              Just errorLocatedName ->
-                                BadRecursiveBindingDefinition name errorLocatedName :: badRecursiveDefProblems
-                              Nothing ->
-                                badRecursiveDefProblems
-                          )
-                          []
-                          targetNames
-                    _ ->
-                      t
-        Nothing ->
-          ErrorType [ UndefinedName bindingName ]
-    Call callee args ->
-      case getDef defs callee of
-        Just def ->
-          case def of
-            FuncDef { params, outputs } ->
-              let
-                callProblems =
-                  checkExpr defs (Call callee args)
-              in
-              case callProblems of
-                [] ->
-                  outputsToType params (List.map (getLocatedType defs) args) outputs.value
-                _ ->
-                  ErrorType callProblems
-            BindingDef { name } ->
-              ErrorType [ ExpectingFunctionGotBinding callee name ]
-        Nothing ->
-          ErrorType [ UndefinedName callee ]
-    Indexing e (from, to) ->
-      let
-        t =
-          getLocatedType defs e
-      in
-      case t.value of
-        BusType size ->
-          let
-            slicedBusType s =
-              if from.value >= s || to.value >= s then
-                ErrorType [ IndexOutOfBounds s from to ]
-              else
-                BusType <| IntSize (to.value - from.value + 1)
-          in
-          if from.value > to.value then
-            ErrorType [ FromIndexBiggerThanToIndex from to ]
-          else
-            case size of
-              IntSize s ->
-                slicedBusType s
-              VarSize n s1 ->
-                case s1 of
-                  Just s2 ->
-                    slicedBusType s2
-                  Nothing ->
-                    BusType <| VarSize n (Just <| from.value + 1)
-        RecordType r ->
-          ErrorType [ InvalidIndexingTarget t (from, to) ]
-        ErrorType problems ->
-          ErrorType problems
-    Record r ->
-      RecordType <|
-        Dict.fromList <|
-          List.map
-            (\(n, e) ->
-              (n.value, getType defs e)
-            )
-            (List.reverse <| Dict.toList r.value)
-    IntLiteral i ->
-      BusType <| IntSize <| Binary.width <| Binary.fromDecimal i.value
-
-
-getDef : List Def -> Located String -> Maybe Def
-getDef defs bindingName =
-  List.Extra.find
-    (\def ->
-      let
-        defNames =
-          case def of
-            FuncDef { name } ->
-              [ name.value ]
-            BindingDef { name } ->
-              case name of
-                BindingName n ->
-                  [ n.value ]
-                BindingRecord r ->
-                  List.map .value <| Dict.values r.value
-      in
-      List.member bindingName.value defNames
-    )
-    defs
-
-paramToDef : Param -> Def
-paramToDef p =
-  BindingDef
-    { name = BindingName p.name
-    , locals = []
-    , body = Binding (fakeLocated "")
-    , size = Just p.size
-    }
-
-
-getDefNames : Def -> List (Located String)
-getDefNames def =
-  case def of
-    FuncDef { name } ->
-      [ name ]
-    BindingDef { name } ->
-      case name of
-        BindingName n ->
-          [ n ]
-        BindingRecord r ->
-          Dict.values r.value

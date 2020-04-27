@@ -2,7 +2,7 @@ module CheckerTest exposing (suite)
 
 import Test exposing (Test, describe)
 import Expect
-import HdlChecker exposing (Type(..), Problem(..))
+import HdlChecker exposing (Type(..), Problem(..), SizeComparator(..))
 import HdlParser exposing (Size(..), BindingTarget(..))
 import AssocList as Dict
 
@@ -36,7 +36,7 @@ suite =
             src =
               "not a[2] -> [1] = nand a a"
             expected =
-              Err [ MismatchedTypes { from = (1,13), to = (1,16), value = BusType (IntSize 1) } { from = (1,19), to = (1,27), value = BusType (IntSize 2) }]
+              Err [ MismatchedTypes { from = (1,13), to = (1,16), value = TBus (IntSize 1) EqualToSize } { from = (1,19), to = (1,27), value = TBus (IntSize 2) EqualToSize }]
           in
           Expect.equal expected (check src)
       , Test.test "Arg type bus size too large" <|
@@ -45,7 +45,7 @@ suite =
             src =
               "not a -> [1] = nand a a\nusing_not a[2] -> [2] = not a"
             expected =
-              Err [MismatchedTypes { from = (1,5), to = (1,6), value = BusType (IntSize 1) } { from = (2,29), to = (2,30), value = BusType (IntSize 2) }]
+              Err [MismatchedTypes { from = (2,19), to = (2,22), value = TBus (IntSize 2) EqualToSize } { from = (2,25), to = (2,30), value = TBus (IntSize 1) EqualToSize },MismatchedTypes { from = (1,5), to = (1,6), value = TBus (IntSize 1) EqualToSize } { from = (2,29), to = (2,30), value = TBus (IntSize 2) EqualToSize }]
           in
           Expect.equal expected (check src)
       , Test.test "Use user-defined functions" <|
@@ -72,7 +72,7 @@ suite =
             src =
               "not a[n] -> [1] = nand a a"
             expected =
-              Err [MismatchedTypes { from = (1,13), to = (1,16), value = BusType (IntSize 1) } { from = (1,19), to = (1,27), value = BusType (VarSize "n" Nothing) }]
+              Err [MismatchedTypes { from = (1,13), to = (1,16), value = TBus (IntSize 1) EqualToSize } { from = (1,19), to = (1,27), value = TBus (VarSize "n") EqualToSize }]
           in
           Expect.equal expected (check src)
       ]
@@ -83,7 +83,7 @@ suite =
             src =
               "or a b -> [1] = nand (not a) (not b)"
             expected =
-              Err [UndefinedName { from = (1,31), to = (1,34), value = "not" },UndefinedName { from = (1,23), to = (1,26), value = "not" }]
+              Err [UndefinedName { from = (1,23), to = (1,26), value = "not" }]
           in
           Expect.equal expected (check src)
       , Test.test "Undefined function names" <|
@@ -92,7 +92,7 @@ suite =
             src =
               "half_adder a b -> { sum, carry } =\n  let\n    sum = xor a b\n    carry = and a b\n  in\n  { sum = sum, carry = carry }"
             expected =
-              Err [UndefinedName { from = (3,11), to = (3,14), value = "xor" },UndefinedName { from = (4,13), to = (4,16), value = "and" }]
+              Err [UndefinedName { from = (3,11), to = (3,14), value = "xor" }]
           in
           Expect.equal expected (check src)
       , Test.test "Undefined binding name" <|
@@ -121,10 +121,7 @@ suite =
             src =
               "combine a b -> { a, b } = { a = a, c = b }"
             expected =
-              Err [ MismatchedTypes
-                { from = (1,16), to = (1,24), value = RecordType (Dict.fromList [("a",BusType (IntSize 1)),("b",BusType (IntSize 1))]) }
-                { from = (1,27), to = (1,43), value = RecordType (Dict.fromList [("a",BusType (IntSize 1)),("c",BusType (IntSize 1))]) }
-              ]
+              Err [MismatchedTypes { from = (1,27), to = (1,43), value = TRecord (Dict.fromList [("c",{ from = (1,11), to = (1,12), value = TVar "T1" }),("a",{ from = (1,9), to = (1,10), value = TVar "T0" })]) } { from = (1,16), to = (1,24), value = TRecord (Dict.fromList [("b",{ from = (1,21), to = (1,22), value = TBus (IntSize 1) EqualToSize }),("a",{ from = (1,18), to = (1,19), value = TBus (IntSize 1) EqualToSize })]) }]
           in
           Expect.equal expected (check src)
       , Test.test "Record assignment in locals" <|
@@ -218,7 +215,7 @@ suite =
             src =
               "f i -> [1] = let a = nand 0 in i"
             expected =
-              Err [WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ name = { from = (-1,-1), to = (-1,-1), value = "a" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } },{ name = { from = (-1,-1), to = (-1,-1), value = "b" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } }] [{ from = (1,27), to = (1,28), value = BusType (IntSize 1) }]]
+              Err [ WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ from = (1,27), to = (1,28), value = TBus (IntSize 1) EqualToSize },{ from = (1,27), to = (1,28), value = TBus (IntSize 1) EqualToSize }] [{ from = (1,27), to = (1,28), value = TBus (IntSize 1) EqualToSize }]]
           in
           Expect.equal expected (check src)
       , Test.test "call arity too big" <|
@@ -227,14 +224,18 @@ suite =
             src =
               "f i -> [1] = let a = nand 0 0 0 in i"
             expected =
-              Err [WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ name = { from = (-1,-1), to = (-1,-1), value = "a" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } },{ name = { from = (-1,-1), to = (-1,-1), value = "b" }, size = { from = (-1,-1), to = (-1,-1), value = VarSize "n" Nothing } }] [{ from = (1,27), to = (1,28), value = BusType (IntSize 1) }, { from = (1,29), to = (1,30), value = BusType (IntSize 1) },{ from = (1,31), to = (1,32), value = BusType (IntSize 1) }]]
+              Err [ WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ from = (-1,-1), to = (-1,-1), value = TBus (VarSize "n") EqualToSize },{ from = (-1,-1), to = (-1,-1), value = TBus (VarSize "n") EqualToSize }] [{ from = (1,27), to = (1,28), value = TBus (IntSize 1) EqualToSize },{ from = (1,29), to = (1,30), value = TBus (IntSize 1) EqualToSize },{ from = (1,31), to = (1,32), value = TBus (IntSize 1) EqualToSize }]]
           in
           Expect.equal expected (check src)
       ]
       , describe "Indexing"
-      [ test "Indexing a bus"
-        "head bus[n] -> [1] = bus[0]" <|
+      [ test "Indexing a IntSize bus"
+        "head bus[1] -> [1] = bus[0]" <|
         Ok ()
+
+      , test "Indexing a VarSize bus"
+        "head bus[n] -> [1] = bus[0]" <|
+        Err [MismatchedTypes { from = (1,10), to = (1,11), value = TBus (VarSize "n") EqualToSize } { from = (1,22), to = (1,25), value = TBus (IntSize 0) GreaterThanSize }]
       
       , test "Slicing a bus"
         "first4 bus[16] -> [4] = bus[0..3]" <|
@@ -242,15 +243,15 @@ suite =
       
       ,  test "Index out of bounds"
         "head bus[2] -> [1] = bus[2]" <|
-        Err [IndexOutOfBounds 2 { from = (1,26), to = (1,27), value = 2 } { from = (1,26), to = (1,27), value = 2 }]
+        Err [MismatchedTypes { from = (1,10), to = (1,11), value = TBus (IntSize 2) EqualToSize } { from = (1,22), to = (1,25), value = TBus (IntSize 2) GreaterThanSize }]
       
       , test "end index out of bounds"
         "first4 bus[3] -> [4] = bus[0..3]" <|
-        Err [IndexOutOfBounds 3 { from = (1,28), to = (1,29), value = 0 } { from = (1,31), to = (1,32), value = 3 }]
+        Err [MismatchedTypes { from = (1,12), to = (1,13), value = TBus (IntSize 3) EqualToSize } { from = (1,24), to = (1,27), value = TBus (IntSize 3) GreaterThanSize }]
       
       , test "start index out of bounds"
         "first4 bus[3] -> [4] = bus[3..4]" <|
-        Err [IndexOutOfBounds 3 { from = (1,28), to = (1,29), value = 3 } { from = (1,31), to = (1,32), value = 4 }]
+        Err [MismatchedTypes { from = (1,12), to = (1,13), value = TBus (IntSize 3) EqualToSize } { from = (1,24), to = (1,27), value = TBus (IntSize 4) GreaterThanSize },MismatchedTypes { from = (1,19), to = (1,20), value = TBus (IntSize 4) EqualToSize } { from = (1,24), to = (1,33), value = TBus (IntSize 2) EqualToSize }]
       
       , test "start index greater than end index"
         "first4 bus[3] -> [2] = bus[2..1]" <|
@@ -259,18 +260,7 @@ suite =
       , describe "BindingNotAllowedAtTopLevel"
       [ test "binding not allowed at top level"
         "my_binding = nand 0 0" <|
-        Err [BindingNotAllowedAtTopLevel (BindingName { from = (1,1), to = (1,11), value = "my_binding" })]
-      ]
-      , describe "BadRecursiveDefinition"
-      [ test "two mutal dependence"
-        "recursive i -> [1] =\n let\n  b = c\n  c = b\n in\n nand i c" <|
-        Err [BadRecursiveBindingDefinition (BindingName { from = (4,3), to = (4,4), value = "c" }) { from = (3,7), to = (3,8), value = "c" }]
-      , test "three mutal dependence"
-        "recursive i -> [1] =\n let\n  b = c\n  d = b\n  c = d\n in\n nand i c" <|
-        Err [BadRecursiveBindingDefinition (BindingName { from = (5,3), to = (5,4), value = "c" }) { from = (3,7), to = (3,8), value = "c" }]
-      , test "four mutal dependence"
-        "recursive i -> [1] =\n let\n  b = c\n  d = b\n  c = e\n  e = d\n in\n nand i c" <|
-        Err [BadRecursiveBindingDefinition (BindingName { from = (5,3), to = (5,4), value = "c" }) { from = (3,7), to = (3,8), value = "c" }]
+        Err [BindingNotAllowedAtTopLevel { from = (1,1), to = (1,11), value = BindingName "my_binding" }]
       ]
     ]
 
