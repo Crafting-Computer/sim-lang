@@ -451,7 +451,7 @@ generateTruthTable output =
             case size of
               IntSize i ->
                 Encode.int i
-              VarSize n _ ->
+              VarSize n ->
                 Encode.string n
         in
         generateTruthTablePort <| Encode.list encodeDefOutput defs

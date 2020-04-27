@@ -93,7 +93,7 @@ emitDef indent def =
     FuncDef { name, params, locals, body } ->
       let
         emittedBody =
-          [ String.join "\n" <| List.map (emitDef <| indent + 1) locals
+          [ emitLocals (indent + 1) locals
           , "  return " ++ emitExpr body.value ++ ";"
           ]
       in
@@ -118,10 +118,106 @@ emitDef indent def =
           emitBlock indent
             [ "var " ++ emittedName ++ " ="
             , "function () {"
-            , String.join "\n" <| List.map (emitDef <| indent + 1) locs
+            , emitLocals (indent + 1) locs
             , "  return " ++ emitExpr body.value ++ ";"
             , "}();"
             ]
+
+
+emitLocals : Int -> List Def -> String
+emitLocals indent defs =
+  let
+    orderedLocals =
+      List.sortWith
+        (\d1 d2 ->
+          let
+            t1 =
+              getTargetNamesFromDef d1
+            
+            n1 =
+              getSourceNamesFromDef d1
+            
+            t2 =
+              getTargetNamesFromDef d2
+            
+            n2 =
+              getSourceNamesFromDef d2
+            
+            firstDependsOnSecond =
+              List.any (\n -> List.member n t2) n1
+            
+            secondDependsOnFirst =
+              List.any (\n -> List.member n t1) n2
+          in
+          if firstDependsOnSecond then
+            if secondDependsOnFirst then
+              EQ
+            else
+              GT
+          else
+            LT
+        )
+        defs
+  in
+  String.join "\n" <| List.map (emitDef <| indent) orderedLocals
+
+
+-- c = nand a b
+-- target names : [ c ]
+-- { a = first, b = second } = nand a b
+-- target names : [ first, second ]
+getTargetNamesFromDef : Def -> List String
+getTargetNamesFromDef def =
+  case def of
+    FuncDef { name } ->
+      [ name.value ]
+    
+    BindingDef { name } ->
+      case name.value of
+        BindingName n ->
+          [ n ]
+        
+        BindingRecord r ->
+          List.map .value <| Dict.values r
+
+
+-- c = nand a b
+-- source names : [ nand, a, b ]
+getSourceNamesFromDef : Def -> List String
+getSourceNamesFromDef def =
+  let
+    (l, b) =
+      case def of
+        FuncDef { locals, body } ->
+          (locals, body)
+
+        BindingDef { locals, body } ->
+          (locals, body)
+  in
+  ( List.concat <|
+    List.map
+      getSourceNamesFromDef
+      l
+  ) ++ getNamesFromExpr b.value
+
+
+getNamesFromExpr : Expr -> List String
+getNamesFromExpr expr =
+  case expr of
+    Binding name ->
+      [ name.value ]
+    
+    Call callee args ->
+      callee.value :: (List.concat <| List.map (getNamesFromExpr << .value) args)
+  
+    Indexing e _ ->
+      getNamesFromExpr e.value
+    
+    Record r ->
+      List.concat <| List.map (getNamesFromExpr << .value) <| Dict.values r.value
+    
+    IntLiteral _ ->
+      []
 
 
 emitIndentation : Int -> String

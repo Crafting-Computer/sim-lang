@@ -74,15 +74,15 @@ source =
   -- "head bus[16] -> [1] = bus[0]"
   -- "head bus[2] -> [1] = bus[2]"
   -- "first4 bus[3] -> [4] = bus[3..4]"
-  """
-  first bus[3] -> [1] =
-    let
-      one = bus[0]
-      two = bus[1]
-      three = bus[3]
-    in
-    three
-  """
+  -- """
+  -- first bus[3] -> [1] =
+  --   let
+  --     one = bus[0]
+  --     two = bus[1]
+  --     three = bus[3]
+  --   in
+  --   three
+  -- """
   -- "first4 bus[3] -> [4] = bus[0..3]"
   -- "f i -> [1] =\n let\n  a = a\n  in\n i"
 --   """
@@ -122,6 +122,16 @@ source =
   -- not a -> [1] =
   --   nand a a
   -- """
+  """
+  f i -> [1] =
+    let
+      b = c
+      a = b
+      b = a
+      c = 1
+    in
+    a
+  """
 main =
   case parse source of
     Err err ->

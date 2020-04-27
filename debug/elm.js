@@ -6228,6 +6228,27 @@ var $author$project$HdlChecker$check = function (defs) {
 	}
 };
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
 var $author$project$HdlParser$bindingTargetToString = function (target) {
 	if (target.$ === 'BindingName') {
 		var n = target.a;
@@ -6319,6 +6340,115 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 var $author$project$HdlEmitter$emitParam = function (p) {
 	return p.name.value;
 };
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
+		}
+	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $author$project$HdlEmitter$getNamesFromExpr = function (expr) {
+	getNamesFromExpr:
+	while (true) {
+		switch (expr.$) {
+			case 'Binding':
+				var name = expr.a;
+				return _List_fromArray(
+					[name.value]);
+			case 'Call':
+				var callee = expr.a;
+				var args = expr.b;
+				return A2(
+					$elm$core$List$cons,
+					callee.value,
+					$elm$core$List$concat(
+						A2(
+							$elm$core$List$map,
+							A2(
+								$elm$core$Basics$composeL,
+								$author$project$HdlEmitter$getNamesFromExpr,
+								function ($) {
+									return $.value;
+								}),
+							args)));
+			case 'Indexing':
+				var e = expr.a;
+				var $temp$expr = e.value;
+				expr = $temp$expr;
+				continue getNamesFromExpr;
+			case 'Record':
+				var r = expr.a;
+				return $elm$core$List$concat(
+					A2(
+						$elm$core$List$map,
+						A2(
+							$elm$core$Basics$composeL,
+							$author$project$HdlEmitter$getNamesFromExpr,
+							function ($) {
+								return $.value;
+							}),
+						$pzp1997$assoc_list$AssocList$values(r.value)));
+			default:
+				return _List_Nil;
+		}
+	}
+};
+var $author$project$HdlEmitter$getSourceNamesFromDef = function (def) {
+	var _v0 = function () {
+		if (def.$ === 'FuncDef') {
+			var locals = def.a.locals;
+			var body = def.a.body;
+			return _Utils_Tuple2(locals, body);
+		} else {
+			var locals = def.a.locals;
+			var body = def.a.body;
+			return _Utils_Tuple2(locals, body);
+		}
+	}();
+	var l = _v0.a;
+	var b = _v0.b;
+	return _Utils_ap(
+		$elm$core$List$concat(
+			A2($elm$core$List$map, $author$project$HdlEmitter$getSourceNamesFromDef, l)),
+		$author$project$HdlEmitter$getNamesFromExpr(b.value));
+};
+var $author$project$HdlEmitter$getTargetNamesFromDef = function (def) {
+	if (def.$ === 'FuncDef') {
+		var name = def.a.name;
+		return _List_fromArray(
+			[name.value]);
+	} else {
+		var name = def.a.name;
+		var _v1 = name.value;
+		if (_v1.$ === 'BindingName') {
+			var n = _v1.a;
+			return _List_fromArray(
+				[n]);
+		} else {
+			var r = _v1.a;
+			return A2(
+				$elm$core$List$map,
+				function ($) {
+					return $.value;
+				},
+				$pzp1997$assoc_list$AssocList$values(r));
+		}
+	}
+};
+var $elm$core$List$member = F2(
+	function (x, xs) {
+		return A2(
+			$elm$core$List$any,
+			function (a) {
+				return _Utils_eq(a, x);
+			},
+			xs);
+	});
+var $elm$core$List$sortWith = _List_sortWith;
 var $author$project$HdlEmitter$emitDef = F2(
 	function (indent, def) {
 		if (def.$ === 'FuncDef') {
@@ -6328,13 +6458,7 @@ var $author$project$HdlEmitter$emitDef = F2(
 			var body = def.a.body;
 			var emittedBody = _List_fromArray(
 				[
-					A2(
-					$elm$core$String$join,
-					'\n',
-					A2(
-						$elm$core$List$map,
-						$author$project$HdlEmitter$emitDef(indent + 1),
-						locals)),
+					A2($author$project$HdlEmitter$emitLocals, indent + 1, locals),
 					'  return ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';')
 				]);
 			return A2(
@@ -6372,18 +6496,45 @@ var $author$project$HdlEmitter$emitDef = F2(
 						[
 							'var ' + (emittedName + ' ='),
 							'function () {',
-							A2(
-							$elm$core$String$join,
-							'\n',
-							A2(
-								$elm$core$List$map,
-								$author$project$HdlEmitter$emitDef(indent + 1),
-								locs)),
+							A2($author$project$HdlEmitter$emitLocals, indent + 1, locs),
 							'  return ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';'),
 							'}();'
 						]));
 			}
 		}
+	});
+var $author$project$HdlEmitter$emitLocals = F2(
+	function (indent, defs) {
+		var orderedLocals = A2(
+			$elm$core$List$sortWith,
+			F2(
+				function (d1, d2) {
+					var t2 = $author$project$HdlEmitter$getTargetNamesFromDef(d2);
+					var t1 = $author$project$HdlEmitter$getTargetNamesFromDef(d1);
+					var n2 = $author$project$HdlEmitter$getSourceNamesFromDef(d2);
+					var secondDependsOnFirst = A2(
+						$elm$core$List$any,
+						function (n) {
+							return A2($elm$core$List$member, n, t1);
+						},
+						n2);
+					var n1 = $author$project$HdlEmitter$getSourceNamesFromDef(d1);
+					var firstDependsOnSecond = A2(
+						$elm$core$List$any,
+						function (n) {
+							return A2($elm$core$List$member, n, t2);
+						},
+						n1);
+					return firstDependsOnSecond ? (secondDependsOnFirst ? $elm$core$Basics$EQ : $elm$core$Basics$GT) : $elm$core$Basics$LT;
+				}),
+			defs);
+		return A2(
+			$elm$core$String$join,
+			'\n',
+			A2(
+				$elm$core$List$map,
+				$author$project$HdlEmitter$emitDef(indent),
+				orderedLocals));
 	});
 var $author$project$HdlEmitter$emitPrelude = function () {
 	var nsize = function (name) {
@@ -8921,7 +9072,7 @@ var $author$project$HdlChecker$showProblems = F2(
 				$author$project$HdlChecker$showProblem(src),
 				problems));
 	});
-var $author$project$Main$source = '\n  first bus[3] -> [1] =\n    let\n      one = bus[0]\n      two = bus[1]\n      three = bus[3]\n    in\n    three\n  ';
+var $author$project$Main$source = '\n  f i -> [1] =\n    let\n      b = c\n      a = b\n      b = a\n      c = 1\n    in\n    a\n  ';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$main = function () {
