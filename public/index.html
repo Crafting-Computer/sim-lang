@@ -16,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.20.0/min/vs/loader.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.20.0/min/vs/editor/editor.main.nls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.20.0/min/vs/editor/editor.main.min.js"></script>
-  <script src="elm.js"></script>
+  <script src="/public/elm.js"></script>
 
   <script>
     /////////////////////////////////// language support for HDL ////////////////////////////////
@@ -115,10 +115,32 @@
 
     editor.setModel(tabStates[currentUnitIndex].model);
 
+    function addTab(newUnitIndex, newUnitSource) {
+      var newTabState = {
+        viewState : undefined,
+        model : monaco.editor.createModel(newUnitSource, "hdl")
+      }
+      tabStates[newUnitIndex] = newTabState;
+    }
+
 
     /////////////////////////////////// initialize elm app /////////////////////////////////////////
 
-    var app = Elm.Editor.init({ node: document.getElementById('rightPanel') });
+    var localStorageKey = "sim-editor";
+
+    // load saved project from localStorage
+    var savedProjectString = localStorage.getItem(localStorageKey);
+    function jsonEscape(str)  {
+      return str.replace(/\n/g, "\\\\n").replace(/\r/g, "\\\\r").replace(/\t/g, "\\\\t");
+    }
+    var savedProject = JSON.parse(jsonEscape(savedProjectString));
+    console.log(savedProject);
+
+    savedProject.forEach(function (unit, unitIndex) {
+      addTab(unitIndex, unit.source);
+    });
+
+    var app = Elm.Editor.init({ node: document.getElementById('rightPanel'), flags: savedProject });
 
     app.ports.setEditorValuePort.subscribe(function(newValue) {
       editor.setValue(newValue);
@@ -249,17 +271,24 @@
     }
 
     app.ports.addTabPort.subscribe(function(newUnitIndex) {
-      var newTabState = {
-        viewState : undefined,
-        model : monaco.editor.createModel("{- Insert HDL code here -}", "hdl")
-      }
-      tabStates[newUnitIndex] = newTabState;
+      addTab(newUnitIndex, "{- Insert HDL code here -}");
       changeTab(newUnitIndex);
     });
 
     monaco.editor.onWillDisposeModel(function(model) {
       console.log("monaco attempting to dispose model...");
     });
+
+    ///////////////////////////////////// save project ///////////////////////////////////
+    app.ports.storeModelPort.subscribe(function(project) {
+      var projectJson = JSON.stringify(project);
+      localStorage.setItem(localStorageKey, projectJson);
+    });
+
+    window.addEventListener("beforeunload", function() {
+      app.ports.pageWillClosePort.send(null);
+    });
+
   </script>
 
 </body>

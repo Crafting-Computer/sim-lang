@@ -28,6 +28,8 @@ port generateTruthTablePort : Encode.Value -> Cmd msg
 port receiveTruthTablePort : (String -> msg) -> Sub msg
 port changeTabPort : UnitIndex -> Cmd msg
 port addTabPort : UnitIndex -> Cmd msg
+port storeModelPort : Encode.Value -> Cmd msg
+port pageWillClosePort : (() -> msg) -> Sub msg
 
 
 type alias Model =
@@ -56,6 +58,7 @@ type Msg
   | StartEditingActiveUnitName
   | EditActiveUnitName String
   | StopEditingActiveUnitName
+  | StoreModel ()
 
 
 type alias TruthTable =
@@ -87,7 +90,7 @@ toElmUiColor color =
     E.rgba red green blue alpha
 
 
-main : Program () Model Msg
+main : Program (Maybe Decode.Value) Model Msg
 main =
   Browser.element
     { init = init
@@ -130,7 +133,16 @@ update msg model =
       )
 
     ChangeTab desiredUnitIndex ->
-      (setActiveUnit desiredUnitIndex model, changeTabPort desiredUnitIndex)
+      let
+        newModel =
+          setActiveUnit desiredUnitIndex model
+      in
+      ( newModel
+      , Cmd.batch
+        [ changeTabPort desiredUnitIndex
+        , generateTruthTable ((getActiveUnit >> .output) newModel)
+        ]
+      )
 
     AddTab ->
       (addUnit "Untitled Unit" model, addTabPort <| NonEmptyArray.length model.units)
@@ -153,6 +165,52 @@ update msg model =
       }
       , Cmd.none
       )
+
+    StoreModel _ ->
+      ( model
+      , storeModelPort (encodeModel model)
+      )
+
+
+encodeModel : Model -> Encode.Value
+encodeModel model =
+  let
+    encodeUnit : Unit -> Encode.Value
+    encodeUnit unit =
+      Encode.object
+        [ ( "name", Encode.string unit.name )
+        , ( "source", Encode.string unit.source )
+        ]
+  in
+  NonEmptyArray.encode encodeUnit model.units
+
+
+decodeModel : Decoder Model
+decodeModel =
+  let
+    decodeUnit : Decoder Unit
+    decodeUnit =
+      Field.require "name" Decode.string <| \name ->
+      Field.require "source" Decode.string <| \source ->
+
+      Decode.succeed
+        { name = name
+        , source = source
+        , output = compileHdl source
+        , truthTable = Dict.empty
+        }
+    
+    decodeUnits : Decoder (NonEmptyArray Unit)
+    decodeUnits =
+      NonEmptyArray.decoder decodeUnit
+  in
+  Decode.map
+    (\units ->
+      { units = units
+      , editingActiveUnitName = False
+      }
+    )
+    decodeUnits
 
 
 editActiveUnitName : String -> Model -> Model
@@ -206,6 +264,7 @@ subscriptions model =
   Sub.batch
     [ editorValueChangedPort EditorValueChanged
     , receiveTruthTablePort TruthTableReceived
+    , pageWillClosePort StoreModel
     ]
 
 
@@ -354,52 +413,35 @@ viewTruthTable table =
   ]
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : (Maybe Decode.Value) -> ( Model, Cmd Msg )
+init storedModel =
   let
-    source =
-      """{- sample d flip flop -}
-d_flip_flop clk d -> [1] =
-    let
-        s =
-            nand clk d
-        r =
-            nand clk (not d)
-    in
-    s_r_latch s r
+    model =
+      case storedModel of
+        Nothing ->
+          defaultModel
 
-s_r_latch s r -> [1] =
-    let
-        nar a b -> [1] = nand a b
-        q =
-            nand s not_q
-        not_q =
-            nand r q
-    in
-    q
+        Just modelJson ->
+          Result.withDefault defaultModel <|
+            Decode.decodeValue decodeModel modelJson
 
-not a[n] -> [n] =
-    nand a a
-
-
-{- sample full adder -}
-
-full_adder a b c -> { sum, carry } =
-    let
-        { sum = s1, carry = c1 } = half_adder a b
-        { sum = s2, carry = c2 } = half_adder s1 c
-        c3 = or c1 c2
-    in
-    { sum = s2, carry = c3 }
-
-half_adder a b -> { sum, carry } =
-    let
-        sum = xor a b
-        carry = and a b
-    in
-    { sum = sum, carry = carry }
-
-xor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus
+    activeUnit =
+      getActiveUnit model
+    
+    defaultModel =
+      { units =
+        NonEmptyArray.fromElement
+        { name = "Basics"
+        , source = defaultSource
+        , output = defaultOutput
+        , truthTable = Dict.empty
+        }
+      , editingActiveUnitName =
+        False
+      }
+    
+    defaultSource =
+      """xor a[n] b[n] -> [n] =
     let
         nand_a_b = nand a b
     in
@@ -419,23 +461,15 @@ and a[n] b[n] -> [n] =
     in
     nand nand_a_b nand_a_b
     """
-    output = compileHdl source
+    defaultOutput = compileHdl defaultSource
   in
-  ({ units =
-    NonEmptyArray.fromElement
-    { name = "Basics"
-    , source = source
-    , output = output
-    , truthTable = Dict.empty
-    }
-  , editingActiveUnitName =
-    False
-  }
+  ( model
   , Cmd.batch
-    [ setEditorValuePort source
-    , generateTruthTable output
+    [ setEditorValuePort activeUnit.source
+    , generateTruthTable activeUnit.output
     ]
   )
+  
 
 generateTruthTable : Result String (List HdlEmitter.DefOutput) -> Cmd Msg
 generateTruthTable output =
