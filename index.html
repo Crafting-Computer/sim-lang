@@ -130,15 +130,19 @@
 
     // load saved project from localStorage
     var savedProjectString = localStorage.getItem(localStorageKey);
+    
     function jsonEscape(str)  {
       return str.replace(/\n/g, "\\\\n").replace(/\r/g, "\\\\r").replace(/\t/g, "\\\\t");
     }
-    var savedProject = JSON.parse(jsonEscape(savedProjectString));
-    console.log(savedProject);
 
-    savedProject.forEach(function (unit, unitIndex) {
-      addTab(unitIndex, unit.source);
-    });
+    if (typeof savedProjectString === "string") {
+      var savedProject = JSON.parse(jsonEscape(savedProjectString));
+      console.log(savedProject);
+
+      savedProject.forEach(function (unit, unitIndex) {
+        addTab(unitIndex, unit.source);
+      });
+    }
 
     var app = Elm.Editor.init({ node: document.getElementById('rightPanel'), flags: savedProject });
 
