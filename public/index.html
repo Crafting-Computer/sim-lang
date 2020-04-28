@@ -7,7 +7,7 @@
 </head>
 <body style="overflow: hidden; background-color: rgb(231, 231, 231);">
 
-  <main style="display: flex; flex-direction: row; margin: 52px 10px 0px 10px !important; height: 100%;">
+  <main style="display: flex; flex-direction: row; padding-top: 52px; margin: 0 10px 0px 10px !important; height: 100%;">
     <div id="editor" style="width: 49vw; height: 90vh; border: grey 1px solid; margin: 0 20px;"></div>
     <div id="rightPanel" style="width: 40vw; height: 90vh"></div>
   </main>
@@ -148,7 +148,7 @@
         window[def.name] = new Function(
           def.params.map(function(param) { return param.name; }),
           def.body
-        );
+        )(); // invoke the function generator
       });
       // generate truth table for first def
       var def = defs[1];

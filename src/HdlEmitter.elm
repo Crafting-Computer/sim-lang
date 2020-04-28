@@ -2,6 +2,7 @@ module HdlEmitter exposing (emit, emitString, DefOutput)
 
 import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..), bindingTargetToString)
 import AssocList as Dict
+import List.Extra
 
 
 type alias DefOutput =
@@ -28,10 +29,12 @@ emitString defs =
   List.map
     (\def ->
       emitBlock 0
-      [ "function " ++ def.name ++ "(" ++ (String.join ", " <| List.map .name def.params) ++ ") {"
-      , "  " ++ def.body
+      [ "function _" ++ def.name ++ "() {"
+      , emitBlock 1 [ def.body ]
       , "}"
+      , "var " ++ def.name ++ " = _" ++ def.name ++ "();"
       ]
+      ++ "\n"
     )
     defOutputs
 
@@ -50,10 +53,10 @@ emit defs =
           { name = name.value
           , params = paramsToParamsOutput params
           , outputs = paramsToParamsOutput outputs.value
-          , body = emitDef 0 def
+          , body = emitDef 0 True def
           }
         BindingDef _ ->
-          { name = "BINDING IS NOT ALLOWED AT TOP LEVEL" -- TODO: ban binding at top level
+          { name = "BINDING IS NOT ALLOWED AT TOP LEVEL"
           , params = []
           , outputs = []
           , body = ""
@@ -72,7 +75,7 @@ emitPrelude =
   [ { name = "nand"
   , params = [ nsize "a", nsize "b"]
   , outputs = [ nsize "" ]
-  , body = "return ~(a & b);"
+  , body = "return function(a, b) { return ~(a & b); }"
   }
   ]
 
@@ -87,25 +90,52 @@ emitPrelude =
 --   var nand_a_b = nand(a, b);
 --   return nand(nand_a_b, nand_a_b);
 -- }
-emitDef : Int -> Def -> String
-emitDef indent def =
+emitDef : Int -> Bool -> Def -> String
+emitDef indent declareVars def =
   case def of
     FuncDef { name, params, locals, body } ->
       let
+        localTargets =
+          List.concat <| List.Extra.unique <| List.map getTargetNamesFromDef locals
+        
+        localDeclarations =
+          "var " ++ String.join ", " localTargets ++ ";"
+        
+        paramDeclarations =
+          String.join ", " (List.map emitParam params)
+        
         emittedBody =
-          [ emitLocals (indent + 1) locals
-          , "  return " ++ emitExpr body.value ++ ";"
-          ]
+          case locals of
+            [] ->
+              [ "return function(" ++ paramDeclarations ++ ") {"
+              , "  return " ++ emitExpr body.value ++ ";"
+              , "}"
+              ]
+
+            _ ->
+              [ localDeclarations
+              , "return function(" ++ paramDeclarations ++ ") {"
+              , emitBlock 1 <|
+                [ "for (var _ = 0; _ < 2; _++) {"
+                , emitLocals 1 False locals
+                , "}"
+                , "return " ++ emitExpr body.value ++ ";"
+                ]
+              , "}"
+              ]
       in
-      emitBlock indent
-        ( case indent of
-          0 ->
-            emittedBody
-          _ ->
-            ("function " ++ name.value ++ "(" ++ String.join ", " (List.map emitParam params) ++ ") {")
-            :: emittedBody
-            ++ [ "}" ]
-        )
+      case indent of
+        0 ->
+          emitBlock indent emittedBody
+        
+        _ ->
+          emitBlock indent
+            [ "function " ++ "_" ++ name.value ++ "() {"
+            , emitBlock 1 emittedBody
+            , "}"
+            , "var " ++ name.value ++ " = _" ++ name.value ++ "();"
+            ]
+    
     BindingDef { name, locals, body } ->
       let
         emittedName =
@@ -113,19 +143,33 @@ emitDef indent def =
       in
       case locals of
         [] ->
-          emitIndentation indent ++ "var " ++ emittedName ++ " = " ++ emitExpr body.value ++ ";"
+          emitIndentation indent
+          ++ (
+            if declareVars then
+              "var "
+            else
+              "("
+          )
+          ++ emittedName ++ " = " ++ emitExpr body.value
+          ++ (
+            if declareVars then
+              ""
+            else
+              ")"
+          )
+          ++ ";"
         locs ->
           emitBlock indent
-            [ "var " ++ emittedName ++ " ="
+            [ if declareVars then "var " else "(" ++ emittedName ++ " ="
             , "function () {"
-            , emitLocals (indent + 1) locs
+            , emitLocals (indent + 1) declareVars locs
             , "  return " ++ emitExpr body.value ++ ";"
-            , "}();"
+            , "}()" ++ if declareVars then "" else ")" ++  ";"
             ]
 
 
-emitLocals : Int -> List Def -> String
-emitLocals indent defs =
+emitLocals : Int -> Bool -> List Def -> String
+emitLocals indent declareVars defs =
   let
     orderedLocals =
       List.sortWith
@@ -159,7 +203,7 @@ emitLocals indent defs =
         )
         defs
   in
-  String.join "\n" <| List.map (emitDef <| indent) orderedLocals
+  String.join "\n" <| List.map (emitDef indent declareVars) orderedLocals
 
 
 -- c = nand a b
@@ -231,7 +275,12 @@ emitBlock indent lines =
     indentation =
       emitIndentation indent
   in
-  indentation ++ String.join ("\n" ++ indentation) (List.filter (\line -> String.trim line /= "") lines) ++ "\n"
+  indentation
+  ++ (
+    String.join ("\n" ++ indentation) <|
+    List.map (String.replace "\n" ("\n" ++ indentation)) <|
+    List.filter (\line -> String.trim line /= "") lines
+  )
 
 
 emitExpr : Expr -> String

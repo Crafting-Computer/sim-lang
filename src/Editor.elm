@@ -359,7 +359,25 @@ init : () -> ( Model, Cmd Msg )
 init _ =
   let
     source =
-      """{- sample full adder -}
+      """{- sample d flip flop -}
+d_flip_flop d -> [1] =
+    s_r_latch d (not d)
+
+s_r_latch s r -> [1] =
+    let
+        nar a b -> [1] = nand a b
+        q =
+            nand s not_q
+        not_q =
+            nand r q
+    in
+    q
+
+not a[n] -> [n] =
+    nand a a
+
+
+{- sample full adder -}
 
 full_adder a b c -> { sum, carry } =
     let

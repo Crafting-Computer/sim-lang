@@ -94,16 +94,17 @@ source =
 --     in
 --     nand i c
 --   """
-  -- """
-  -- s_r_latch s r -> [1] =
-  --     let
-  --         q =
-  --             nand s not_q
-  --         not_q =
-  --             nand r q
-  --     in
-  --     q
-  -- """
+  """
+  s_r_latch s r -> [1] =
+      let
+          nar a b -> [1] = nand a b
+          q =
+              nand s not_q
+          not_q =
+              nand r q
+      in
+      q
+  """
   -- """
   -- f i -> [1] =
   --   let
@@ -122,16 +123,16 @@ source =
   -- not a -> [1] =
   --   nand a a
   -- """
-  """
-  f i -> [1] =
-    let
-      b = c
-      a = b
-      b = a
-      c = 1
-    in
-    a
-  """
+  -- """
+  -- f i -> [1] =
+  --   let
+  --     b = c
+  --     a = b
+  --     b = a
+  --     c = 1
+  --   in
+  --   a
+  -- """
 main =
   case parse source of
     Err err ->
