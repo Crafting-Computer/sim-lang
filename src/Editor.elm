@@ -360,8 +360,14 @@ init _ =
   let
     source =
       """{- sample d flip flop -}
-d_flip_flop d -> [1] =
-    s_r_latch d (not d)
+d_flip_flop clk d -> [1] =
+    let
+        s =
+            nand clk d
+        r =
+            nand clk (not d)
+    in
+    s_r_latch s r
 
 s_r_latch s r -> [1] =
     let
