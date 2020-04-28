@@ -6896,6 +6896,27 @@ var $author$project$HdlChecker$check = function (defs) {
 						$Gizra$elm_all_set$EverySet$fromList(ps)))));
 	}
 };
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
 var $author$project$HdlParser$bindingTargetToString = function (target) {
 	if (target.$ === 'BindingName') {
 		var n = target.a;
@@ -6911,6 +6932,17 @@ var $author$project$HdlParser$bindingTargetToString = function (target) {
 			'{ ',
 			r) + ' }';
 	}
+};
+var $elm$core$List$append = F2(
+	function (xs, ys) {
+		if (!ys.b) {
+			return xs;
+		} else {
+			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
+		}
+	});
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
 };
 var $elm$core$Bitwise$and = _Bitwise_and;
 var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
@@ -6929,19 +6961,31 @@ var $elm$core$String$repeat = F2(
 var $author$project$HdlEmitter$emitIndentation = function (indent) {
 	return A2($elm$core$String$repeat, indent * 2, ' ');
 };
+var $elm$core$String$replace = F3(
+	function (before, after, string) {
+		return A2(
+			$elm$core$String$join,
+			after,
+			A2($elm$core$String$split, before, string));
+	});
 var $elm$core$String$trim = _String_trim;
 var $author$project$HdlEmitter$emitBlock = F2(
 	function (indent, lines) {
 		var indentation = $author$project$HdlEmitter$emitIndentation(indent);
-		return indentation + (A2(
-			$elm$core$String$join,
-			'\n' + indentation,
+		return _Utils_ap(
+			indentation,
 			A2(
-				$elm$core$List$filter,
-				function (line) {
-					return $elm$core$String$trim(line) !== '';
-				},
-				lines)) + '\n');
+				$elm$core$String$join,
+				'\n' + indentation,
+				A2(
+					$elm$core$List$map,
+					A2($elm$core$String$replace, '\n', '\n' + indentation),
+					A2(
+						$elm$core$List$filter,
+						function (line) {
+							return $elm$core$String$trim(line) !== '';
+						},
+						lines))));
 	});
 var $author$project$HdlEmitter$emitExpr = function (e) {
 	switch (e.$) {
@@ -6987,50 +7031,370 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 var $author$project$HdlEmitter$emitParam = function (p) {
 	return p.name.value;
 };
-var $author$project$HdlEmitter$emitDef = F2(
-	function (indent, def) {
+var $author$project$HdlEmitter$getNamesFromExpr = function (expr) {
+	getNamesFromExpr:
+	while (true) {
+		switch (expr.$) {
+			case 'Binding':
+				var name = expr.a;
+				return _List_fromArray(
+					[name.value]);
+			case 'Call':
+				var callee = expr.a;
+				var args = expr.b;
+				return A2(
+					$elm$core$List$cons,
+					callee.value,
+					$elm$core$List$concat(
+						A2(
+							$elm$core$List$map,
+							A2(
+								$elm$core$Basics$composeL,
+								$author$project$HdlEmitter$getNamesFromExpr,
+								function ($) {
+									return $.value;
+								}),
+							args)));
+			case 'Indexing':
+				var e = expr.a;
+				var $temp$expr = e.value;
+				expr = $temp$expr;
+				continue getNamesFromExpr;
+			case 'Record':
+				var r = expr.a;
+				return $elm$core$List$concat(
+					A2(
+						$elm$core$List$map,
+						A2(
+							$elm$core$Basics$composeL,
+							$author$project$HdlEmitter$getNamesFromExpr,
+							function ($) {
+								return $.value;
+							}),
+						$pzp1997$assoc_list$AssocList$values(r.value)));
+			default:
+				return _List_Nil;
+		}
+	}
+};
+var $author$project$HdlEmitter$getSourceNamesFromDef = function (def) {
+	var _v0 = function () {
+		if (def.$ === 'FuncDef') {
+			var locals = def.a.locals;
+			var body = def.a.body;
+			return _Utils_Tuple2(locals, body);
+		} else {
+			var locals = def.a.locals;
+			var body = def.a.body;
+			return _Utils_Tuple2(locals, body);
+		}
+	}();
+	var l = _v0.a;
+	var b = _v0.b;
+	return _Utils_ap(
+		$elm$core$List$concat(
+			A2($elm$core$List$map, $author$project$HdlEmitter$getSourceNamesFromDef, l)),
+		$author$project$HdlEmitter$getNamesFromExpr(b.value));
+};
+var $author$project$HdlEmitter$getTargetNamesFromDef = function (def) {
+	if (def.$ === 'FuncDef') {
+		var name = def.a.name;
+		return _List_fromArray(
+			[name.value]);
+	} else {
+		var name = def.a.name;
+		var _v1 = name.value;
+		if (_v1.$ === 'BindingName') {
+			var n = _v1.a;
+			return _List_fromArray(
+				[n]);
+		} else {
+			var r = _v1.a;
+			return A2(
+				$elm$core$List$map,
+				function ($) {
+					return $.value;
+				},
+				$pzp1997$assoc_list$AssocList$values(r));
+		}
+	}
+};
+var $elm$core$List$member = F2(
+	function (x, xs) {
+		return A2(
+			$elm$core$List$any,
+			function (a) {
+				return _Utils_eq(a, x);
+			},
+			xs);
+	});
+var $elm$core$List$sortWith = _List_sortWith;
+var $elm$core$Set$Set_elm_builtin = function (a) {
+	return {$: 'Set_elm_builtin', a: a};
+};
+var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
+var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
+var $elm$core$Set$empty = $elm$core$Set$Set_elm_builtin($elm$core$Dict$empty);
+var $elm$core$Dict$Black = {$: 'Black'};
+var $elm$core$Dict$RBNode_elm_builtin = F5(
+	function (a, b, c, d, e) {
+		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
+	});
+var $elm$core$Dict$Red = {$: 'Red'};
+var $elm$core$Dict$balance = F5(
+	function (color, key, value, left, right) {
+		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
+			var _v1 = right.a;
+			var rK = right.b;
+			var rV = right.c;
+			var rLeft = right.d;
+			var rRight = right.e;
+			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
+				var _v3 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var lLeft = left.d;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					key,
+					value,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, lK, lV, lLeft, lRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, rK, rV, rLeft, rRight));
+			} else {
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					color,
+					rK,
+					rV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, left, rLeft),
+					rRight);
+			}
+		} else {
+			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
+				var _v5 = left.a;
+				var lK = left.b;
+				var lV = left.c;
+				var _v6 = left.d;
+				var _v7 = _v6.a;
+				var llK = _v6.b;
+				var llV = _v6.c;
+				var llLeft = _v6.d;
+				var llRight = _v6.e;
+				var lRight = left.e;
+				return A5(
+					$elm$core$Dict$RBNode_elm_builtin,
+					$elm$core$Dict$Red,
+					lK,
+					lV,
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, llK, llV, llLeft, llRight),
+					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, key, value, lRight, right));
+			} else {
+				return A5($elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
+			}
+		}
+	});
+var $elm$core$Basics$compare = _Utils_compare;
+var $elm$core$Dict$insertHelp = F3(
+	function (key, value, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, $elm$core$Dict$RBEmpty_elm_builtin, $elm$core$Dict$RBEmpty_elm_builtin);
+		} else {
+			var nColor = dict.a;
+			var nKey = dict.b;
+			var nValue = dict.c;
+			var nLeft = dict.d;
+			var nRight = dict.e;
+			var _v1 = A2($elm$core$Basics$compare, key, nKey);
+			switch (_v1.$) {
+				case 'LT':
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						A3($elm$core$Dict$insertHelp, key, value, nLeft),
+						nRight);
+				case 'EQ':
+					return A5($elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
+				default:
+					return A5(
+						$elm$core$Dict$balance,
+						nColor,
+						nKey,
+						nValue,
+						nLeft,
+						A3($elm$core$Dict$insertHelp, key, value, nRight));
+			}
+		}
+	});
+var $elm$core$Dict$insert = F3(
+	function (key, value, dict) {
+		var _v0 = A3($elm$core$Dict$insertHelp, key, value, dict);
+		if ((_v0.$ === 'RBNode_elm_builtin') && (_v0.a.$ === 'Red')) {
+			var _v1 = _v0.a;
+			var k = _v0.b;
+			var v = _v0.c;
+			var l = _v0.d;
+			var r = _v0.e;
+			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, k, v, l, r);
+		} else {
+			var x = _v0;
+			return x;
+		}
+	});
+var $elm$core$Set$insert = F2(
+	function (key, _v0) {
+		var dict = _v0.a;
+		return $elm$core$Set$Set_elm_builtin(
+			A3($elm$core$Dict$insert, key, _Utils_Tuple0, dict));
+	});
+var $elm$core$Dict$get = F2(
+	function (targetKey, dict) {
+		get:
+		while (true) {
+			if (dict.$ === 'RBEmpty_elm_builtin') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var key = dict.b;
+				var value = dict.c;
+				var left = dict.d;
+				var right = dict.e;
+				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
+				switch (_v1.$) {
+					case 'LT':
+						var $temp$targetKey = targetKey,
+							$temp$dict = left;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+					case 'EQ':
+						return $elm$core$Maybe$Just(value);
+					default:
+						var $temp$targetKey = targetKey,
+							$temp$dict = right;
+						targetKey = $temp$targetKey;
+						dict = $temp$dict;
+						continue get;
+				}
+			}
+		}
+	});
+var $elm$core$Dict$member = F2(
+	function (key, dict) {
+		var _v0 = A2($elm$core$Dict$get, key, dict);
+		if (_v0.$ === 'Just') {
+			return true;
+		} else {
+			return false;
+		}
+	});
+var $elm$core$Set$member = F2(
+	function (key, _v0) {
+		var dict = _v0.a;
+		return A2($elm$core$Dict$member, key, dict);
+	});
+var $elm_community$list_extra$List$Extra$uniqueHelp = F4(
+	function (f, existing, remaining, accumulator) {
+		uniqueHelp:
+		while (true) {
+			if (!remaining.b) {
+				return $elm$core$List$reverse(accumulator);
+			} else {
+				var first = remaining.a;
+				var rest = remaining.b;
+				var computedFirst = f(first);
+				if (A2($elm$core$Set$member, computedFirst, existing)) {
+					var $temp$f = f,
+						$temp$existing = existing,
+						$temp$remaining = rest,
+						$temp$accumulator = accumulator;
+					f = $temp$f;
+					existing = $temp$existing;
+					remaining = $temp$remaining;
+					accumulator = $temp$accumulator;
+					continue uniqueHelp;
+				} else {
+					var $temp$f = f,
+						$temp$existing = A2($elm$core$Set$insert, computedFirst, existing),
+						$temp$remaining = rest,
+						$temp$accumulator = A2($elm$core$List$cons, first, accumulator);
+					f = $temp$f;
+					existing = $temp$existing;
+					remaining = $temp$remaining;
+					accumulator = $temp$accumulator;
+					continue uniqueHelp;
+				}
+			}
+		}
+	});
+var $elm_community$list_extra$List$Extra$unique = function (list) {
+	return A4($elm_community$list_extra$List$Extra$uniqueHelp, $elm$core$Basics$identity, $elm$core$Set$empty, list, _List_Nil);
+};
+var $author$project$HdlEmitter$emitDef = F3(
+	function (indent, declareVars, def) {
 		if (def.$ === 'FuncDef') {
 			var name = def.a.name;
 			var params = def.a.params;
 			var locals = def.a.locals;
 			var body = def.a.body;
-			var emittedBody = _List_fromArray(
-				[
-					A2(
-					$elm$core$String$join,
-					'\n',
-					A2(
-						$elm$core$List$map,
-						$author$project$HdlEmitter$emitDef(indent + 1),
-						locals)),
-					'  return ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';')
-				]);
-			return A2(
-				$author$project$HdlEmitter$emitBlock,
-				indent,
-				function () {
-					if (!indent) {
-						return emittedBody;
-					} else {
-						return A2(
-							$elm$core$List$cons,
-							'function ' + (name.value + ('(' + (A2(
-								$elm$core$String$join,
-								', ',
-								A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params)) + ') {'))),
-							_Utils_ap(
-								emittedBody,
-								_List_fromArray(
-									['}'])));
-					}
-				}());
+			var paramDeclarations = A2(
+				$elm$core$String$join,
+				', ',
+				A2($elm$core$List$map, $author$project$HdlEmitter$emitParam, params));
+			var localTargets = $elm$core$List$concat(
+				$elm_community$list_extra$List$Extra$unique(
+					A2($elm$core$List$map, $author$project$HdlEmitter$getTargetNamesFromDef, locals)));
+			var localDeclarations = 'var ' + (A2($elm$core$String$join, ', ', localTargets) + ';');
+			var emittedBody = function () {
+				if (!locals.b) {
+					return _List_fromArray(
+						[
+							'return function(' + (paramDeclarations + ') {'),
+							'  return ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';'),
+							'}'
+						]);
+				} else {
+					return _List_fromArray(
+						[
+							localDeclarations,
+							'return function(' + (paramDeclarations + ') {'),
+							A2(
+							$author$project$HdlEmitter$emitBlock,
+							1,
+							_List_fromArray(
+								[
+									'for (var _ = 0; _ < 2; _++) {',
+									A3($author$project$HdlEmitter$emitLocals, 1, false, locals),
+									'}',
+									'return ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';')
+								])),
+							'}'
+						]);
+				}
+			}();
+			if (!indent) {
+				return A2($author$project$HdlEmitter$emitBlock, indent, emittedBody);
+			} else {
+				return A2(
+					$author$project$HdlEmitter$emitBlock,
+					indent,
+					_List_fromArray(
+						[
+							'function ' + ('_' + (name.value + '() {')),
+							A2($author$project$HdlEmitter$emitBlock, 1, emittedBody),
+							'}',
+							'var ' + (name.value + (' = _' + (name.value + '();')))
+						]));
+			}
 		} else {
 			var name = def.a.name;
 			var locals = def.a.locals;
 			var body = def.a.body;
 			var emittedName = $author$project$HdlParser$bindingTargetToString(name.value);
 			if (!locals.b) {
-				return $author$project$HdlEmitter$emitIndentation(indent) + ('var ' + (emittedName + (' = ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';'))));
+				return $author$project$HdlEmitter$emitIndentation(indent) + ((declareVars ? 'var ' : '(') + (emittedName + (' = ' + ($author$project$HdlEmitter$emitExpr(body.value) + ((declareVars ? '' : ')') + ';')))));
 			} else {
 				var locs = locals;
 				return A2(
@@ -7038,20 +7402,47 @@ var $author$project$HdlEmitter$emitDef = F2(
 					indent,
 					_List_fromArray(
 						[
-							'var ' + (emittedName + ' ='),
+							declareVars ? 'var ' : ('(' + (emittedName + ' =')),
 							'function () {',
-							A2(
-							$elm$core$String$join,
-							'\n',
-							A2(
-								$elm$core$List$map,
-								$author$project$HdlEmitter$emitDef(indent + 1),
-								locs)),
+							A3($author$project$HdlEmitter$emitLocals, indent + 1, declareVars, locs),
 							'  return ' + ($author$project$HdlEmitter$emitExpr(body.value) + ';'),
-							'}();'
+							'}()' + (declareVars ? '' : (')' + ';'))
 						]));
 			}
 		}
+	});
+var $author$project$HdlEmitter$emitLocals = F3(
+	function (indent, declareVars, defs) {
+		var orderedLocals = A2(
+			$elm$core$List$sortWith,
+			F2(
+				function (d1, d2) {
+					var t2 = $author$project$HdlEmitter$getTargetNamesFromDef(d2);
+					var t1 = $author$project$HdlEmitter$getTargetNamesFromDef(d1);
+					var n2 = $author$project$HdlEmitter$getSourceNamesFromDef(d2);
+					var secondDependsOnFirst = A2(
+						$elm$core$List$any,
+						function (n) {
+							return A2($elm$core$List$member, n, t1);
+						},
+						n2);
+					var n1 = $author$project$HdlEmitter$getSourceNamesFromDef(d1);
+					var firstDependsOnSecond = A2(
+						$elm$core$List$any,
+						function (n) {
+							return A2($elm$core$List$member, n, t2);
+						},
+						n1);
+					return firstDependsOnSecond ? (secondDependsOnFirst ? $elm$core$Basics$EQ : $elm$core$Basics$GT) : $elm$core$Basics$LT;
+				}),
+			defs);
+		return A2(
+			$elm$core$String$join,
+			'\n',
+			A2(
+				$elm$core$List$map,
+				A2($author$project$HdlEmitter$emitDef, indent, declareVars),
+				orderedLocals));
 	});
 var $author$project$HdlEmitter$emitPrelude = function () {
 	var nsize = function (name) {
@@ -7063,7 +7454,7 @@ var $author$project$HdlEmitter$emitPrelude = function () {
 	return _List_fromArray(
 		[
 			{
-			body: 'return ~(a & b);',
+			body: 'return function(a, b) { return ~(a & b); }',
 			name: 'nand',
 			outputs: _List_fromArray(
 				[
@@ -7096,7 +7487,7 @@ var $author$project$HdlEmitter$emit = function (defs) {
 					var params = def.a.params;
 					var outputs = def.a.outputs;
 					return {
-						body: A2($author$project$HdlEmitter$emitDef, 0, def),
+						body: A3($author$project$HdlEmitter$emitDef, 0, true, def),
 						name: name.value,
 						outputs: paramsToParamsOutput(outputs.value),
 						params: paramsToParamsOutput(params)
@@ -7843,178 +8234,12 @@ var $author$project$HdlParser$indexing = A2(
 		$elm$parser$Parser$Advanced$token(
 			A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket))));
 var $author$project$HdlParser$ExpectingName = {$: 'ExpectingName'};
-var $elm$core$Set$Set_elm_builtin = function (a) {
-	return {$: 'Set_elm_builtin', a: a};
-};
-var $elm$core$Dict$RBEmpty_elm_builtin = {$: 'RBEmpty_elm_builtin'};
-var $elm$core$Dict$empty = $elm$core$Dict$RBEmpty_elm_builtin;
-var $elm$core$Set$empty = $elm$core$Set$Set_elm_builtin($elm$core$Dict$empty);
-var $elm$core$Dict$Black = {$: 'Black'};
-var $elm$core$Dict$RBNode_elm_builtin = F5(
-	function (a, b, c, d, e) {
-		return {$: 'RBNode_elm_builtin', a: a, b: b, c: c, d: d, e: e};
-	});
-var $elm$core$Dict$Red = {$: 'Red'};
-var $elm$core$Dict$balance = F5(
-	function (color, key, value, left, right) {
-		if ((right.$ === 'RBNode_elm_builtin') && (right.a.$ === 'Red')) {
-			var _v1 = right.a;
-			var rK = right.b;
-			var rV = right.c;
-			var rLeft = right.d;
-			var rRight = right.e;
-			if ((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) {
-				var _v3 = left.a;
-				var lK = left.b;
-				var lV = left.c;
-				var lLeft = left.d;
-				var lRight = left.e;
-				return A5(
-					$elm$core$Dict$RBNode_elm_builtin,
-					$elm$core$Dict$Red,
-					key,
-					value,
-					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, lK, lV, lLeft, lRight),
-					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, rK, rV, rLeft, rRight));
-			} else {
-				return A5(
-					$elm$core$Dict$RBNode_elm_builtin,
-					color,
-					rK,
-					rV,
-					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, left, rLeft),
-					rRight);
-			}
-		} else {
-			if ((((left.$ === 'RBNode_elm_builtin') && (left.a.$ === 'Red')) && (left.d.$ === 'RBNode_elm_builtin')) && (left.d.a.$ === 'Red')) {
-				var _v5 = left.a;
-				var lK = left.b;
-				var lV = left.c;
-				var _v6 = left.d;
-				var _v7 = _v6.a;
-				var llK = _v6.b;
-				var llV = _v6.c;
-				var llLeft = _v6.d;
-				var llRight = _v6.e;
-				var lRight = left.e;
-				return A5(
-					$elm$core$Dict$RBNode_elm_builtin,
-					$elm$core$Dict$Red,
-					lK,
-					lV,
-					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, llK, llV, llLeft, llRight),
-					A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, key, value, lRight, right));
-			} else {
-				return A5($elm$core$Dict$RBNode_elm_builtin, color, key, value, left, right);
-			}
-		}
-	});
-var $elm$core$Basics$compare = _Utils_compare;
-var $elm$core$Dict$insertHelp = F3(
-	function (key, value, dict) {
-		if (dict.$ === 'RBEmpty_elm_builtin') {
-			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Red, key, value, $elm$core$Dict$RBEmpty_elm_builtin, $elm$core$Dict$RBEmpty_elm_builtin);
-		} else {
-			var nColor = dict.a;
-			var nKey = dict.b;
-			var nValue = dict.c;
-			var nLeft = dict.d;
-			var nRight = dict.e;
-			var _v1 = A2($elm$core$Basics$compare, key, nKey);
-			switch (_v1.$) {
-				case 'LT':
-					return A5(
-						$elm$core$Dict$balance,
-						nColor,
-						nKey,
-						nValue,
-						A3($elm$core$Dict$insertHelp, key, value, nLeft),
-						nRight);
-				case 'EQ':
-					return A5($elm$core$Dict$RBNode_elm_builtin, nColor, nKey, value, nLeft, nRight);
-				default:
-					return A5(
-						$elm$core$Dict$balance,
-						nColor,
-						nKey,
-						nValue,
-						nLeft,
-						A3($elm$core$Dict$insertHelp, key, value, nRight));
-			}
-		}
-	});
-var $elm$core$Dict$insert = F3(
-	function (key, value, dict) {
-		var _v0 = A3($elm$core$Dict$insertHelp, key, value, dict);
-		if ((_v0.$ === 'RBNode_elm_builtin') && (_v0.a.$ === 'Red')) {
-			var _v1 = _v0.a;
-			var k = _v0.b;
-			var v = _v0.c;
-			var l = _v0.d;
-			var r = _v0.e;
-			return A5($elm$core$Dict$RBNode_elm_builtin, $elm$core$Dict$Black, k, v, l, r);
-		} else {
-			var x = _v0;
-			return x;
-		}
-	});
-var $elm$core$Set$insert = F2(
-	function (key, _v0) {
-		var dict = _v0.a;
-		return $elm$core$Set$Set_elm_builtin(
-			A3($elm$core$Dict$insert, key, _Utils_Tuple0, dict));
-	});
 var $elm$core$Set$fromList = function (list) {
 	return A3($elm$core$List$foldl, $elm$core$Set$insert, $elm$core$Set$empty, list);
 };
 var $author$project$HdlParser$reserved = $elm$core$Set$fromList(
 	_List_fromArray(
 		['let', 'in']));
-var $elm$core$Dict$get = F2(
-	function (targetKey, dict) {
-		get:
-		while (true) {
-			if (dict.$ === 'RBEmpty_elm_builtin') {
-				return $elm$core$Maybe$Nothing;
-			} else {
-				var key = dict.b;
-				var value = dict.c;
-				var left = dict.d;
-				var right = dict.e;
-				var _v1 = A2($elm$core$Basics$compare, targetKey, key);
-				switch (_v1.$) {
-					case 'LT':
-						var $temp$targetKey = targetKey,
-							$temp$dict = left;
-						targetKey = $temp$targetKey;
-						dict = $temp$dict;
-						continue get;
-					case 'EQ':
-						return $elm$core$Maybe$Just(value);
-					default:
-						var $temp$targetKey = targetKey,
-							$temp$dict = right;
-						targetKey = $temp$targetKey;
-						dict = $temp$dict;
-						continue get;
-				}
-			}
-		}
-	});
-var $elm$core$Dict$member = F2(
-	function (key, dict) {
-		var _v0 = A2($elm$core$Dict$get, key, dict);
-		if (_v0.$ === 'Just') {
-			return true;
-		} else {
-			return false;
-		}
-	});
-var $elm$core$Set$member = F2(
-	function (key, _v0) {
-		var dict = _v0.a;
-		return A2($elm$core$Dict$member, key, dict);
-	});
 var $elm$parser$Parser$Advanced$varHelp = F7(
 	function (isGood, offset, row, col, src, indent, context) {
 		varHelp:
@@ -9663,7 +9888,7 @@ var $author$project$Editor$generateTruthTable = function (output) {
 };
 var $author$project$Editor$setEditorValuePort = _Platform_outgoingPort('setEditorValuePort', $elm$json$Json$Encode$string);
 var $author$project$Editor$init = function (_v0) {
-	var source = '{- sample full adder -}\n\nfull_adder a b c -> { sum, carry } =\n    let\n        { sum = s1, carry = c1 } = half_adder a b\n        { sum = s2, carry = c2 } = half_adder s1 c\n        c3 = or c1 c2\n    in\n    { sum = s2, carry = c3 }\n\nhalf_adder a b -> { sum, carry } =\n    let\n        sum = xor a b\n        carry = and a b\n    in\n    { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus\n    let\n        nand_a_b = nand a b\n    in\n    nand\n    (nand a nand_a_b)\n    (nand b nand_a_b)\n\nor a[n] b[n] -> [n] =\n    nand (not a) (not b)\n\nnot a[n] -> [n] =\n    nand a a\n\nand a[n] b[n] -> [n] =\n    let\n        nand_a_b = nand a b\n    in\n    nand nand_a_b nand_a_b\n    ';
+	var source = '{- sample d flip flop -}\nd_flip_flop d -> [1] =\n    s_r_latch d (not d)\n\ns_r_latch s r -> [1] =\n    let\n        nar a b -> [1] = nand a b\n        q =\n            nand s not_q\n        not_q =\n            nand r q\n    in\n    q\n\nnot a[n] -> [n] =\n    nand a a\n\n\n{- sample full adder -}\n\nfull_adder a b c -> { sum, carry } =\n    let\n        { sum = s1, carry = c1 } = half_adder a b\n        { sum = s2, carry = c2 } = half_adder s1 c\n        c3 = or c1 c2\n    in\n    { sum = s2, carry = c3 }\n\nhalf_adder a b -> { sum, carry } =\n    let\n        sum = xor a b\n        carry = and a b\n    in\n    { sum = sum, carry = carry }\n\nxor a[n] b[n] -> [n] = -- [n] specifies a variable sized bus\n    let\n        nand_a_b = nand a b\n    in\n    nand\n    (nand a nand_a_b)\n    (nand b nand_a_b)\n\nor a[n] b[n] -> [n] =\n    nand (not a) (not b)\n\nnot a[n] -> [n] =\n    nand a a\n\nand a[n] b[n] -> [n] =\n    let\n        nand_a_b = nand a b\n    in\n    nand nand_a_b nand_a_b\n    ';
 	var output = $author$project$Editor$compileHdl(source);
 	return _Utils_Tuple2(
 		{
@@ -10624,17 +10849,6 @@ var $mdgriffith$elm_ui$Internal$Style$CenterY = {$: 'CenterY'};
 var $mdgriffith$elm_ui$Internal$Style$Top = {$: 'Top'};
 var $mdgriffith$elm_ui$Internal$Style$alignments = _List_fromArray(
 	[$mdgriffith$elm_ui$Internal$Style$Top, $mdgriffith$elm_ui$Internal$Style$Bottom, $mdgriffith$elm_ui$Internal$Style$Right, $mdgriffith$elm_ui$Internal$Style$Left, $mdgriffith$elm_ui$Internal$Style$CenterX, $mdgriffith$elm_ui$Internal$Style$CenterY]);
-var $elm$core$List$append = F2(
-	function (xs, ys) {
-		if (!ys.b) {
-			return xs;
-		} else {
-			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
-		}
-	});
-var $elm$core$List$concat = function (lists) {
-	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
-};
 var $elm$core$List$concatMap = F2(
 	function (f, list) {
 		return $elm$core$List$concat(
@@ -12593,27 +12807,6 @@ var $mdgriffith$elm_ui$Internal$Model$staticRoot = function (opts) {
 				_List_Nil);
 	}
 };
-var $elm$core$List$any = F2(
-	function (isOkay, list) {
-		any:
-		while (true) {
-			if (!list.b) {
-				return false;
-			} else {
-				var x = list.a;
-				var xs = list.b;
-				if (isOkay(x)) {
-					return true;
-				} else {
-					var $temp$isOkay = isOkay,
-						$temp$list = xs;
-					isOkay = $temp$isOkay;
-					list = $temp$list;
-					continue any;
-				}
-			}
-		}
-	});
 var $mdgriffith$elm_ui$Internal$Model$fontName = function (font) {
 	switch (font.$) {
 		case 'Serif':
@@ -15776,15 +15969,6 @@ var $elm$core$Dict$foldl = F3(
 				continue foldl;
 			}
 		}
-	});
-var $elm$core$List$member = F2(
-	function (x, xs) {
-		return A2(
-			$elm$core$List$any,
-			function (a) {
-				return _Utils_eq(a, x);
-			},
-			xs);
 	});
 var $mdgriffith$elm_ui$Internal$Model$SpacingStyle = F3(
 	function (a, b, c) {
