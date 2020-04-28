@@ -1,8 +1,10 @@
 # sim-lang
-A Delightful Language for Circuit Design, inspired by Elm.
+*A delightful language for circuit design inspired by Elm.*
 
 # Sim Tutorial
 Sim aims to make circuit design as simple and fun as possible by using intuitive interfaces and powerful abstractions.
+
+**Try the online Sim editor [here](https://alienkevin.github.io/sim-lang/)!**
 
 ## Basics
 
