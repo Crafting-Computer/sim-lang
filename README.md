@@ -111,12 +111,21 @@ not a[n] -> [n] =
 * Follow instructions [here](https://github.com/wking-io/elm-live) to install `elm-live` which is used for building and running Sim.
 
 ## Commands
-Run editor:
+* Run editor:
 ```
 elm-live src/Editor.elm --start-page public/index.html -- --output=public/elm.js
 ```
 
-Run Sim compiler on a source string:
+* Build optimized version of editor:
+```
+./build.sh
+```
+Note: you may need to enable execution permission before running the command:
+```
+chmod +x ./build.sh
+```
+
+* Run Sim compiler on a source string:
 ```
 elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
 ```

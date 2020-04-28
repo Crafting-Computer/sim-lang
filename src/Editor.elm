@@ -226,7 +226,6 @@ view model =
 viewTabSelector : Model -> E.Element Msg
 viewTabSelector model =
   let
-    _ = Debug.log "AL -> activeUnit" <| activeUnit.name
     activeUnit =
       NonEmptyArray.getSelected model.units
     activeUnitIndex =

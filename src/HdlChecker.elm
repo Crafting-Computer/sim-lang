@@ -186,8 +186,6 @@ applySubstToCtx subst ctx =
 match : Located Type -> Located Type -> List Problem
 match expectedType actualType =
   let
-    _ = Debug.log "AL -> actualType" <| actualType
-    _ = Debug.log "AL -> expectedType" <| expectedType
     mismatch =
       [ MismatchedTypes expectedType actualType ]
     
@@ -533,12 +531,9 @@ inferDef ctx def =
             outputType =
               applySubstToType outputSubst outputType1
 
-            _ = Debug.log "AL -> actualFuncType" <| actualFuncType
             actualFuncType =
               createTFunFromTypes paramTypes outputType
             
-            _ = Debug.log "AL -> funcSubst" <| funcSubst
-
             funcSubst =
               unify declaredFuncType actualFuncType
 
@@ -562,9 +557,6 @@ inferLocalsAndBody ctx locals body =
   inferDefs (incrementLevel ctx) locals |>
   Result.andThen
     (\(localCtx, localSubst) ->
-      let
-        _ = Debug.log "AL -> localCtx" <| localCtx
-      in
       inferExpr localCtx body |>
       Result.map
         (\(bodyType, bodyCtx, bodySubst) ->
