@@ -542,7 +542,7 @@ compileHdl src =
   case HdlParser.parse src of
     Err err ->
       Err <| "❌ Parse error.\n\n"
-      ++ HdlParser.showDeadEnds src  err
+      ++ HdlParser.showDeadEnds src err
     Ok program ->
       case HdlChecker.check program of
         Ok _ ->

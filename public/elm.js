@@ -9515,7 +9515,7 @@ var $author$project$HdlParser$showProblemLocation = F3(
 		var line = $elm$core$String$fromInt(row) + ('| ' + $elm$core$String$trimLeft(rawLine));
 		var offset = ($elm$core$String$length(line) - $elm$core$String$length(rawLine)) - 1;
 		var offsettedCol = offset + col;
-		var underline = A3($author$project$HdlParser$makeUnderline, line, offsettedCol, offsettedCol);
+		var underline = A3($author$project$HdlParser$makeUnderline, line, offsettedCol, offsettedCol + 1);
 		return line + ('\n' + underline);
 	});
 var $author$project$HdlParser$showDeadEndsHelper = F2(

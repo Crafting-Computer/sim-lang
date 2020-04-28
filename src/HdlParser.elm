@@ -177,7 +177,7 @@ showProblemLocation row col src =
     offsettedCol =
       offset + col
     underline =
-      makeUnderline line offsettedCol offsettedCol
+      makeUnderline line offsettedCol (offsettedCol + 1)
   in
   line ++ "\n" ++ underline
 
