@@ -247,6 +247,7 @@ and a[1] b[1] -> [1] =
 ```
 
 ![and_gate_delays](/media/and_gate_delays.png)
+
 Notice that any electric signal passes through `2` nand gates before reaching the output light bulb. This implies `2` gate delays.
 
 #### Or Gate Delays
@@ -256,6 +257,7 @@ or a[1] b[1] -> [1] =
 ```
 
 ![or_gate_delays](/media/or_gate_delays.png)
+
 Notice that any electric signal passes through `2` nand gates before reaching the output light bulb. This implies `2` gate delays.
 
 Finally, we can calculate the gate delays of our original `xor` gate:
@@ -268,6 +270,7 @@ xor a[1] b[1] -> [1] =
     or first second
 ```
 ![xor_gate_delays](/media/xor_gate_delays.png)
+
 Notice that any electric signal passes through
   * `1` not gate (1 gate delay)
   * `1` and gate (2 gate delays)
@@ -286,6 +289,7 @@ xor a[1] b[1] -> [1] =
     nand first second
 ```
 ![xor_optimized_gate_delays](/media/xor_optimized_gate_delays.png)
+
 Notice that any electric signal passes through `3` nand gates before reaching the output light bulb. This implies `3` gate delays. Compared to our original implementation, the optimized version saves us  `2` gate delays!
 
 **In conclusion, our optimization saves us 5 gates and 2 gate delays. This means half the cost and almost double the performance!**
