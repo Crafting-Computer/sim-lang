@@ -359,3 +359,9 @@ elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
 
 # License
 MIT
+
+# Change Log
+## Release v0.1.0
+* Store units in localStorage
+* Can remove tabs
+* Fix parse error underlining
