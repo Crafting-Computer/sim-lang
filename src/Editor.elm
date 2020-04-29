@@ -19,7 +19,6 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Field as Field
 import Dict exposing (Dict)
-import Binary
 import Array.NonEmpty as NonEmptyArray exposing (NonEmptyArray)
 
 
@@ -477,7 +476,19 @@ viewTruthTable table =
               , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
               , Html.Attributes.style "border" "1px grey solid"
               ]
-              [ Html.text <| String.fromInt <| Binary.toDecimal <| Binary.fromDecimal value ]) row
+              [ Html.text <| String.fromInt <|
+                if value >= 0 then
+                  value
+                else
+                  let
+                    numberOfDigits =
+                      if value == -1 then
+                        1
+                      else
+                        ceiling <| logBase 2 (toFloat -value)
+                  in
+                  value + 2 ^ numberOfDigits
+              ]) row
           )
           defTable.body
         )
