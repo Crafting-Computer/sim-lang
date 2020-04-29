@@ -490,7 +490,9 @@ group =
         g.value
     )
     |. token (Token "(" ExpectingLeftParen)
+    |. sps
     |= lazy (\_ -> located expr)
+    |. sps
     |. token (Token ")" ExpectingRightParen)
     |= optional indexing
 
