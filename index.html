@@ -260,6 +260,10 @@
 
     function changeTab(desiredUnitIndex) {
       saveCurrentTabState();
+      changeTabNoSaveCurrent(desiredUnitIndex);
+    }
+    
+    function changeTabNoSaveCurrent(desiredUnitIndex) {
       // switch to desired tab
       var desiredTabState = tabStates[desiredUnitIndex];
       console.log("desired tab state : ", desiredTabState);
@@ -277,6 +281,13 @@
     app.ports.addTabPort.subscribe(function(newUnitIndex) {
       addTab(newUnitIndex, "{- Insert HDL code here -}");
       changeTab(newUnitIndex);
+    });
+
+    app.ports.removeTabPort.subscribe(function([removeUnitIndex, nextUnitIndex]) {
+      console.log(removeUnitIndex);
+      console.log(nextUnitIndex);
+      tabStates.splice(removeUnitIndex, 1);
+      changeTabNoSaveCurrent(nextUnitIndex);
     });
 
     monaco.editor.onWillDisposeModel(function(model) {
