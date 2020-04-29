@@ -10459,6 +10459,32 @@ var $author$project$Editor$addUnit = F2(
 			});
 	});
 var $author$project$Editor$changeTabPort = _Platform_outgoingPort('changeTabPort', $elm$json$Json$Encode$int);
+var $author$project$Editor$setActiveUnit = F2(
+	function (desiredUnitIndex, model) {
+		return _Utils_update(
+			model,
+			{
+				units: A2($basti1302$elm_non_empty_array$Array$NonEmpty$setSelectedIndex, desiredUnitIndex, model.units)
+			});
+	});
+var $author$project$Editor$changeTab = F2(
+	function (desiredUnitIndex, model) {
+		var newModel = A2($author$project$Editor$setActiveUnit, desiredUnitIndex, model);
+		return _Utils_Tuple2(
+			newModel,
+			$elm$core$Platform$Cmd$batch(
+				_List_fromArray(
+					[
+						$author$project$Editor$changeTabPort(desiredUnitIndex),
+						$author$project$Editor$generateTruthTable(
+						A2(
+							$elm$core$Basics$composeR,
+							$author$project$Editor$getActiveUnit,
+							function ($) {
+								return $.output;
+							})(newModel))
+					])));
+	});
 var $elm$json$Json$Decode$decodeString = _Json_runOnString;
 var $elm$core$Dict$fromList = function (assocs) {
 	return A3(
@@ -10620,13 +10646,187 @@ var $author$project$Editor$encodeModel = function (model) {
 	};
 	return A2($basti1302$elm_non_empty_array$Array$NonEmpty$encode, encodeUnit, model.units);
 };
-var $author$project$Editor$setActiveUnit = F2(
-	function (desiredUnitIndex, model) {
-		return _Utils_update(
-			model,
-			{
-				units: A2($basti1302$elm_non_empty_array$Array$NonEmpty$setSelectedIndex, desiredUnitIndex, model.units)
-			});
+var $elm$core$Array$appendHelpTree = F2(
+	function (toAppend, array) {
+		var len = array.a;
+		var tree = array.c;
+		var tail = array.d;
+		var itemsToAppend = $elm$core$Elm$JsArray$length(toAppend);
+		var notAppended = ($elm$core$Array$branchFactor - $elm$core$Elm$JsArray$length(tail)) - itemsToAppend;
+		var appended = A3($elm$core$Elm$JsArray$appendN, $elm$core$Array$branchFactor, tail, toAppend);
+		var newArray = A2($elm$core$Array$unsafeReplaceTail, appended, array);
+		if (notAppended < 0) {
+			var nextTail = A3($elm$core$Elm$JsArray$slice, notAppended, itemsToAppend, toAppend);
+			return A2($elm$core$Array$unsafeReplaceTail, nextTail, newArray);
+		} else {
+			return newArray;
+		}
+	});
+var $elm$core$Elm$JsArray$foldl = _JsArray_foldl;
+var $elm$core$Array$builderFromArray = function (_v0) {
+	var len = _v0.a;
+	var tree = _v0.c;
+	var tail = _v0.d;
+	var helper = F2(
+		function (node, acc) {
+			if (node.$ === 'SubTree') {
+				var subTree = node.a;
+				return A3($elm$core$Elm$JsArray$foldl, helper, acc, subTree);
+			} else {
+				return A2($elm$core$List$cons, node, acc);
+			}
+		});
+	return {
+		nodeList: A3($elm$core$Elm$JsArray$foldl, helper, _List_Nil, tree),
+		nodeListSize: (len / $elm$core$Array$branchFactor) | 0,
+		tail: tail
+	};
+};
+var $elm$core$Array$append = F2(
+	function (a, _v0) {
+		var aTail = a.d;
+		var bLen = _v0.a;
+		var bTree = _v0.c;
+		var bTail = _v0.d;
+		if (_Utils_cmp(bLen, $elm$core$Array$branchFactor * 4) < 1) {
+			var foldHelper = F2(
+				function (node, array) {
+					if (node.$ === 'SubTree') {
+						var tree = node.a;
+						return A3($elm$core$Elm$JsArray$foldl, foldHelper, array, tree);
+					} else {
+						var leaf = node.a;
+						return A2($elm$core$Array$appendHelpTree, leaf, array);
+					}
+				});
+			return A2(
+				$elm$core$Array$appendHelpTree,
+				bTail,
+				A3($elm$core$Elm$JsArray$foldl, foldHelper, a, bTree));
+		} else {
+			var foldHelper = F2(
+				function (node, builder) {
+					if (node.$ === 'SubTree') {
+						var tree = node.a;
+						return A3($elm$core$Elm$JsArray$foldl, foldHelper, builder, tree);
+					} else {
+						var leaf = node.a;
+						return A2($elm$core$Array$appendHelpBuilder, leaf, builder);
+					}
+				});
+			return A2(
+				$elm$core$Array$builderToArray,
+				true,
+				A2(
+					$elm$core$Array$appendHelpBuilder,
+					bTail,
+					A3(
+						$elm$core$Elm$JsArray$foldl,
+						foldHelper,
+						$elm$core$Array$builderFromArray(a),
+						bTree)));
+		}
+	});
+var $basti1302$elm_non_empty_array$Array$NonEmpty$arrayExtraSplitAt = F2(
+	function (index, xs) {
+		var len = $elm$core$Array$length(xs);
+		var _v0 = _Utils_Tuple2(
+			index > 0,
+			_Utils_cmp(index, len) < 0);
+		if (_v0.a) {
+			if (_v0.b) {
+				return _Utils_Tuple2(
+					A3($elm$core$Array$slice, 0, index, xs),
+					A3($elm$core$Array$slice, index, len, xs));
+			} else {
+				return _Utils_Tuple2(xs, $elm$core$Array$empty);
+			}
+		} else {
+			if (_v0.b) {
+				return _Utils_Tuple2($elm$core$Array$empty, xs);
+			} else {
+				return _Utils_Tuple2($elm$core$Array$empty, $elm$core$Array$empty);
+			}
+		}
+	});
+var $basti1302$elm_non_empty_array$Array$NonEmpty$arrayExtraRemoveAt = F2(
+	function (index, xs) {
+		var _v0 = A2($basti1302$elm_non_empty_array$Array$NonEmpty$arrayExtraSplitAt, index, xs);
+		var xs0 = _v0.a;
+		var xs1 = _v0.b;
+		var len1 = $elm$core$Array$length(xs1);
+		return (!len1) ? xs0 : A2(
+			$elm$core$Array$append,
+			xs0,
+			A3($elm$core$Array$slice, 1, len1, xs1));
+	});
+var $elm$core$Array$isEmpty = function (_v0) {
+	var len = _v0.a;
+	return !len;
+};
+var $basti1302$elm_non_empty_array$Array$NonEmpty$removeAtSafe = F2(
+	function (index, nea) {
+		if ((index < 0) || (_Utils_cmp(
+			index,
+			$basti1302$elm_non_empty_array$Array$NonEmpty$length(nea)) > 0)) {
+			return nea;
+		} else {
+			var _v0 = nea;
+			var first = _v0.a;
+			var selected = _v0.b;
+			var rest = _v0.c;
+			var _v1 = _Utils_Tuple2(
+				index,
+				$elm$core$Array$isEmpty(rest));
+			if (!_v1.a) {
+				if (_v1.b) {
+					return nea;
+				} else {
+					var restLength = $elm$core$Array$length(rest);
+					var newSelected = A2($elm$core$Basics$max, selected - 1, 0);
+					var newRest = A3($elm$core$Array$slice, 1, restLength, rest);
+					var newFirst = function () {
+						var maybeNewFirst = A2($elm$core$Array$get, 0, rest);
+						if (maybeNewFirst.$ === 'Just') {
+							var elem = maybeNewFirst.a;
+							return elem;
+						} else {
+							return first;
+						}
+					}();
+					return A3($basti1302$elm_non_empty_array$Array$NonEmpty$NEA, newFirst, newSelected, newRest);
+				}
+			} else {
+				var otherwise = _v1;
+				var updatedSelectedIndex = function () {
+					var _v3 = A2($elm$core$Basics$compare, index, selected);
+					switch (_v3.$) {
+						case 'EQ':
+							return A2($elm$core$Basics$max, selected - 1, 0);
+						case 'LT':
+							return selected - 1;
+						default:
+							return selected;
+					}
+				}();
+				var updatedRest = A2($basti1302$elm_non_empty_array$Array$NonEmpty$arrayExtraRemoveAt, index - 1, rest);
+				return A3($basti1302$elm_non_empty_array$Array$NonEmpty$NEA, first, updatedSelectedIndex, updatedRest);
+			}
+		}
+	});
+var $author$project$Editor$removeTabPort = _Platform_outgoingPort(
+	'removeTabPort',
+	function ($) {
+		var a = $.a;
+		var b = $.b;
+		return A2(
+			$elm$json$Json$Encode$list,
+			$elm$core$Basics$identity,
+			_List_fromArray(
+				[
+					$elm$json$Json$Encode$int(a),
+					$elm$json$Json$Encode$int(b)
+				]));
 	});
 var $author$project$Editor$storeModelPort = _Platform_outgoingPort('storeModelPort', $elm$core$Basics$identity);
 var $author$project$Editor$update = F2(
@@ -10664,26 +10864,42 @@ var $author$project$Editor$update = F2(
 					$elm$core$Platform$Cmd$none);
 			case 'ChangeTab':
 				var desiredUnitIndex = msg.a;
-				var newModel = A2($author$project$Editor$setActiveUnit, desiredUnitIndex, model);
-				return _Utils_Tuple2(
-					newModel,
-					$elm$core$Platform$Cmd$batch(
-						_List_fromArray(
-							[
-								$author$project$Editor$changeTabPort(desiredUnitIndex),
-								$author$project$Editor$generateTruthTable(
-								A2(
-									$elm$core$Basics$composeR,
-									$author$project$Editor$getActiveUnit,
-									function ($) {
-										return $.output;
-									})(newModel))
-							])));
+				return A2($author$project$Editor$changeTab, desiredUnitIndex, model);
 			case 'AddTab':
 				return _Utils_Tuple2(
 					A2($author$project$Editor$addUnit, 'Untitled Unit', model),
 					$author$project$Editor$addTabPort(
 						$basti1302$elm_non_empty_array$Array$NonEmpty$length(model.units)));
+			case 'RemoveTab':
+				var unitIndex = msg.a;
+				var numberOfUnits = $basti1302$elm_non_empty_array$Array$NonEmpty$length(model.units);
+				if (numberOfUnits === 1) {
+					return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+				} else {
+					var nextUnits = A2($basti1302$elm_non_empty_array$Array$NonEmpty$removeAtSafe, unitIndex, model.units);
+					var nextUnitIndex = _Utils_eq(unitIndex, numberOfUnits - 1) ? (unitIndex - 1) : unitIndex;
+					var nextModel = A2(
+						$author$project$Editor$setActiveUnit,
+						nextUnitIndex,
+						_Utils_update(
+							model,
+							{units: nextUnits}));
+					return _Utils_Tuple2(
+						nextModel,
+						$elm$core$Platform$Cmd$batch(
+							_List_fromArray(
+								[
+									$author$project$Editor$removeTabPort(
+									_Utils_Tuple2(unitIndex, nextUnitIndex)),
+									$author$project$Editor$generateTruthTable(
+									A2(
+										$elm$core$Basics$composeR,
+										$author$project$Editor$getActiveUnit,
+										function ($) {
+											return $.output;
+										})(nextModel))
+								])));
+				}
 			case 'StartEditingActiveUnitName':
 				return _Utils_Tuple2(
 					_Utils_update(
@@ -16675,7 +16891,22 @@ var $mdgriffith$elm_ui$Element$Background$color = function (clr) {
 			'background-color',
 			clr));
 };
-var $elm$core$Elm$JsArray$foldl = _JsArray_foldl;
+var $mdgriffith$elm_ui$Internal$Model$InFront = {$: 'InFront'};
+var $mdgriffith$elm_ui$Internal$Model$Nearby = F2(
+	function (a, b) {
+		return {$: 'Nearby', a: a, b: b};
+	});
+var $mdgriffith$elm_ui$Element$createNearby = F2(
+	function (loc, element) {
+		if (element.$ === 'Empty') {
+			return $mdgriffith$elm_ui$Internal$Model$NoAttribute;
+		} else {
+			return A2($mdgriffith$elm_ui$Internal$Model$Nearby, loc, element);
+		}
+	});
+var $mdgriffith$elm_ui$Element$inFront = function (element) {
+	return A2($mdgriffith$elm_ui$Element$createNearby, $mdgriffith$elm_ui$Internal$Model$InFront, element);
+};
 var $elm$core$Elm$JsArray$indexedMap = _JsArray_indexedMap;
 var $elm$core$Array$indexedMap = F2(
 	function (func, _v0) {
@@ -16743,17 +16974,34 @@ var $mdgriffith$elm_ui$Internal$Model$PaddingStyle = F5(
 		return {$: 'PaddingStyle', a: a, b: b, c: c, d: d, e: e};
 	});
 var $mdgriffith$elm_ui$Internal$Flag$padding = $mdgriffith$elm_ui$Internal$Flag$flag(2);
-var $mdgriffith$elm_ui$Element$padding = function (x) {
-	return A2(
+var $mdgriffith$elm_ui$Internal$Model$paddingName = F4(
+	function (top, right, bottom, left) {
+		return 'pad-' + ($elm$core$String$fromInt(top) + ('-' + ($elm$core$String$fromInt(right) + ('-' + ($elm$core$String$fromInt(bottom) + ('-' + $elm$core$String$fromInt(left)))))));
+	});
+var $mdgriffith$elm_ui$Element$paddingEach = function (_v0) {
+	var top = _v0.top;
+	var right = _v0.right;
+	var bottom = _v0.bottom;
+	var left = _v0.left;
+	return (_Utils_eq(top, right) && (_Utils_eq(top, bottom) && _Utils_eq(top, left))) ? A2(
 		$mdgriffith$elm_ui$Internal$Model$StyleClass,
 		$mdgriffith$elm_ui$Internal$Flag$padding,
 		A5(
 			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
-			'p-' + $elm$core$String$fromInt(x),
-			x,
-			x,
-			x,
-			x));
+			'p-' + $elm$core$String$fromInt(top),
+			top,
+			top,
+			top,
+			top)) : A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			A4($mdgriffith$elm_ui$Internal$Model$paddingName, top, right, bottom, left),
+			top,
+			right,
+			bottom,
+			left));
 };
 var $mdgriffith$elm_ui$Internal$Model$AsRow = {$: 'AsRow'};
 var $mdgriffith$elm_ui$Internal$Model$asRow = $mdgriffith$elm_ui$Internal$Model$AsRow;
@@ -16883,18 +17131,6 @@ var $mdgriffith$elm_ui$Element$Input$autofill = A2(
 	$mdgriffith$elm_ui$Internal$Model$Attr,
 	$elm$html$Html$Attributes$attribute('autocomplete'));
 var $mdgriffith$elm_ui$Internal$Model$Behind = {$: 'Behind'};
-var $mdgriffith$elm_ui$Internal$Model$Nearby = F2(
-	function (a, b) {
-		return {$: 'Nearby', a: a, b: b};
-	});
-var $mdgriffith$elm_ui$Element$createNearby = F2(
-	function (loc, element) {
-		if (element.$ === 'Empty') {
-			return $mdgriffith$elm_ui$Internal$Model$NoAttribute;
-		} else {
-			return A2($mdgriffith$elm_ui$Internal$Model$Nearby, loc, element);
-		}
-	});
 var $mdgriffith$elm_ui$Element$behindContent = function (element) {
 	return A2($mdgriffith$elm_ui$Element$createNearby, $mdgriffith$elm_ui$Internal$Model$Behind, element);
 };
@@ -17041,10 +17277,6 @@ var $mdgriffith$elm_ui$Element$Input$hiddenLabelAttribute = function (label) {
 		return $mdgriffith$elm_ui$Internal$Model$NoAttribute;
 	}
 };
-var $mdgriffith$elm_ui$Internal$Model$InFront = {$: 'InFront'};
-var $mdgriffith$elm_ui$Element$inFront = function (element) {
-	return A2($mdgriffith$elm_ui$Element$createNearby, $mdgriffith$elm_ui$Internal$Model$InFront, element);
-};
 var $mdgriffith$elm_ui$Element$Input$isConstrained = function (len) {
 	isConstrained:
 	while (true) {
@@ -17123,35 +17355,6 @@ var $elm$html$Html$Events$onInput = function (tagger) {
 			$elm$json$Json$Decode$map,
 			$elm$html$Html$Events$alwaysStop,
 			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
-};
-var $mdgriffith$elm_ui$Internal$Model$paddingName = F4(
-	function (top, right, bottom, left) {
-		return 'pad-' + ($elm$core$String$fromInt(top) + ('-' + ($elm$core$String$fromInt(right) + ('-' + ($elm$core$String$fromInt(bottom) + ('-' + $elm$core$String$fromInt(left)))))));
-	});
-var $mdgriffith$elm_ui$Element$paddingEach = function (_v0) {
-	var top = _v0.top;
-	var right = _v0.right;
-	var bottom = _v0.bottom;
-	var left = _v0.left;
-	return (_Utils_eq(top, right) && (_Utils_eq(top, bottom) && _Utils_eq(top, left))) ? A2(
-		$mdgriffith$elm_ui$Internal$Model$StyleClass,
-		$mdgriffith$elm_ui$Internal$Flag$padding,
-		A5(
-			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
-			'p-' + $elm$core$String$fromInt(top),
-			top,
-			top,
-			top,
-			top)) : A2(
-		$mdgriffith$elm_ui$Internal$Model$StyleClass,
-		$mdgriffith$elm_ui$Internal$Flag$padding,
-		A5(
-			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
-			A4($mdgriffith$elm_ui$Internal$Model$paddingName, top, right, bottom, left),
-			top,
-			right,
-			bottom,
-			left));
 };
 var $mdgriffith$elm_ui$Element$Input$isFill = function (len) {
 	isFill:
@@ -17740,6 +17943,18 @@ var $mdgriffith$elm_ui$Element$Input$text = $mdgriffith$elm_ui$Element$Input$tex
 		type_: $mdgriffith$elm_ui$Element$Input$TextInputNode('text')
 	});
 var $author$project$Editor$AddTab = {$: 'AddTab'};
+var $mdgriffith$elm_ui$Element$padding = function (x) {
+	return A2(
+		$mdgriffith$elm_ui$Internal$Model$StyleClass,
+		$mdgriffith$elm_ui$Internal$Flag$padding,
+		A5(
+			$mdgriffith$elm_ui$Internal$Model$PaddingStyle,
+			'p-' + $elm$core$String$fromInt(x),
+			x,
+			x,
+			x,
+			x));
+};
 var $author$project$Editor$viewAddTab = A2(
 	$mdgriffith$elm_ui$Element$Input$button,
 	_List_fromArray(
@@ -17751,6 +17966,60 @@ var $author$project$Editor$viewAddTab = A2(
 		label: $mdgriffith$elm_ui$Element$text('+'),
 		onPress: $elm$core$Maybe$Just($author$project$Editor$AddTab)
 	});
+var $author$project$Editor$RemoveTab = function (a) {
+	return {$: 'RemoveTab', a: a};
+};
+var $mdgriffith$elm_ui$Internal$Model$AlignX = function (a) {
+	return {$: 'AlignX', a: a};
+};
+var $mdgriffith$elm_ui$Internal$Model$Right = {$: 'Right'};
+var $mdgriffith$elm_ui$Element$alignRight = $mdgriffith$elm_ui$Internal$Model$AlignX($mdgriffith$elm_ui$Internal$Model$Right);
+var $mdgriffith$elm_ui$Internal$Model$CenterX = {$: 'CenterX'};
+var $mdgriffith$elm_ui$Element$centerX = $mdgriffith$elm_ui$Internal$Model$AlignX($mdgriffith$elm_ui$Internal$Model$CenterX);
+var $mdgriffith$elm_ui$Internal$Model$AlignY = function (a) {
+	return {$: 'AlignY', a: a};
+};
+var $mdgriffith$elm_ui$Internal$Model$CenterY = {$: 'CenterY'};
+var $mdgriffith$elm_ui$Element$centerY = $mdgriffith$elm_ui$Internal$Model$AlignY($mdgriffith$elm_ui$Internal$Model$CenterY);
+var $elm$virtual_dom$VirtualDom$Custom = function (a) {
+	return {$: 'Custom', a: a};
+};
+var $elm$html$Html$Events$custom = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Custom(decoder));
+	});
+var $author$project$Editor$onClickNoProp = function (msg) {
+	return A2(
+		$elm$html$Html$Events$custom,
+		'click',
+		$elm$json$Json$Decode$succeed(
+			{message: msg, preventDefault: false, stopPropagation: true}));
+};
+var $author$project$Editor$viewCloseTab = function (unitIndex) {
+	return A2(
+		$mdgriffith$elm_ui$Element$Input$button,
+		_List_fromArray(
+			[
+				A2($mdgriffith$elm_ui$Element$paddingXY, 3, 3),
+				$mdgriffith$elm_ui$Element$centerY,
+				$mdgriffith$elm_ui$Element$alignRight,
+				$mdgriffith$elm_ui$Element$Border$rounded(10),
+				$mdgriffith$elm_ui$Element$htmlAttribute(
+				$author$project$Editor$onClickNoProp(
+					$author$project$Editor$RemoveTab(unitIndex)))
+			]),
+		{
+			label: A2(
+				$mdgriffith$elm_ui$Element$el,
+				_List_fromArray(
+					[$mdgriffith$elm_ui$Element$centerX]),
+				$mdgriffith$elm_ui$Element$text('x')),
+			onPress: $elm$core$Maybe$Nothing
+		});
+};
 var $author$project$Editor$viewTabSelector = function (model) {
 	var activeUnitIndex = $basti1302$elm_non_empty_array$Array$NonEmpty$selectedIndex(model.units);
 	var activeUnit = $basti1302$elm_non_empty_array$Array$NonEmpty$getSelected(model.units);
@@ -17787,8 +18056,11 @@ var $author$project$Editor$viewTabSelector = function (model) {
 								_List_fromArray(
 									[
 										$mdgriffith$elm_ui$Element$Border$width(1),
-										$mdgriffith$elm_ui$Element$padding(10),
-										_Utils_eq(index, activeUnitIndex) ? $mdgriffith$elm_ui$Element$Background$color($author$project$Editor$styles.white) : $mdgriffith$elm_ui$Element$Background$color($author$project$Editor$styles.lightGrey)
+										$mdgriffith$elm_ui$Element$paddingEach(
+										{bottom: 10, left: 10, right: 20, top: 10}),
+										_Utils_eq(index, activeUnitIndex) ? $mdgriffith$elm_ui$Element$Background$color($author$project$Editor$styles.white) : $mdgriffith$elm_ui$Element$Background$color($author$project$Editor$styles.lightGrey),
+										$mdgriffith$elm_ui$Element$inFront(
+										$author$project$Editor$viewCloseTab(index))
 									]),
 								{
 									label: $mdgriffith$elm_ui$Element$text(unit.name),

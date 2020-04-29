@@ -4,6 +4,7 @@ port module Editor exposing (..)
 import Browser
 import Html exposing (Html)
 import Html.Attributes
+import Html.Events
 import Element as E
 import Element.Input as Input
 import Element.Font as Font
@@ -28,6 +29,7 @@ port generateTruthTablePort : Encode.Value -> Cmd msg
 port receiveTruthTablePort : (String -> msg) -> Sub msg
 port changeTabPort : UnitIndex -> Cmd msg
 port addTabPort : UnitIndex -> Cmd msg
+port removeTabPort : (UnitIndex, UnitIndex) -> Cmd msg
 port storeModelPort : Encode.Value -> Cmd msg
 port pageWillClosePort : (() -> msg) -> Sub msg
 
@@ -55,6 +57,7 @@ type Msg
   | TruthTableReceived String
   | ChangeTab UnitIndex
   | AddTab
+  | RemoveTab UnitIndex
   | StartEditingActiveUnitName
   | EditActiveUnitName String
   | StopEditingActiveUnitName
@@ -133,19 +136,44 @@ update msg model =
       )
 
     ChangeTab desiredUnitIndex ->
-      let
-        newModel =
-          setActiveUnit desiredUnitIndex model
-      in
-      ( newModel
-      , Cmd.batch
-        [ changeTabPort desiredUnitIndex
-        , generateTruthTable ((getActiveUnit >> .output) newModel)
-        ]
-      )
+      changeTab desiredUnitIndex model
 
     AddTab ->
       (addUnit "Untitled Unit" model, addTabPort <| NonEmptyArray.length model.units)
+
+    RemoveTab unitIndex ->
+      let
+        numberOfUnits =
+          NonEmptyArray.length model.units
+      in
+      if numberOfUnits == 1 then
+        ( model, Cmd.none)
+      else
+        let
+          nextUnitIndex =
+            if unitIndex == numberOfUnits - 1 then
+              unitIndex - 1
+            else
+              unitIndex
+          
+          nextUnits =
+            NonEmptyArray.removeAtSafe unitIndex model.units
+          
+          nextModel =
+            setActiveUnit
+              nextUnitIndex
+              { model
+                | units =
+                  nextUnits
+              }
+        in
+        ( nextModel
+        , Cmd.batch
+          [ removeTabPort (unitIndex, nextUnitIndex)
+          , generateTruthTable ((getActiveUnit >> .output) nextModel)
+          ]
+        )
+
 
     StartEditingActiveUnitName ->
       ({ model |
@@ -170,6 +198,20 @@ update msg model =
       ( model
       , storeModelPort (encodeModel model)
       )
+
+
+changeTab : UnitIndex -> Model -> (Model, Cmd Msg)
+changeTab desiredUnitIndex model =
+  let
+    newModel =
+      setActiveUnit desiredUnitIndex model
+  in
+  ( newModel
+  , Cmd.batch
+    [ changeTabPort desiredUnitIndex
+    , generateTruthTable ((getActiveUnit >> .output) newModel)
+    ]
+  )
 
 
 encodeModel : Model -> Encode.Value
@@ -310,11 +352,17 @@ viewTabSelector model =
           else
             Input.button
               [ Border.width 1
-              , E.padding 10
+              , E.paddingEach
+                { left = 10
+                , right = 20
+                , bottom = 10
+                , top = 10
+                }
               , if index == activeUnitIndex then
                 Background.color styles.white
                 else
                 Background.color styles.lightGrey
+              , E.inFront <| viewCloseTab index
               ]
               { onPress =
                 if index == activeUnitIndex then
@@ -328,6 +376,33 @@ viewTabSelector model =
         model.units
       )
     ++ [ viewAddTab ]
+
+
+viewCloseTab : UnitIndex -> E.Element Msg
+viewCloseTab unitIndex =
+  Input.button
+    [ E.paddingXY 3 3
+    , E.centerY, E.alignRight
+    , Border.rounded 10
+    , E.htmlAttribute <| onClickNoProp <| RemoveTab unitIndex
+    ]
+    { onPress =
+      Nothing
+    , label =
+      E.el [ E.centerX ] <|
+        E.text "x"
+    }
+
+
+onClickNoProp : Msg -> Html.Attribute Msg
+onClickNoProp msg =
+  Html.Events.custom "click"
+    (Decode.succeed
+    { message = msg
+    , stopPropagation = True
+    , preventDefault = False
+    }
+  )
 
 
 viewAddTab : E.Element Msg
