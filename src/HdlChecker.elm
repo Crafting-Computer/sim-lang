@@ -771,7 +771,14 @@ inferExpr ctx expr =
                   paramTypesFromTFun funcType1
               in
               if List.length paramTypes /= List.length argTypes then
-                Err [ WrongCallArity callee paramTypes argTypes ]
+                Err [ WrongCallArity callee paramTypes <|
+                  List.map2
+                    (\arg argType ->
+                      withLocation arg argType.value
+                    )
+                    args
+                    argTypes
+                ]
               else
                 let
                   callResult =
