@@ -68,15 +68,23 @@ emit defs =
 emitPrelude : List DefOutput
 emitPrelude =
   let
+    isize name size =
+      { name = name, size = IntSize size }
+
     nsize name =
       { name = name, size = VarSize "n" }
   in
   -- function nand(a, b) { return ~(a & b); }
   [ { name = "nand"
-  , params = [ nsize "a", nsize "b"]
-  , outputs = [ nsize "" ]
-  , body = "return function(a, b) { return ~(a & b); }"
-  }
+    , params = [ nsize "a", nsize "b"]
+    , outputs = [ nsize "" ]
+    , body = "return function(a, b) { return ~(a & b); }"
+    }
+  , { name = "fill"
+    , params = [ isize "a" 1 ]
+    , outputs = [ nsize "" ]
+    , body = "return function(a) { return -a; }"
+    }
   ]
 
 

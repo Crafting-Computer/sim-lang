@@ -27,6 +27,12 @@ prelude =
     ]
     [ { name = "out", size = VarSize "n" }
     ]
+  , preludeFuncDef
+    "fill"
+    [ { name = "a", size = IntSize 1 }
+    ]
+    [ { name = "out", size = VarSize "n" }
+    ]
   ]
 
 
@@ -460,12 +466,17 @@ check defs =
     [] ->
       Ok ()
     ps ->
+      let
+        uniqueProblems =
+          List.reverse <| EverySet.toList <| EverySet.fromList ps
+      in
       Err <|
-        List.filter -- filter out mismatched types containing TVar
-        (\p ->
+        List.map Tuple.second <|
+        List.filter
+        (\(i, p) ->
           case p of
-            MismatchedTypes t1 t2 ->
-              case (t1.value, t2.value) of
+            MismatchedTypes expectedType actualType ->
+              case (expectedType.value, actualType.value) of
                 (TVar _, _) ->
                   False
                 
@@ -473,12 +484,56 @@ check defs =
                   False
                 
                 _ ->
-                  True
+                  case List.Extra.getAt (i-1) uniqueProblems of
+                    Nothing ->
+                      True
+                    
+                    Just previousProblem ->
+                      case previousProblem of
+                        MismatchedTypes pt1 pt2 ->
+                          -- filter out mismatches that has the same looking error messages
+                          -- expectedType's location is not shown so we only compare type values
+                          not ((typeToString expectedType.value == typeToString pt1.value) && (actualType == pt2))
+                        
+                        _ ->
+                          True
             
             _ ->
               True
-        )
-        <| List.reverse <| EverySet.toList <| EverySet.fromList ps
+        ) <|
+        List.map2 Tuple.pair (List.range 0 <| List.length uniqueProblems) <|
+        List.map
+          (\p ->
+            case p of
+              MismatchedTypes t1 t2 ->
+                let
+                  usedInBuiltIn : Located a -> Bool
+                  usedInBuiltIn located =
+                    Tuple.first located.from == -1
+
+                  (expectedType, actualType) =
+                    let
+                      t1UsedInBuiltIn =
+                        usedInBuiltIn t1
+                      
+                      t2UsedInBuiltIn =
+                        usedInBuiltIn t2
+                    in
+                    if t1UsedInBuiltIn && t2UsedInBuiltIn then
+                      (t1, t2)
+                    else if t1UsedInBuiltIn then
+                      (t1, t2)
+                    else if t2UsedInBuiltIn then
+                      (t2, t1)
+                    else
+                      (t1, t2)
+                in
+                MismatchedTypes expectedType actualType
+              
+              _ ->
+                p
+          )
+          uniqueProblems
 
 
 inferDef : Ctx -> Def -> Result (List Problem) (Located Type, Ctx, Subst)
@@ -727,7 +782,7 @@ inferExpr ctx expr =
                             case nextType.value of
                               TFun fromType toType ->
                                 Ok ( toType
-                                , unify (applySubstToType nextSubst fromType) argType
+                                , combineSubsts nextSubst (unify (applySubstToType nextSubst fromType) argType)
                                 )
 
                               _ ->
