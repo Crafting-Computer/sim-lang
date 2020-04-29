@@ -6352,7 +6352,18 @@ var $author$project$HdlChecker$inferExpr = F2(
 									return $elm$core$Result$Err(
 										_List_fromArray(
 											[
-												A3($author$project$HdlChecker$WrongCallArity, callee, paramTypes, argTypes)
+												A3(
+												$author$project$HdlChecker$WrongCallArity,
+												callee,
+												paramTypes,
+												A3(
+													$elm$core$List$map2,
+													F2(
+														function (arg, argType) {
+															return A2($author$project$HdlParser$withLocation, arg, argType.value);
+														}),
+													args,
+													argTypes))
 											]));
 								} else {
 									var callResult = A3(
