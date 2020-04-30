@@ -520,6 +520,13 @@ elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
 MIT
 
 # Change Log
+
+## Release v0.2.0
+* Properly show 2's complement in decimal in truth table
+* Add fill function to prelude
+* Allow spaces inside parenthesized group expr
+* Fix some checker error messages
+
 ## Release v0.1.0
 * Store units in localStorage
 * Can remove tabs
