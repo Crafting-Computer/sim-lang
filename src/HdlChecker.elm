@@ -276,6 +276,8 @@ match expectedType actualType =
       mismatch
 
 
+-- t1 is expected type
+-- t2 is actual type
 unify : Located Type -> Located Type -> Subst
 unify t1 t2 =
   let
@@ -328,10 +330,10 @@ unify t1 t2 =
                 subst1
 
             (EqualToSize, EqualToSize) ->
-              if i1 /= i2 then
-                mismatch
-              else
+              if i1 >= i2 then
                 emptySubst
+              else
+                mismatch
     
     (TRecord r1, TRecord r2) ->
       if Dict.isEmpty <| Dict.union (Dict.diff r1 r2) (Dict.diff r2 r1) then
