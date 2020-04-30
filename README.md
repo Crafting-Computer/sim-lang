@@ -294,6 +294,165 @@ Notice that any electric signal passes through `3` nand gates before reaching th
 
 **In conclusion, our optimization saves us 5 gates and 2 gate delays. This means half the cost and almost double the performance!**
 
+## Implementing Mux
+Since you should be familiar with Sim by now, we will use the multiplexer's truth table to directly derive its implementation.
+
+| a | b |sel|result|
+|:-:|:-:|:-:|:-----:|
+|0|0|0|0|
+|0|0|1|0|
+|0|1|0|0|
+|0|1|1|1|
+|1|0|0|1|
+|1|0|1|0|
+|1|1|0|1|
+|1|1|1|1|
+
+Simply put, the multiplexer outputs the value of `a` when `sel = 0` and outputs the value of `b` when `sel = 1`. So we can condense our truth table to be:
+
+| a | b |sel|result|
+|:-:|:-:|:-:|:-----:|
+|a|b|0|a|
+|a|b|1|b|
+
+Now we have our truth table, we can derive the implementation like so:
+
+```elm
+mux a[1] b[1] sel[1] -> [1] =
+    let
+        sel_a =
+            and (not sel) a
+        sel_b =
+            and sel b
+    in
+    or sel_a sel_b
+```
+
+Let's check for optimizations:
+
+```
+a*-sel + b*sel
+-(-(a*-sel + b*sel))
+-(-(a*-sel) * -(b*sel))
+(a NAND -sel) NAND (b NAND sel)
+```
+
+Indeed, we can save `2` gates by switching from `or` to `nand` and still `2` more gates by switching from `and` to `nand`. Here's the optimized version:
+
+```elm
+mux a[1] b[1] sel[1] -> [1] =
+    let
+        sel_a =
+            nand (not sel) a
+        sel_b =
+            nand sel b
+    in
+    nand sel_a sel_b
+```
+
+Since we use 1 bit input pins quite often, we can omit the `[1]` and Sim will assume it's 1 bit:
+
+```elm
+mux a b sel -> [1] =
+    let
+        sel_a =
+            nand (not sel) a
+        sel_b =
+            nand sel b
+    in
+    nand sel_a sel_b
+```
+
+Here's a problem though, what if we want to select between two values that are 2 bits, 8 bits, or 32 bits? Do we have to write a separate `mux2`, `mux8`, and `mux16` even though the logic for any bit is the same? What if we can declare a general `mux` function that works for any sized input pins like so where `n` can be any positive number?
+
+```elm
+mux a[n] b[n] sel -> [1]
+```
+
+But this requires our `nand` and `not` gate to handle arbitrary sized inputs as well... Do we need to reimplement all the previous circuits? The answer is you just need to change `[1]` to `[n]` and you are done!
+
+So here's our updated `not` gate:
+```elm
+not a[n] -> [n] =
+    nand a a
+```
+
+What about `nand` gate? Sim has already done it for us if you check out `nand`'s header:
+
+```elm
+nand a[n] b[n] -> [n]
+```
+
+Perfect! Now let's generalize our `mux` to n bits:
+
+```elm
+mux a[n] b[n] sel -> [n] =
+    let
+        sel_a = nand (not sel) a
+        sel_b = nand sel b
+    in
+    nand sel_a sel_b
+```
+
+The above does not work surprisingly as Sim complains:
+
+```
+I'm expecting to find the type [n] here:
+1| mux a[n] b[n] sel -> [n] =
+                 ^^^          
+but got the type [1].
+```
+
+Why does Sim tell us this message? Let's check the place we used `sel`:
+
+```elm
+sel_a = nand (not sel) a
+```
+
+and
+
+```elm
+sel_b = nand sel b
+```
+
+Notice that `sel` is passed in as an argument to the `nand` function which expects both its input to have a size of `n`. However, `sel` has a fixed size of `1`. It will be neat if we can expand a 1-bit value into multiple bits by copying its value multiple times. That is exactly what the built-in function `fill` does:
+
+```elm
+fill a[1] -> [n]
+```
+
+Finally, we can finish our generalized implementation of `mux` by expanding `sel` to size `n`:
+
+
+```elm
+mux a[n] b[n] sel -> [n] =
+    let
+        sel_a = nand (not (fill sel)) a
+        sel_b = nand (fill sel) b
+    in
+    nand sel_a sel_b
+```
+
+Before we move on, we need to understand a little caveat of `Sim`. Currently, you can only use one bus size variable `n` and it acts as a global integer constant. So the below implementation will not work:
+
+```elm
+mux a[n] b[n] sel -> [n] =
+    let
+        sel_a = nand (fill (not sel)) a
+        sel_b = nand (fill sel) b
+    in
+    nand sel_a sel_b
+```
+
+Because `fill` requires its argument to be of size `1`, meaning that `not` takes in an argument of size `1`. If you look at `not`'s header:
+
+```elm
+not a[n] -> [n] =
+    nand a a
+```
+
+You will see that we just implied that `n = 1` in the `not` function. Since the `n` value is global, we implied that all `n = 1` which is not what we want. This is not a problem you should concern about as it's a problem that `Sim` needs to solve. Just watch out for weired bugs like this in the future.
+
 ## Implementing a full adder
 ```elm
 full_adder a b c -> { sum, carry } =
