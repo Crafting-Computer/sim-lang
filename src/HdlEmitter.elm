@@ -299,7 +299,14 @@ emitExpr e =
     Call callee args ->
       callee.value ++ "(" ++ (String.join ", " <| List.map (emitExpr << .value) args) ++ ")"
     Indexing expr (from, to) ->
-      "(" ++ "(" ++ emitExpr expr.value ++ ")" ++ " << " ++ String.fromInt from.value ++ " >>> " ++ String.fromInt to.value ++ ")"
+      let
+        shiftRightBinaryPlaces =
+          String.fromInt from.value
+        
+        andFilter =
+          "0b" ++ String.repeat (from.value - to.value + 1) "1"
+      in
+      "(" ++ "(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter ++ ")"
     Record r ->
       Dict.foldl
         (\k v str ->
