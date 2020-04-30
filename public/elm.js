@@ -6975,7 +6975,14 @@ var $author$project$HdlChecker$check = function (defs) {
 					var defProblems = _v8.a;
 					return _Utils_ap(defProblems, ps);
 				} else {
-					return ps;
+					var _v9 = _v8.a;
+					var subst = _v9.c;
+					if (subst.$ === 'Subst') {
+						return ps;
+					} else {
+						var errs = subst.a;
+						return _Utils_ap(errs, ps);
+					}
 				}
 			}),
 		_List_Nil,

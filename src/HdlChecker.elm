@@ -456,8 +456,13 @@ check defs =
             Err defProblems ->
               defProblems ++ ps
             
-            Ok _ ->
-              ps
+            Ok (_, _, subst) ->
+              case subst of
+                Subst _ ->
+                  ps
+                
+                SubstError errs ->
+                  errs ++ ps
         )
         []
         defs
