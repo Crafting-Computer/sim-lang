@@ -1084,15 +1084,26 @@ showProblems src problems =
   String.join "\n\n" <| List.map (showProblem src) problems
 
 
+locatedInPrelude : Located a -> Bool
+locatedInPrelude located =
+  Tuple.first located.from < 0
+
+
+
 showProblem : String -> Problem -> String
 showProblem src problem =
   case problem of
     DuplicatedName prevName currName ->
-      "I found a duplicated name `" ++ currName.value ++ "` that is previously defined here:\n"
-      ++ showLocation src prevName ++ "\n"
-      ++ "but I found it defined again here:\n"
-      ++ showLocation src currName ++ "\n"
-      ++ "Hint: Try renaming one of the names to avoid conflict."
+      if locatedInPrelude prevName then
+        "I found that you are trying to redefine a built-in function `" ++ prevName.value ++ "` here:\n"
+        ++ showLocation src currName ++ "\n"
+        ++ "Hint: Try changing your name to avoid conflict with the built-in function."
+      else
+        "I found a duplicated name `" ++ currName.value ++ "` that is previously defined here:\n"
+        ++ showLocation src prevName ++ "\n"
+        ++ "but I found it defined again here:\n"
+        ++ showLocation src currName ++ "\n"
+        ++ "Hint: Try renaming one of the names to avoid conflict."
     UndefinedName undefinedName ->
       "I found an undefined name `" ++ undefinedName.value ++ "` here:\n"
       ++ showLocation src undefinedName ++ "\n"
