@@ -67,6 +67,7 @@ type Problem
   | ExpectingLeftBrace
   | ExpectingRightBrace
   | ExpectingComma
+  | ExpectingSpaces
 
 
 type Context
@@ -274,6 +275,8 @@ showProblem problem =
       "a '}'"
     ExpectingComma ->
       "a ','"
+    ExpectingSpaces ->
+      "a space or newline"
 
 
 defs : HdlParser (List Def)
@@ -541,11 +544,10 @@ bindingOrCall : HdlParser Expr
 bindingOrCall =
   succeed Tuple.pair
     |= name
-    |. sps
     |=  ( loop [] <| \revExprs ->
       oneOf
-        [ checkIndent <|
-          succeed (\n -> Loop (n :: revExprs))
+        [ succeed (\n -> Loop (n :: revExprs))
+          |. backtrackable sps1
           |= (located <| oneOf
             [ binding
             , group
@@ -553,7 +555,6 @@ bindingOrCall =
             , intLiteral
             ]
           )
-          |. sps
         , succeed ()
           |> map (\_ -> Done (List.reverse revExprs))
         ]
@@ -663,6 +664,17 @@ sps =
       , multiComment (Token "{-" ExpectingStartOfMultiLineComment) (Token "-}" ExpectingEndOfMultiLineComment) Nestable
       , spaces
       ]
+
+
+sps1 : HdlParser ()
+sps1 =
+  getChompedString sps
+  |> andThen (\str ->
+    if String.isEmpty str then
+      problem ExpectingSpaces
+    else
+      succeed ()
+  )
 
 
 ifProgress : HdlParser a -> Int -> HdlParser (Step Int ())
