@@ -521,6 +521,11 @@ MIT
 
 # Change Log
 
+## Release v0.3.0
+* Fix the emitted JS of indexing expr
+* Fix EqualToSize comparison in unify
+* Check for duplicated names
+
 ## Release v0.2.0
 * Properly show 2's complement in decimal in truth table
 * Add fill function to prelude
