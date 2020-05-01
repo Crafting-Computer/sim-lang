@@ -74,8 +74,46 @@ emptyCtx =
   }
 
 
-addToCtx : String -> Located Type -> Ctx -> Ctx
+getTypeFromCtx : String -> Ctx -> Maybe (Located Type)
+getTypeFromCtx name ctx =
+  Maybe.map
+    Tuple.second
+    (getLocatedNameAndTypeFromCtx name ctx)
+
+
+getLocatedNameAndTypeFromCtx : String -> Ctx -> Maybe (Located String, Located Type)
+getLocatedNameAndTypeFromCtx name ctx =
+  let
+    locatedName =
+      List.Extra.find
+      (\k ->
+        k.value == name
+      )
+      (Dict.keys ctx.env)
+  in
+  Maybe.andThen
+    (\n ->
+      Maybe.map
+        (Tuple.pair n)
+        (Dict.get n ctx.env)
+    )
+    locatedName
+
+
+addToCtx : Located String -> Located Type -> Ctx -> Result (List Problem) Ctx
 addToCtx n t c =
+  case getLocatedNameAndTypeFromCtx n.value c of
+    Nothing ->
+      Ok <| addToCtxAllowDuplicates n t c
+
+    Just (n2, _) ->
+      Err
+        [ DuplicatedName (withLocation n2 n.value) n
+        ]
+
+
+addToCtxAllowDuplicates : Located String -> Located Type -> Ctx -> Ctx
+addToCtxAllowDuplicates n t c =
   { c
     | env =
       Dict.insert n t c.env
@@ -94,7 +132,7 @@ newTVar location ctx =
 
 -- Map identifier to their type
 type alias Env =
-  Dict String (Located Type)
+  Dict (Located String) (Located Type)
 
 
 -- Map type variable id to type
@@ -434,37 +472,69 @@ impossibleLocatedType =
 check : List Def -> Result (List Problem) ()
 check defs =
   let
+    allDefs =
+      prelude ++ defs
+
+    ctx =
+      List.foldl
+        (\d nextCtx ->
+          Result.andThen
+          (\c ->
+            case d of
+              FuncDef { name, params, outputs } ->
+                addToCtx name (createTFun params outputs) c
+
+              BindingDef _ ->
+                Ok c
+          )
+          nextCtx
+        )
+        (Ok emptyCtx)
+        allDefs
+    
     problems =
       List.foldl
         (\def ps ->
-          let
-            otherDefs =
-              prelude ++ List.filter ((/=) def) defs
-            
-            ctx =
-              List.foldl
-                (\d nextCtx ->
-                  case d of
-                    FuncDef { name, params, outputs } ->
-                      addToCtx name.value (createTFun params outputs) nextCtx
+          case ctx of
+            Ok c ->
+              let
+                defNames =
+                  case def of
+                    FuncDef { name } ->
+                      [ name.value ]
 
-                    BindingDef _ ->
-                      nextCtx
-                )
-                emptyCtx
-                otherDefs
-          in
-          case inferDef ctx def of
-            Err defProblems ->
-              defProblems ++ ps
-            
-            Ok (_, _, subst) ->
-              case subst of
-                Subst _ ->
-                  ps
+                    BindingDef { name } ->
+                      case name.value of
+                        BindingName n ->
+                          [ n ]
+                        
+                        BindingRecord r ->
+                          List.map .value <| Dict.values r
+
+                defCtx =
+                  { c
+                    | env =
+                      Dict.filter
+                        (\k _ ->
+                          not <| List.member k.value defNames
+                        )
+                        c.env
+                  }
+              in
+              case inferDef defCtx def of
+                Err defProblems ->
+                  defProblems ++ ps
                 
-                SubstError errs ->
-                  errs ++ ps
+                Ok (_, _, subst) ->
+                  case subst of
+                    Subst _ ->
+                      ps
+                    
+                    SubstError errs ->
+                      errs ++ ps
+            
+            Err ctxProblems ->
+              ctxProblems ++ ps
         )
         []
         defs
@@ -557,19 +627,27 @@ inferDef ctx def =
         paramCtx =
           List.foldl
             (\p resultParamCtx ->
-              let
-                paramName =
-                  p.name.value
-                
-                (paramType, nextCtx) =
-                  newTVar p.size resultParamCtx
-              in
-              addToCtx paramName paramType nextCtx
+              Result.andThen
+              (\c ->
+                let
+                  paramName =
+                    p.name
+                  
+                  (paramType, nextCtx) =
+                    newTVar p.size c
+                in
+                addToCtx paramName paramType nextCtx
+              )
+              resultParamCtx
             )
-            ctx
+            (Ok ctx)
             params
       in
-      inferLocalsAndBody paramCtx locals body |>
+      paramCtx |>
+      Result.andThen
+        (\c ->
+          inferLocalsAndBody c locals body
+        ) |>
       Result.andThen
         (\(outputType1, outputCtx1, outputSubst) ->
           let
@@ -582,7 +660,7 @@ inferDef ctx def =
             paramTypes =
               List.map
                 (\p ->
-                  case Dict.get p.name.value outputCtx.env of
+                  case getTypeFromCtx p.name.value outputCtx of
                     Just t ->
                       t
                     Nothing ->
@@ -642,7 +720,7 @@ inferExpr : Ctx -> Located Expr -> Result (List Problem) (Located Type, Ctx, Sub
 inferExpr ctx expr =
   case expr.value of
     Binding name ->
-      case Dict.get name.value ctx.env of
+      case getTypeFromCtx name.value ctx of
         Just t ->
           Ok (t, ctx, emptySubst)
         
@@ -843,38 +921,48 @@ inferDefs ctx defs =
     declaredCtx =
       List.foldl
         (\d nextCtx ->
-          case d of
-            FuncDef { name, params, outputs } ->
-              addToCtx name.value (createTFun params outputs) nextCtx
+          Result.andThen
+          (\nextCtx1 ->
+            case d of
+              FuncDef { name, params, outputs } ->
+                addToCtx name (createTFun params outputs) nextCtx1
 
-            BindingDef { name } ->
-              let
-                bindings =
-                  case name.value of
-                    BindingName n ->
-                      [ withLocation name n ]
-                    
-                    BindingRecord r ->
-                      Dict.values r
-                
-                bindingCtx =
-                  List.foldl
-                    (\binding ctx1 ->
-                      let
-                        (t, ctx2) =
-                          newTVar binding ctx1
-                      in
-                      addToCtx binding.value t ctx2
-                    )
-                    nextCtx
-                    bindings
-              in
-              bindingCtx
+              BindingDef { name } ->
+                let
+                  bindings =
+                    case name.value of
+                      BindingName n ->
+                        [ withLocation name n ]
+                      
+                      BindingRecord r ->
+                        Dict.values r
+                  
+                  bindingCtx =
+                    List.foldl
+                      (\binding ctx1 ->
+                        Result.andThen
+                        (\c1 ->
+                          let
+                            (t, ctx2) =
+                              newTVar binding c1
+                          in
+                          addToCtx binding t ctx2
+                        )
+                        ctx1
+                      )
+                      (Ok nextCtx1)
+                      bindings
+                in
+                bindingCtx
+          )
+          nextCtx
         )
-        ctx
+        (Ok ctx)
         defs
   in
-  List.foldl
+  declaredCtx |>
+  Result.andThen
+  (\declaredCtx1 -> List.foldl
     (\def result ->
       Result.andThen
         (\(resultCtx, resultSubst) ->
@@ -887,14 +975,14 @@ inferDefs ctx defs =
               in
               case def of
                 FuncDef { name } ->
-                  Ok ( addToCtx name.value defType <| defCtx
+                  Ok ( addToCtxAllowDuplicates name defType <| defCtx
                   , nextSubst
                   )
                 
                 BindingDef { name } ->
                   case name.value of
                     BindingName n ->
-                      Ok ( addToCtx n defType <| defCtx
+                      Ok ( addToCtxAllowDuplicates (withLocation name n) defType <| defCtx
                       , nextSubst
                       )
                     
@@ -905,7 +993,7 @@ inferDefs ctx defs =
                             (\k v nextCtx ->
                               case Dict.get k.value typeRecord of
                                 Just t ->
-                                  addToCtx v.value t nextCtx
+                                  addToCtxAllowDuplicates v t nextCtx
                                 Nothing ->
                                   nextCtx
                             )
@@ -920,8 +1008,9 @@ inferDefs ctx defs =
         )
         result
       )
-      (Ok (declaredCtx, emptySubst))
+      (Ok (declaredCtx1, emptySubst))
       defs
+  )
 
 
 createTFunFromTypes : List (Located Type) -> Located Type -> Located Type

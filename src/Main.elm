@@ -94,16 +94,56 @@ source =
 --     in
 --     nand i c
 --   """
+  -- """
+  -- s_r_latch s r -> [1] =
+  --     let
+  --         nar a b -> [1] = nand a b
+  --         q =
+  --             nand s not_q
+  --         not_q =
+  --             nand r q
+  --     in
+  --     q
+  -- """
   """
-  s_r_latch s r -> [1] =
-      let
-          nar a b -> [1] = nand a b
-          q =
-              nand s not_q
-          not_q =
-              nand r q
-      in
-      q
+  mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
+    let
+        sel_a_b =
+            mux a b sel[1]
+        sel_c_d =
+            mux c d sel[1]
+    in
+    mux sel_a_b sel_c_d sel[0]
+
+mux a[n] b[n] sel[1] -> [n] =
+    let
+        sel_a =
+            and (not (fill sel)) a
+        sel_b =
+            and (fill sel) b
+    in
+    or sel_a sel_b
+
+xor a[n] b[n] -> [n] =
+    let
+        nand_a_b = nand a b
+    in
+    nand
+    (nand a nand_a_b)
+    (nand b nand_a_b)
+
+or a[n] b[n] -> [n] =
+    nand (not a) (not b)
+
+not a[n] -> [n] =
+    nand a a
+
+and a[n] b[n] -> [n] =
+    let
+        nand_a_b = nand a b
+    in
+    nand nand_a_b nand_a_b
+    
   """
   -- """
   -- f i -> [1] =

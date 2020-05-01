@@ -262,6 +262,17 @@ suite =
         "my_binding = nand 0 0" <|
         Err [BindingNotAllowedAtTopLevel { from = (1,1), to = (1,11), value = BindingName "my_binding" }]
       ]
+      , describe "DuplicatedName"
+      [ test "duplicated top level name"
+        "duplicated i[1] -> [1] = nand i 0\nduplicated i[1] -> [1] = nand i 1" <|
+        Err [DuplicatedName { from = (1,1), to = (1,11), value = "duplicated" } { from = (2,1), to = (2,11), value = "duplicated" }]
+      , test "duplicated local name"
+        "f i[1] -> [1] =\n let\n  duplicated = nand i 0\n  duplicated = nand i 1\n in\n 0" <|
+        Err [DuplicatedName { from = (3,3), to = (3,13), value = "duplicated" } { from = (4,3), to = (4,13), value = "duplicated" }]
+      , test "duplicated local name previously defined at top level"
+        "duplicated i[1] -> [1] = nand i 0\nf i[1] -> [1] =\n let\n  duplicated = nand i 1\n in\n 0" <|
+        Err [DuplicatedName { from = (1,1), to = (1,11), value = "duplicated" } { from = (4,3), to = (4,13), value = "duplicated" }]
+      ]
     ]
 
 test : String -> String -> Result (List HdlChecker.Problem) () -> Test
