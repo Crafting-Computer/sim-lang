@@ -9887,6 +9887,9 @@ var $author$project$HdlParser$showDeadEnds = F2(
 				$author$project$HdlParser$showDeadEndsHelper(src),
 				deadEndGroups));
 	});
+var $author$project$HdlChecker$locatedInPrelude = function (located) {
+	return located.from.a < 0;
+};
 var $author$project$HdlChecker$prettifyTypesHelper = F2(
 	function (t1, t2) {
 		var _v0 = _Utils_Tuple2(t1.value, t2.value);
@@ -9963,7 +9966,7 @@ var $author$project$HdlChecker$showProblem = F2(
 			case 'DuplicatedName':
 				var prevName = problem.a;
 				var currName = problem.b;
-				return 'I found a duplicated name `' + (currName.value + ('` that is previously defined here:\n' + (A2($author$project$HdlChecker$showLocation, src, prevName) + ('\n' + ('but I found it defined again here:\n' + (A2($author$project$HdlChecker$showLocation, src, currName) + ('\n' + 'Hint: Try renaming one of the names to avoid conflict.')))))));
+				return $author$project$HdlChecker$locatedInPrelude(prevName) ? ('I found that you are trying to redefine a built-in function `' + (prevName.value + ('` here:\n' + (A2($author$project$HdlChecker$showLocation, src, currName) + ('\n' + 'Hint: Try changing your name to avoid conflict with the built-in function.'))))) : ('I found a duplicated name `' + (currName.value + ('` that is previously defined here:\n' + (A2($author$project$HdlChecker$showLocation, src, prevName) + ('\n' + ('but I found it defined again here:\n' + (A2($author$project$HdlChecker$showLocation, src, currName) + ('\n' + 'Hint: Try renaming one of the names to avoid conflict.'))))))));
 			case 'UndefinedName':
 				var undefinedName = problem.a;
 				return 'I found an undefined name `' + (undefinedName.value + ('` here:\n' + (A2($author$project$HdlChecker$showLocation, src, undefinedName) + ('\n' + ('Hint: Try defining `' + (undefinedName.value + '` before use.'))))));
