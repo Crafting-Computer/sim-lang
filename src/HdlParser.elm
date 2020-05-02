@@ -5,6 +5,7 @@ import Parser.Advanced exposing (..)
 import Set exposing (Set)
 import AssocList as Dict exposing (Dict)
 import List.Extra
+import EverySet
 
 
 type Def
@@ -110,7 +111,7 @@ showDeadEnds : String -> List (DeadEnd Context Problem) -> String
 showDeadEnds src deadEnds =
   let
     deadEndGroups =
-      List.Extra.groupWhile (\d1 d2 -> d1.row == d2.row && d1.col == d2.col) deadEnds
+      List.Extra.groupWhile (\d1 d2 -> d1.row == d2.row && d1.col == d2.col) <| deadEnds
   in
   String.join "\n" <| List.map (showDeadEndsHelper src) deadEndGroups
 
@@ -121,7 +122,7 @@ showDeadEndsHelper src (first, rests) =
     location =
       showProblemLocation first.row first.col src
     problems =
-      List.map (.problem >> showProblem) (first :: rests)
+      List.map (.problem >> showProblem) <| EverySet.toList <| EverySet.fromList <| first :: rests
     context =
       showProblemContextStack first.contextStack
   in
