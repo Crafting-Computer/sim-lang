@@ -147,6 +147,7 @@
     var app = Elm.Editor.init({ node: document.getElementById('rightPanel'), flags: savedProject });
 
     app.ports.setEditorValuePort.subscribe(function(newValue) {
+      console.log("newValue: ", newValue);
       editor.setValue(newValue);
     });
 
