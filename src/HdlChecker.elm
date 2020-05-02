@@ -974,15 +974,43 @@ inferDefs ctx defs =
                   combineSubsts resultSubst defSubst
               in
               case def of
-                FuncDef { name } ->
-                  Ok ( addToCtxAllowDuplicates name defType <| defCtx
+                FuncDef { name, params, locals } ->
+                  let
+                    funcScopeNames =
+                      List.map (.name >> .value) params ++ (List.concat <| List.map getTargetNamesFromDef locals)
+                    
+                    defCtx1 =
+                      { defCtx
+                        | env =
+                          Dict.filter
+                            (\k _ ->
+                              not (List.member k.value funcScopeNames)
+                            )
+                            defCtx.env
+                      }
+                  in
+                  Ok ( addToCtxAllowDuplicates name defType <| defCtx1
                   , nextSubst
                   )
                 
-                BindingDef { name } ->
+                BindingDef { name, locals } ->
+                  let
+                    bindingScopeNames =
+                      List.concat <| List.map getTargetNamesFromDef locals
+                    
+                    defCtx1 =
+                      { defCtx
+                        | env =
+                          Dict.filter
+                            (\k _ ->
+                              not (List.member k.value bindingScopeNames)
+                            )
+                            defCtx.env
+                      }
+                  in
                   case name.value of
                     BindingName n ->
-                      Ok ( addToCtxAllowDuplicates (withLocation name n) defType <| defCtx
+                      Ok ( addToCtxAllowDuplicates (withLocation name n) defType <| defCtx1
                       , nextSubst
                       )
                     
@@ -997,7 +1025,7 @@ inferDefs ctx defs =
                                 Nothing ->
                                   nextCtx
                             )
-                            defCtx
+                            defCtx1
                             r
                           , nextSubst
                           )
