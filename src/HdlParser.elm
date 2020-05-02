@@ -157,12 +157,14 @@ bindingTargetToString target =
     BindingName n ->
       n
     BindingRecord r ->
-      Dict.foldl
-        (\k v str ->
-          str ++ k.value ++ " : " ++ v.value ++ ", "
-        )
-        "{ "
-        r
+      "{ "
+      ++ (String.join ", " <|
+        List.map
+          (\(k, v) ->
+            k.value ++ " : " ++ v.value
+          )
+          (List.reverse <| Dict.toList r)
+      )
       ++ " }"
 
 
