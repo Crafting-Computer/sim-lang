@@ -1173,6 +1173,10 @@ showProblem src problem =
           ++ "Hint: Try destructing the record to get the values inside:\n\n"
           ++ "{ sum = s1, carry = c1 } = { sum = 0, carry = 1 }\n\n"
           ++ "Note that the record destructure automatically creates two new bindings `s1` and `c1`."
+        TFun _ _ ->
+          "I found that you are trying to index into a function. This is not allowed.\n"
+          ++ showLocationRange src from to ++ "\n"
+          ++ "Hint: Try switching from the function to a bus."
         _ -> -- must be BusType (IntLiteral)
           "Are you trying to slice an integer? This is not allowed.\n"
           ++ showLocationRange src from to ++ "\n"
