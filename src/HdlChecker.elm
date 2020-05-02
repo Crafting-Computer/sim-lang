@@ -15,6 +15,8 @@ type Problem
   | FromIndexBiggerThanToIndex (Located Int) (Located Int) -- from to
   | ExpectingRecord (Located Type)
   | MismatchedTypes (Located Type) (Located Type)
+  | UnexpectedBindingRecordKey (Located String) (Dict String (Located Type)) -- recordKey actualRecordType
+  | DuplicatedBindingRecordKey (Located String) (Located String)
   | BindingNotAllowedAtTopLevel (Located BindingTarget) -- bindingName
 
 
@@ -1017,18 +1019,47 @@ inferDefs ctx defs =
                     BindingRecord r ->
                       case defType.value of
                         TRecord typeRecord ->
-                          Ok ( Dict.foldl
-                            (\k v nextCtx ->
-                              case Dict.get k.value typeRecord of
-                                Just t ->
-                                  addToCtxAllowDuplicates v t nextCtx
-                                Nothing ->
+                          let
+                            keys =
+                              List.reverse <| Dict.keys r
+                            
+                            duplicatedRecordKeys : Maybe (Located String, Located String)
+                            duplicatedRecordKeys =
+                              List.foldl
+                                (\firstKey duplicates ->
+                                  case duplicates of
+                                    Nothing ->
+                                      Maybe.map
+                                        (\secondKey -> (firstKey, secondKey))
+                                        <| List.Extra.find (\otherKey -> otherKey.value == firstKey.value) (List.filter ((/=) firstKey) keys)
+
+                                    Just _ ->
+                                      duplicates
+                                )
+                                Nothing
+                                keys
+                          in
+                          case duplicatedRecordKeys of
+                            Nothing ->
+                              Dict.foldl
+                                (\k v nextCtx ->
+                                  Result.andThen
+                                  (\c ->
+                                    case Dict.get k.value typeRecord of
+                                      Just t ->
+                                        Ok <| addToCtxAllowDuplicates v t c
+                                      Nothing ->
+                                        Err <| [ UnexpectedBindingRecordKey k typeRecord ]
+                                  )
                                   nextCtx
-                            )
-                            defCtx1
-                            r
-                          , nextSubst
-                          )
+                                )
+                                (Ok defCtx1)
+                                r |>
+                              Result.map
+                              (\c -> (c, nextSubst))
+                            
+                            Just (firstKey, secondKey) ->
+                              Err <| [ DuplicatedBindingRecordKey firstKey secondKey ]
                         
                         _ ->
                           Err <| [ ExpectingRecord defType ]
@@ -1201,6 +1232,17 @@ showProblem src problem =
     ExpectingRecord recordType ->
       "I'm expecting a record here:\n"
       ++ showLocation src recordType
+    UnexpectedBindingRecordKey recordKey actualRecordType ->
+      "I found that you are trying to retrieve an undefined record key `" ++ recordKey.value ++ "` here:\n"
+      ++ showLocation src recordKey ++ "\n"
+      ++ "Hint: Try referencing one of the defined keys: " ++ (String.join ", " <| Dict.keys actualRecordType)
+    DuplicatedBindingRecordKey firstKey secondKey ->
+      "I found that you are trying to assign a record key to two bindings.\n\n"
+      ++ "The first assignment is here:\n"
+      ++ showLocation src firstKey ++ "\n"
+      ++ "The second assignment is here:\n"
+      ++ showLocation src secondKey ++ "\n"
+      ++ "Hint: Try removing one of the assignments."
 
 
 prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
