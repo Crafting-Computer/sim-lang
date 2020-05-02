@@ -750,7 +750,7 @@ inferExpr ctx expr =
                     case size of
                       IntSize s ->
                         if to.value >= s then
-                          ( Ok t
+                          ( Ok <| withLocation expr <| TBus (IntSize (to.value - from.value + 1)) EqualToSize
                           , Subst <| Dict.singleton (nameFromLocated t) (withLocation e <| TBus (IntSize to.value) GreaterThanSize)
                           )
                         else
