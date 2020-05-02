@@ -1,6 +1,7 @@
 module HdlEmitter exposing (emit, emitString, DefOutput)
 
 import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..), bindingTargetToString)
+import HdlChecker exposing (getTargetNamesFromDef, getSourceNamesFromDef)
 import AssocList as Dict
 import List.Extra
 
@@ -212,64 +213,6 @@ emitLocals indent declareVars defs =
         defs
   in
   String.join "\n" <| List.map (emitDef indent declareVars) orderedLocals
-
-
--- c = nand a b
--- target names : [ c ]
--- { a = first, b = second } = nand a b
--- target names : [ first, second ]
-getTargetNamesFromDef : Def -> List String
-getTargetNamesFromDef def =
-  case def of
-    FuncDef { name } ->
-      [ name.value ]
-    
-    BindingDef { name } ->
-      case name.value of
-        BindingName n ->
-          [ n ]
-        
-        BindingRecord r ->
-          List.map .value <| Dict.values r
-
-
--- c = nand a b
--- source names : [ nand, a, b ]
-getSourceNamesFromDef : Def -> List String
-getSourceNamesFromDef def =
-  let
-    (l, b) =
-      case def of
-        FuncDef { locals, body } ->
-          (locals, body)
-
-        BindingDef { locals, body } ->
-          (locals, body)
-  in
-  ( List.concat <|
-    List.map
-      getSourceNamesFromDef
-      l
-  ) ++ getNamesFromExpr b.value
-
-
-getNamesFromExpr : Expr -> List String
-getNamesFromExpr expr =
-  case expr of
-    Binding name ->
-      [ name.value ]
-    
-    Call callee args ->
-      callee.value :: (List.concat <| List.map (getNamesFromExpr << .value) args)
-  
-    Indexing e _ ->
-      getNamesFromExpr e.value
-    
-    Record r ->
-      List.concat <| List.map (getNamesFromExpr << .value) <| Dict.values r.value
-    
-    IntLiteral _ ->
-      []
 
 
 emitIndentation : Int -> String

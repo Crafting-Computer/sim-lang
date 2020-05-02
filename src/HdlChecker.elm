@@ -1,4 +1,4 @@
-module HdlChecker exposing (Problem(..), Type(..), SizeComparator(..), check, showProblems)
+module HdlChecker exposing (Problem(..), Type(..), SizeComparator(..), check, showProblems, getTargetNamesFromDef, getSourceNamesFromDef)
 
 import HdlParser exposing (fakeLocated, bindingTargetToString, withLocation, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
@@ -1272,3 +1272,60 @@ sizeToString s =
       n
   )
   ++ "]"
+
+-- c = nand a b
+-- target names : [ c ]
+-- { a = first, b = second } = nand a b
+-- target names : [ first, second ]
+getTargetNamesFromDef : Def -> List String
+getTargetNamesFromDef def =
+  case def of
+    FuncDef { name } ->
+      [ name.value ]
+    
+    BindingDef { name } ->
+      case name.value of
+        BindingName n ->
+          [ n ]
+        
+        BindingRecord r ->
+          List.map .value <| Dict.values r
+
+
+-- c = nand a b
+-- source names : [ nand, a, b ]
+getSourceNamesFromDef : Def -> List String
+getSourceNamesFromDef def =
+  let
+    (l, b) =
+      case def of
+        FuncDef { locals, body } ->
+          (locals, body)
+
+        BindingDef { locals, body } ->
+          (locals, body)
+  in
+  ( List.concat <|
+    List.map
+      getSourceNamesFromDef
+      l
+  ) ++ getNamesFromExpr b.value
+
+
+getNamesFromExpr : Expr -> List String
+getNamesFromExpr expr =
+  case expr of
+    Binding name ->
+      [ name.value ]
+    
+    Call callee args ->
+      callee.value :: (List.concat <| List.map (getNamesFromExpr << .value) args)
+  
+    Indexing e _ ->
+      getNamesFromExpr e.value
+    
+    Record r ->
+      List.concat <| List.map (getNamesFromExpr << .value) <| Dict.values r.value
+    
+    IntLiteral _ ->
+      []
