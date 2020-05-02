@@ -247,7 +247,7 @@ emitExpr e =
           String.fromInt from.value
         
         andFilter =
-          "0b" ++ String.repeat (from.value - to.value + 1) "1"
+          "0b" ++ String.repeat (to.value - from.value + 1) "1"
       in
       "(" ++ "(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter ++ ")"
     Record r ->
