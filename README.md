@@ -521,6 +521,14 @@ MIT
 
 # Change Log
 
+## Release v0.4.0
+* Fix indentation checking for record, intLiteral, and bindingOrCall
+* Detect binding record assignment mismatches
+* Pop parameters and local names from context when out of scope
+* Fix the emitted JS of indexing expr another time
+* Fix indexing on IntSize type inference
+* Filter out duplicated parser problems
+
 ## Release v0.3.0
 * Fix the emitted JS of indexing expr
 * Fix EqualToSize comparison in unify

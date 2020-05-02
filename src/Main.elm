@@ -105,15 +105,89 @@ source =
   --     in
   --     q
   -- """
-  """
-  mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
+  """{-
+{a, b, c, d, e, f, g, h} = {input, 0, 0, 0, 0, 0, 0, 0} if sel == 000
+                           {0, input, 0, 0, 0, 0, 0, 0} if sel == 001
+                           etc.
+                           {0, 0, 0, 0, 0, 0, 0, input} if sel == 111
+-}
+dmux_8_way input[n] sel[3] ->
+    { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] } =
+    let
+        { a = a, b = b, c = c, d = d } =
+            dmux_4_way input sel[0..1]
+        { a = e, b = f, c = g, d = h } =
+            dmux_4_way input sel[0..1]
+        sel_when_0 output[n] -> [n] =
+            and output (not (fill sel[2]))
+        sel_when_1 output[n] -> [n] =
+            and output (fill sel[2])
+    in
+    { a = sel_when_0 a
+    , b = sel_when_0 b
+    , c = sel_when_0 c
+    , d = sel_when_0 d
+    , e = sel_when_1 e
+    , f = sel_when_1 f
+    , g = sel_when_1 g
+    , h = sel_when_1 h
+    }
+
+dmux_4_way_test sel[2] -> { a[1], b[1], c[1], d[1] } =
+    dmux_4_way 1 sel
+
+{-
+{a, b, c, d} = {input, 0, 0, 0} if sel == 00
+               {0, input, 0, 0} if sel == 01
+               {0, 0, input, 0} if sel == 10
+               {0, 0, 0, input} if sel == 11
+-}
+dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
+    let
+        { a = a, b = b } =
+            dmux input sel[0]
+        { a = c, b = d } =
+            dmux input sel[0]
+    in
+    { a = and a (not (fill sel[1]))
+    , b = and b (not (fill sel[1]))
+    , c = and c (fill sel[1])
+    , d = and d (fill sel[1])
+    }
+
+dmux_test sel[1] -> { a[1], b[1] } =
+    dmux 1 sel
+
+{-
+{a, b} = {input, 0} if sel == 0
+         {0, input} if sel == 1
+-}
+dmux input[n] sel[1] -> { a[n], b[n] } =
+    let
+        a =
+            and input (not (fill sel))
+        b =
+            and input (fill sel)
+    in
+    { a = a, b = b }
+
+mux_4_way_test i[1] -> { r1[4], r2[1] } =
+    let
+        r1 =
+            mux_4_way 10 11 12 13 0b01
+        r2 =
+            mux_4_way 0 1 0 0 0b01
+    in
+    { r1 = r1, r2 = r2 }
+
+mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
     let
         sel_a_b =
-            mux a b sel[1]
+            mux a b sel[0]
         sel_c_d =
-            mux c d sel[1]
+            mux c d sel[0]
     in
-    mux sel_a_b sel_c_d sel[0]
+    mux sel_a_b sel_c_d sel[1]
 
 mux a[n] b[n] sel[1] -> [n] =
     let
@@ -143,7 +217,6 @@ and a[n] b[n] -> [n] =
         nand_a_b = nand a b
     in
     nand nand_a_b nand_a_b
-    
   """
   -- """
   -- f i -> [1] =
