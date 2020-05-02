@@ -435,6 +435,7 @@ expr =
 
 record : HdlParser Expr
 record =
+  checkIndent <|
   succeed (\locatedList -> Record <|
     { from = locatedList.from
     , to = locatedList.to
@@ -470,6 +471,7 @@ intLiteral =
     expecting =
       ExpectingInt
   in
+  checkIndent <|
   map IntLiteral <| located <|
     number
     { int = Ok identity
@@ -542,7 +544,8 @@ binding =
 
 bindingOrCall : HdlParser Expr
 bindingOrCall =
-  succeed Tuple.pair
+  checkIndent <|
+  ( succeed Tuple.pair
     |= name
     |=  ( loop [] <| \revExprs ->
       oneOf
@@ -574,6 +577,7 @@ bindingOrCall =
           list ->
             succeed (Call callee list)
       )
+  )
 
 
 optional : HdlParser a -> HdlParser (Maybe a)
