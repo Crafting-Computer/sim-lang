@@ -1,6 +1,32 @@
 # sim-lang
 *A delightful language for circuit design inspired by Elm.*
 
+Table of Contents
+=================
+
+   * [Sim Tutorial](#sim-tutorial)
+      * [Basics](#basics)
+      * [Implementing And Gate](#implementing-and-gate)
+      * [Implementing Or Gate](#implementing-or-gate)
+      * [Implementing Xor Gate](#implementing-xor-gate)
+      * [Optimizing Xor Gate](#optimizing-xor-gate)
+         * [Decrease Gate Counts](#decrease-gate-counts)
+         * [Decrease Gate Delays](#decrease-gate-delays)
+            * [Not Gate Delays](#not-gate-delays)
+            * [And Gate Delays](#and-gate-delays)
+            * [Or Gate Delays](#or-gate-delays)
+      * [Implementing Mux](#implementing-mux)
+      * [Implementing a full adder](#implementing-a-full-adder)
+   * [Development](#development)
+      * [Set up](#set-up)
+      * [Commands](#commands)
+   * [License](#license)
+   * [Change Log](#change-log)
+      * [Release v0.4.0](#release-v040)
+      * [Release v0.3.0](#release-v030)
+      * [Release v0.2.0](#release-v020)
+      * [Release v0.1.0](#release-v010)
+
 # Sim Tutorial
 Sim aims to make circuit design as simple and fun as possible by using intuitive interfaces and powerful abstractions.
 
