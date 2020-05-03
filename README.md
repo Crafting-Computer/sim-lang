@@ -1,10 +1,13 @@
-# sim-lang
-*A delightful language for circuit design inspired by Elm.*
+# Sim
+Sim aims to make circuit design as simple and fun as possible by using intuitive interfaces and powerful abstractions.
+
+**Try the online Sim editor [here](https://alienkevin.github.io/sim-lang/)!**
 
 Table of Contents
 =================
 
-   * [Sim Tutorial](#sim-tutorial)
+   * [Create a Computer from Scratch Using Sim](#create-a-computer-from-scratch-using-sim)
+      * [Introduction](#introduction)
       * [Basics](#basics)
       * [Implementing And Gate](#implementing-and-gate)
       * [Implementing Or Gate](#implementing-or-gate)
@@ -16,7 +19,11 @@ Table of Contents
             * [And Gate Delays](#and-gate-delays)
             * [Or Gate Delays](#or-gate-delays)
       * [Implementing Mux](#implementing-mux)
-      * [Implementing a full adder](#implementing-a-full-adder)
+      * [Implementing 4-way Mux](#implementing-4-way-mux)
+      * [Implementing 8-way Mux](#implementing-8-way-mux)
+      * [Implementing Dmux](#implementing-dmux)
+      * [Implementing 4-way Dmux](#implementing-4-way-dmux)
+      * [Implementing 8-way Dmux](#implementing-8-way-dmux)
    * [Development](#development)
       * [Set up](#set-up)
       * [Commands](#commands)
@@ -27,10 +34,21 @@ Table of Contents
       * [Release v0.2.0](#release-v020)
       * [Release v0.1.0](#release-v010)
 
-# Sim Tutorial
-Sim aims to make circuit design as simple and fun as possible by using intuitive interfaces and powerful abstractions.
+# Create a Computer from Scratch Using Sim
 
-**Try the online Sim editor [here](https://alienkevin.github.io/sim-lang/)!**
+## Introduction
+
+Even though Sim is very powerful, it's important to realize that Sim is just a language that expresses logic gates and the wires that connect them. My goal of creating Sim is not for you to learn a new language. Instead, we wish that you can express the elegant ideas and logics of electric circuit in a hopefully equally elegant form. Just as a traditional Chinese proverb says: "Languages carry philosophies" (文以載道), ideas and expressions of them are inseparable.
+
+In order to master both the ideas and their expressions, we will guide you through the foundamentals of circuit design by creating a 16-bit computer from scratch. Don't worry too much, we will start simple and slow at first and gradually release the joy of explorations and creations to you after learning the basics.
+
+Here's a roadmap for building our computer:
+1. Common circuits
+2. Arithmetic Logic Unit
+3. Memory
+4. Central Processing Unit
+
+We will cover each section in-depth so let's get started!
 
 ## Basics
 
@@ -479,40 +497,124 @@ not a[n] -> [n] =
 
 You will see that we just implied that `n = 1` in the `not` function. Since the `n` value is global, we implied that all `n = 1` which is not what we want. This is not a problem you should concern about as it's a problem that `Sim` needs to solve. Just watch out for weired bugs like this in the future.
 
-## Implementing a full adder
+## Implementing 4-way Mux
+
+Now that you have learned to how to construct basic logic gates such as `and`, `or`, and `mux`, we will let you carry on the work to create the rest of the computer. Don't panic. We will specify exactly what you need to construct and cover new concepts in details as usual.
+
+Here's the truth table for the 4-way mux:
+
+| a | b | c | d |sel|result|
+|:-:|:-:|:-:|:-:|:-:|:-----:|
+|a|x|x|x|00|a|
+|x|b|x|x|01|b|
+|x|x|c|x|10|c|
+|x|x|x|d|11|d|
+
+Here's the header for the 4-way mux:
 ```elm
-full_adder a b c -> { sum, carry } =
-    let
-        { sum = s1, carry = c1 } = half_adder a b
-        { sum = s2, carry = c2 } = half_adder s1 c
-        c3 = or c1 c2
-    in
-    { sum = s2, carry = c3 }
-
-half_adder a b -> { sum, carry } =
-    let
-        sum = xor a b
-        carry = and a b
-    in
-    { sum = sum, carry = carry }
-
-xor a[n] b[n] -> [n] =
-    let
-        nand_a_b = nand a b
-    in
-    nand
-    (nand a nand_a_b)
-    (nand b nand_a_b)
-
-or a[n] b[n] -> [n] =
-    nand (not a) (not b)
-
-and a[n] b[n] -> [n] =
-    not (nand a b)
-
-not a[n] -> [n] =
-    nand a a
+{-
+    4-way multiplexor:
+    result = a if sel == 00
+             b if sel == 01
+             c if sel == 10
+             d if sel == 11
+-}
+mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n]
 ```
+
+Now implement the body by yourself and check the truth table of your function with the expected truth table above.
+
+> Note: By default the Sim editor outputs all values in the truth table in decimals. However, we always supply the expected truth table with all values in binary. We will add an option to output in binary in the future.
+
+## Implementing 8-way Mux
+
+| a | b | c | d | e | f | g | h |sel|result|
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-----:|
+|a|x|x|x|x|x|x|x|000|a|
+|x|b|x|x|x|x|x|x|001|b|
+|x|x|c|x|x|x|x|x|010|c|
+|x|x|x|d|x|x|x|x|011|d|
+|x|x|x|x|e|x|x|x|100|e|
+|x|x|x|x|x|f|x|x|101|f|
+|x|x|x|x|x|x|g|x|110|g|
+|x|x|x|x|x|x|x|h|111|h|
+
+```elm
+{-
+    8-way multiplexor:
+    result = a if sel == 000
+             b if sel == 001
+             c if sel == 010
+             d if sel == 011
+             e if sel == 100
+             f if sel == 101
+             g if sel == 110
+             h if sel == 111
+-}
+mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n]
+```
+
+## Implementing Dmux
+
+Dmux is short for demultiplexer and does the inverse of what mux or multiplexer does. Given an input, the dmux select its output between several paths based on an address.
+
+| input | sel | a | b |
+|:-----:|:---:|:-:|:-:|
+| input |  0  | input | 0 |
+| input |  1  | 0 | input |
+
+```elm
+{-
+    {a, b} = {input, 0} if sel == 0
+             {0, input} if sel == 1
+-}
+dmux input[n] sel[1] -> { a[n], b[n] }
+```
+
+## Implementing 4-way Dmux
+
+| input | sel | a | b | c | d |
+|:-----:|:---:|:-:|:-:|:-:|:-:|
+| input |  00 | input | 0 | 0 | 0 |
+| input |  01 | 0 | input | 0 | 0 |
+| input |  10 | 0 | 0 | input | 0 |
+| input |  11 | 0 | 0 | 0 | input |
+
+```elm
+{-
+    {a, b, c, d} = {input, 0, 0, 0} if sel == 00
+                   {0, input, 0, 0} if sel == 01
+                   {0, 0, input, 0} if sel == 10
+                   {0, 0, 0, input} if sel == 11
+-}
+dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] }
+```
+
+## Implementing 8-way Dmux
+
+| input | sel | a | b | c | d | e | f | g | h |
+|:-----:|:---:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| input | 000 | input | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| input | 001 | 0 | input | 0 | 0 | 0 | 0 | 0 | 0 |
+| input | 010 | 0 | 0 | input | 0 | 0 | 0 | 0 | 0 |
+| input | 011 | 0 | 0 | 0 | input | 0 | 0 | 0 | 0 |
+| input | 100 | 0 | 0 | 0 | 0 | input | 0 | 0 | 0 |
+| input | 101 | 0 | 0 | 0 | 0 | 0 | input | 0 | 0 |
+| input | 110 | 0 | 0 | 0 | 0 | 0 | 0 | input | 0 |
+| input | 111 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | input |
+
+```elm
+{-
+    {a, b, c, d, e, f, g, h} =
+        {input, 0, 0, 0, 0, 0, 0, 0} if sel == 000
+        {0, input, 0, 0, 0, 0, 0, 0} if sel == 001
+        ...
+        {0, 0, 0, 0, 0, 0, 0, input} if sel == 111
+-}
+dmux_8_way input[n] sel[3] -> { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] }
+```
+
+🎉 We just completed all the common building blocks for our computer!
 
 # Development
 ## Set up
