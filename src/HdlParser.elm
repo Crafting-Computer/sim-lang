@@ -2,6 +2,7 @@ module HdlParser exposing (parse, fakeLocated, withLocation, showDeadEnds, showP
 
 
 import Parser.Advanced exposing (..)
+import Pratt.Advanced as Pratt
 import Set exposing (Set)
 import AssocList as Dict exposing (Dict)
 import List.Extra
@@ -36,6 +37,7 @@ type Expr
   | Record (Located (Dict (Located String) (Located Expr)))
   | BusLiteral (Located (List (Located Expr)))
   | IntLiteral (Located Int)
+  | Concat (Located Expr) (Located Expr)
 
 
 type alias Param =
@@ -70,12 +72,17 @@ type Problem
   | ExpectingRightBrace
   | ExpectingComma
   | ExpectingSpaces
+  | ExpectingPlusPlus
 
 
 type Context
   = BindingDefContext (Located BindingTarget)
   | FuncDefContext (Located String)
   | LocalsContext
+
+
+type alias Config a =
+  Pratt.Config Context Problem a
 
 
 type alias HdlParser a =
@@ -281,6 +288,8 @@ showProblem problem =
       "a ','"
     ExpectingSpaces ->
       "a space or newline"
+    ExpectingPlusPlus ->
+      "a '++'"
 
 
 defs : HdlParser (List Def)
@@ -341,7 +350,7 @@ bindingDef =
           succeed Tuple.pair
           |= optional locals
           |. sps
-          |= located expr
+          |= expr
         )
     )
   )
@@ -374,7 +383,7 @@ funcDef =
           succeed Tuple.pair
           |= optional locals
           |. sps
-          |= located expr
+          |= expr
         )
     )
   )
@@ -427,15 +436,26 @@ indent parser =
   )
 
 
-expr : HdlParser Expr
+expr : HdlParser (Located Expr)
 expr =
-  oneOf
-    [ group
-    , bindingOrCall
-    , record
-    , busLiteral
-    , intLiteral
-    ]
+  let
+    subexpr =
+      Pratt.literal << located
+  in
+  Pratt.expression
+    { oneOf =
+      [ subexpr group
+      , subexpr bindingOrCall
+      , subexpr record
+      , subexpr busLiteral
+      , subexpr intLiteral
+      ]
+    , andThenOneOf =
+      [ Pratt.infixLeft 1 (symbol <| Token "++" ExpectingPlusPlus)
+        (\leftExpr rightExpr -> { from = leftExpr.from, to = rightExpr.to, value = Concat leftExpr rightExpr })
+      ]
+    , spaces = sps
+    }
 
 
 record : HdlParser Expr
@@ -524,7 +544,7 @@ group =
     )
     |. token (Token "(" ExpectingLeftParen)
     |. sps
-    |= lazy (\_ -> located expr)
+    |= lazy (\_ -> expr)
     |. sps
     |. token (Token ")" ExpectingRightParen)
     |= optional indexing

@@ -249,7 +249,7 @@ emitExpr e =
         andFilter =
           "0b" ++ String.repeat (to.value - from.value + 1) "1"
       in
-      "(" ++ "(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter ++ ")"
+      "(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter
     Record r ->
       Dict.foldl
         (\k v str ->
@@ -261,13 +261,14 @@ emitExpr e =
     IntLiteral i ->
       String.fromInt i.value
     BusLiteral l ->
-      "[ " ++
-      (String.join ", " <|
+      "\"\" + " ++
+      (String.join " + " <|
         List.map
           (emitExpr << .value)
           l.value
       )
-      ++ "].reduce(function (number, digit) { return (number << 1) + digit; })"
+    Concat l r ->
+      "(" ++ emitExpr l.value ++ ").toString(2)" ++ " + " ++ "(" ++ emitExpr r.value ++ ").toString(2)"
 
 
 emitParam : Param -> String

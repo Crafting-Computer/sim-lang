@@ -290,6 +290,29 @@ suite =
         "f a[1] b[1] c[1] -> [4] =\n let\n  record = { a = 2 }\n  bus = [1, a, record, b]\n in\n bus" <|
         Err [ExpectingBusLiteralElement { from = (3,12), to = (3,21), value = TRecord (Dict.fromList [("a",{ from = (3,18), to = (3,19), value = TBus (IntSize 2) EqualToSize })]) }]
       ]
+      , describe "concatenation"
+      [ test "single concatenation of bus literals containing int literals"
+        "f i[1] -> [4] =\n let\n  bus = [ 0, 1 ] ++ [ 0, 0 ]\n in\n bus" <|
+        Ok ()
+      , test "double concatenations of bus literals containing int literals"
+        "f i[1] -> [6] =\n let\n  bus = [ 0, 1 ] ++ [ 0, 0 ] ++ [ 1, 0 ]\n in\n bus" <|
+        Ok ()
+      , test "double concatenations of bus literals containing int literals and names"
+        "f i[1] -> [6] =\n let\n  bus = [ 0, i ] ++ [ i, 0 ] ++ [ 1, i ]\n in\n bus" <|
+        Ok ()
+      , test "double concatenations of bus literals, int literals, and names"
+        "f i[1] -> [7] =\n let\n  bus = [ 0, i ] ++ 15 ++ i[0]\n in\n bus" <|
+        Ok ()
+      , test "single concatenation of bus literal and name"
+        "f i[4] -> [3] =\n let\n  bus = [ 0, i[0] ] ++ 0\n in\n bus" <|
+        Ok ()
+      , test "concat operand has a variable size"
+        "f i[4] -> [6] =\n let\n  bus = [ 0, i[0] ] ++ i\n in\n bus" <|
+        Err [ConcatOperandHasUncertainSize { from = (3,24), to = (3,25), value = TBus (IntSize 0) GreaterThanSize }]
+      , test "concat operand is not a bus"
+        "f i[1] -> [3] =\n let\n  bus = [ 0, i ] ++ { a = 2 }\n in\n bus" <|
+        Err [ExpectingConcatOperand { from = (3,21), to = (3,30), value = TRecord (Dict.fromList [("a",{ from = (3,27), to = (3,28), value = TBus (IntSize 2) EqualToSize })]) }]
+      ]
     ]
 
 test : String -> String -> Result (List HdlChecker.Problem) () -> Test

@@ -20,6 +20,8 @@ type Problem
   | BindingNotAllowedAtTopLevel (Located BindingTarget) -- bindingName
   | BusLiteralElementTooLarge Int (Located Expr) -- elementSize element
   | ExpectingBusLiteralElement (Located Type)
+  | ConcatOperandHasUncertainSize (Located Type)
+  | ExpectingConcatOperand (Located Type)
 
 
 prelude : List Def
@@ -942,6 +944,51 @@ inferExpr ctx expr =
                   callResult
             )
         )
+      
+    Concat left right ->
+      inferExpr ctx left |>
+      Result.andThen
+      (\(leftType, c1, s1) ->
+        case leftType.value of
+          TBus leftSize leftComparator ->
+            case leftSize of
+              VarSize _ ->
+                Err [ ConcatOperandHasUncertainSize <| withLocation left leftType.value ]
+              
+              IntSize leftIntSize ->
+                case leftComparator of
+                  GreaterThanSize ->
+                    Err [ ConcatOperandHasUncertainSize <| withLocation left leftType.value ]
+                  
+                  EqualToSize ->
+                    inferExpr (applySubstToCtx s1 c1) right |>
+                    Result.andThen
+                    (\(rightType, c2, s2) ->
+                      case rightType.value of
+                        TBus rightSize rightComparator ->
+                          case rightSize of
+                            VarSize _ ->
+                              Err [ ConcatOperandHasUncertainSize <| withLocation right rightType.value ]
+                            
+                            IntSize rightIntSize ->
+                              case rightComparator of
+                                GreaterThanSize ->
+                                  Err [ ConcatOperandHasUncertainSize <| withLocation right rightType.value ]
+                                
+                                EqualToSize ->
+                                  Ok (
+                                    withLocation expr <| TBus (IntSize (leftIntSize + rightIntSize)) EqualToSize
+                                    , c2
+                                    , combineSubsts s1 s2
+                                  )
+
+                        _ ->
+                          Err [ ExpectingConcatOperand rightType ]
+                    )
+          
+          _ ->
+            Err [ ExpectingConcatOperand leftType ]
+      )
 
 
 paramTypesFromTFun : Located Type -> List (Located Type)
@@ -1298,6 +1345,16 @@ showProblem src problem =
       ++ showLocation src t ++ "\n"
       ++ "but found a value of type " ++ typeToString t.value ++ ".\n"
       ++ "Hint: The bus literal expects a list of 1-bit numbers.\nTry changing the element to a 1-bit number."
+    ConcatOperandHasUncertainSize busType ->
+      "I'm expecting a bus with certain size here:\n"
+      ++ showLocation src busType ++ "\n"
+      ++ "but found a bus with variable size of " ++ typeToString busType.value ++ ".\n"
+      ++ "Hint: The concatenation operator (++) expects both sides to have certain size.\nTry restricting the size by slicing."
+    ExpectingConcatOperand t ->
+      "I'm expecting a bus here:\n"
+      ++ showLocation src t ++ "\n"
+      ++ "but found a value of type " ++ typeToString t.value ++ ".\n"
+      ++ "Hint: The concatenation operator (++) expects both sides to be a bus.\nTry changing the operand to a bus."
 
 
 prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
@@ -1361,7 +1418,7 @@ typeToString t =
         IntSize i ->
           case c of
             GreaterThanSize ->
-              "[" ++ String.fromInt (i + 1) ++ "]"
+              "[" ++ "k > " ++ String.fromInt i ++ "]"
             
             EqualToSize ->
               sizeToString s
@@ -1461,3 +1518,6 @@ getNamesFromExpr expr =
     
     IntLiteral _ ->
       []
+
+    Concat l r ->
+      getNamesFromExpr l.value ++ getNamesFromExpr r.value
