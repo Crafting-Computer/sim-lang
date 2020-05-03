@@ -178,7 +178,7 @@
         )(); // invoke the function generator
       });
       // generate truth table for first def
-      var preludeLength = 2;
+      var preludeLength = 3;
       var def = defs[preludeLength];
       console.log(def);
       var func = window[def.name];
@@ -218,7 +218,8 @@
         var resultList = [];
         function parseNumber(value) {
           if (typeof value === "string") {
-            return parseInt(value, 2)
+            let highestBit = value[0];
+            return ~~parseInt(value.padStart(32, highestBit), 2)
           } else {
             return value;
           }

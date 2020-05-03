@@ -74,17 +74,33 @@ emitPrelude =
 
     nsize name =
       { name = name, size = VarSize "n" }
+    
+    helper : String -> String -> DefOutput
+    helper name body =
+      { name = name
+      , params = []
+      , outputs = []
+      , body = body
+      }
   in
   -- function nand(a, b) { return ~(a & b); }
-  [ { name = "nand"
+  [ helper "$b"
+  """return function(value) {
+  if (typeof value === "string") {
+  let highestBit = value[0];
+  return ~~parseInt(value.padStart(32, highestBit), 2)
+} else {
+  return value;
+}}"""
+  , { name = "nand"
     , params = [ nsize "a", nsize "b"]
     , outputs = [ nsize "" ]
-    , body = "return function(a, b) { return ~(a & b); }"
+    , body = "return function(a, b) { return ~($b(a) & $b(b)); }"
     }
   , { name = "fill"
     , params = [ isize "a" 1 ]
     , outputs = [ nsize "" ]
-    , body = "return function(a) { return -a; }"
+    , body = "return function(a) { return -$b(a); }"
     }
   ]
 
@@ -249,7 +265,7 @@ emitExpr e =
         andFilter =
           "0b" ++ String.repeat (to.value - from.value + 1) "1"
       in
-      "(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter
+      "$b(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter
     Record r ->
       Dict.foldl
         (\k v str ->

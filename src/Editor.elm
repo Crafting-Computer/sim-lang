@@ -485,18 +485,7 @@ viewTruthTable table =
               , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
               , Html.Attributes.style "border" "1px grey solid"
               ]
-              [ Html.text <| String.fromInt <|
-                if value >= 0 then
-                  value
-                else
-                  let
-                    numberOfDigits =
-                      if value == -1 then
-                        1
-                      else
-                        ceiling <| logBase 2 (toFloat -value)
-                  in
-                  value + 2 ^ numberOfDigits
+              [ Html.text <| String.fromInt value
               ]) row
           )
           defTable.body
