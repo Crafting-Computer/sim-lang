@@ -707,7 +707,7 @@ sps : HdlParser ()
 sps =
   loop 0 <| ifProgress <|
     oneOf
-      [ lineComment (Token "--" ExpectingStartOfLineComment)
+      [ succeed () |. symbol (Token "--" ExpectingStartOfLineComment) |. chompWhile (\c -> c /= '\n')
       , multiComment (Token "{-" ExpectingStartOfMultiLineComment) (Token "-}" ExpectingEndOfMultiLineComment) Nestable
       , spaces
       ]
