@@ -34,6 +34,7 @@ type Expr
   | Call (Located String) (List (Located Expr))
   | Indexing (Located Expr) (Located Int, Located Int)
   | Record (Located (Dict (Located String) (Located Expr)))
+  | BusLiteral (Located (List (Located Expr)))
   | IntLiteral (Located Int)
 
 
@@ -432,6 +433,7 @@ expr =
     [ group
     , bindingOrCall
     , record
+    , busLiteral
     , intLiteral
     ]
 
@@ -440,10 +442,9 @@ record : HdlParser Expr
 record =
   checkIndent <|
   succeed (\locatedList -> Record <|
-    { from = locatedList.from
-    , to = locatedList.to
-    , value = Dict.fromList locatedList.value
-    })
+    withLocation locatedList <|
+      Dict.fromList locatedList.value
+    )
     |= ( located <| sequence
     { start = Token "{" ExpectingLeftBrace
     , separator = Token "," ExpectingComma
@@ -460,6 +461,30 @@ record =
           , bindingOrCall
           , intLiteral
           ]
+        )
+    , trailing = Forbidden
+    }
+    )
+
+
+busLiteral : HdlParser Expr
+busLiteral =
+  checkIndent <|
+  succeed BusLiteral
+    |= ( located <| sequence
+    { start = Token "[" ExpectingLeftBracket
+    , separator = Token "," ExpectingComma
+    , end = Token "]" ExpectingRightBracket
+    , spaces = sps
+    , item =
+      succeed identity
+        |= (located <|
+          oneOf
+            [ group
+            , bindingOrCall
+            , record
+            , intLiteral
+            ]
         )
     , trailing = Forbidden
     }

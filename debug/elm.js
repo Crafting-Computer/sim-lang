@@ -5266,6 +5266,13 @@ var $author$project$HdlChecker$incrementLevel = function (ctx) {
 var $author$project$HdlParser$Binding = function (a) {
 	return {$: 'Binding', a: a};
 };
+var $author$project$HdlChecker$BusLiteralElementTooLarge = F2(
+	function (a, b) {
+		return {$: 'BusLiteralElementTooLarge', a: a, b: b};
+	});
+var $author$project$HdlChecker$ExpectingBusLiteralElement = function (a) {
+	return {$: 'ExpectingBusLiteralElement', a: a};
+};
 var $author$project$HdlChecker$FromIndexBiggerThanToIndex = F2(
 	function (a, b) {
 		return {$: 'FromIndexBiggerThanToIndex', a: a, b: b};
@@ -5624,22 +5631,124 @@ var $author$project$HdlChecker$inferExpr = F2(
 								$author$project$HdlChecker$EqualToSize)),
 						ctx,
 						$author$project$HdlChecker$emptySubst));
+			case 'BusLiteral':
+				var list = _v0.a;
+				return A2(
+					$elm$core$Result$map,
+					function (_v2) {
+						var c = _v2.a;
+						var s = _v2.b;
+						return _Utils_Tuple3(
+							A2(
+								$author$project$HdlParser$withLocation,
+								list,
+								A2(
+									$author$project$HdlChecker$TBus,
+									$author$project$HdlParser$IntSize(
+										$elm$core$List$length(list.value)),
+									$author$project$HdlChecker$EqualToSize)),
+							c,
+							s);
+					},
+					A3(
+						$elm$core$List$foldl,
+						F2(
+							function (element, result) {
+								return A2(
+									$elm$core$Result$andThen,
+									function (_v3) {
+										var resultCtx = _v3.a;
+										var resultSubst = _v3.b;
+										return A2(
+											$elm$core$Result$andThen,
+											function (_v4) {
+												var t = _v4.a;
+												var nextCtx = _v4.b;
+												var nextSubst = _v4.c;
+												var _v5 = t.value;
+												switch (_v5.$) {
+													case 'TBus':
+														var size = _v5.a;
+														if (size.$ === 'IntSize') {
+															var i = size.a;
+															return (i !== 1) ? $elm$core$Result$Err(
+																_List_fromArray(
+																	[
+																		A2($author$project$HdlChecker$BusLiteralElementTooLarge, i, element)
+																	])) : $elm$core$Result$Ok(
+																_Utils_Tuple2(
+																	nextCtx,
+																	A2($author$project$HdlChecker$combineSubsts, resultSubst, nextSubst)));
+														} else {
+															var n = size.a;
+															return $elm$core$Result$Ok(
+																_Utils_Tuple2(
+																	nextCtx,
+																	A2(
+																		$author$project$HdlChecker$combineSubsts,
+																		A2($author$project$HdlChecker$combineSubsts, resultSubst, nextSubst),
+																		$author$project$HdlChecker$Subst(
+																			A2(
+																				$pzp1997$assoc_list$AssocList$singleton,
+																				n,
+																				A2(
+																					$author$project$HdlParser$withLocation,
+																					element,
+																					A2(
+																						$author$project$HdlChecker$TBus,
+																						$author$project$HdlParser$IntSize(1),
+																						$author$project$HdlChecker$EqualToSize)))))));
+														}
+													case 'TVar':
+														var n = _v5.a;
+														return $elm$core$Result$Ok(
+															_Utils_Tuple2(
+																nextCtx,
+																A2(
+																	$author$project$HdlChecker$combineSubsts,
+																	A2($author$project$HdlChecker$combineSubsts, resultSubst, nextSubst),
+																	$author$project$HdlChecker$Subst(
+																		A2(
+																			$pzp1997$assoc_list$AssocList$singleton,
+																			n,
+																			A2(
+																				$author$project$HdlParser$withLocation,
+																				element,
+																				A2(
+																					$author$project$HdlChecker$TBus,
+																					$author$project$HdlParser$IntSize(1),
+																					$author$project$HdlChecker$EqualToSize)))))));
+													default:
+														return $elm$core$Result$Err(
+															_List_fromArray(
+																[
+																	$author$project$HdlChecker$ExpectingBusLiteralElement(t)
+																]));
+												}
+											},
+											A2($author$project$HdlChecker$inferExpr, resultCtx, element));
+									},
+									result);
+							}),
+						$elm$core$Result$Ok(
+							_Utils_Tuple2(ctx, $author$project$HdlChecker$emptySubst)),
+						list.value));
 			case 'Indexing':
 				var e = _v0.a;
-				var _v2 = _v0.b;
-				var from = _v2.a;
-				var to = _v2.b;
+				var _v7 = _v0.b;
+				var from = _v7.a;
+				var to = _v7.b;
 				return A2(
 					$elm$core$Result$andThen,
-					function (_v3) {
-						var t = _v3.a;
-						var resultCtx = _v3.b;
-						var s1 = _v3.c;
-						var _v4 = function () {
-							var _v5 = t.value;
-							switch (_v5.$) {
+					function (_v8) {
+						var t = _v8.a;
+						var resultCtx = _v8.b;
+						var s1 = _v8.c;
+						var _v9 = function () {
+							var _v10 = t.value;
+							switch (_v10.$) {
 								case 'TBus':
-									var size = _v5.a;
+									var size = _v10.a;
 									if (_Utils_cmp(from.value, to.value) > 0) {
 										return _Utils_Tuple2(
 											$elm$core$Result$Err(
@@ -5727,7 +5836,7 @@ var $author$project$HdlChecker$inferExpr = F2(
 												])),
 										$author$project$HdlChecker$emptySubst);
 								default:
-									var n = _v5.a;
+									var n = _v10.a;
 									return (_Utils_cmp(from.value, to.value) > 0) ? _Utils_Tuple2(
 										$elm$core$Result$Err(
 											_List_fromArray(
@@ -5756,8 +5865,8 @@ var $author$project$HdlChecker$inferExpr = F2(
 														$author$project$HdlChecker$GreaterThanSize)))));
 							}
 						}();
-						var indexingType = _v4.a;
-						var s2 = _v4.b;
+						var indexingType = _v9.a;
+						var s2 = _v9.b;
 						var resultSubst = A2($author$project$HdlChecker$combineSubsts, s1, s2);
 						return A2(
 							$elm$core$Result$map,
@@ -5782,16 +5891,16 @@ var $author$project$HdlChecker$inferExpr = F2(
 							function (k, v, result) {
 								return A2(
 									$elm$core$Result$andThen,
-									function (_v7) {
-										var resultDict = _v7.a;
-										var resultCtx = _v7.b;
-										var resultSubst = _v7.c;
+									function (_v12) {
+										var resultDict = _v12.a;
+										var resultCtx = _v12.b;
+										var resultSubst = _v12.c;
 										return A2(
 											$elm$core$Result$map,
-											function (_v8) {
-												var t = _v8.a;
-												var nextCtx = _v8.b;
-												var nextSubst = _v8.c;
+											function (_v13) {
+												var t = _v13.a;
+												var nextCtx = _v13.b;
+												var nextSubst = _v13.c;
 												return _Utils_Tuple3(
 													A3($pzp1997$assoc_list$AssocList$insert, k.value, t, resultDict),
 													nextCtx,
@@ -5809,20 +5918,20 @@ var $author$project$HdlChecker$inferExpr = F2(
 				var args = _v0.b;
 				return A2(
 					$elm$core$Result$andThen,
-					function (_v9) {
-						var funcType = _v9.a;
-						var c1 = _v9.b;
-						var s1 = _v9.c;
+					function (_v14) {
+						var funcType = _v14.a;
+						var c1 = _v14.b;
+						var s1 = _v14.c;
 						return A2(
 							$elm$core$Result$andThen,
-							function (_v11) {
-								var argTypes = _v11.a;
-								var c2 = _v11.b;
-								var s2 = _v11.c;
+							function (_v16) {
+								var argTypes = _v16.a;
+								var c2 = _v16.b;
+								var s2 = _v16.c;
 								var s3 = A2($author$project$HdlChecker$combineSubsts, s1, s2);
-								var _v12 = A2($author$project$HdlChecker$newTVar, expr, c2);
-								var outputType = _v12.a;
-								var c3 = _v12.b;
+								var _v17 = A2($author$project$HdlChecker$newTVar, expr, c2);
+								var outputType = _v17.a;
+								var c3 = _v17.b;
 								var s4 = A2(
 									$author$project$HdlChecker$unify,
 									funcType,
@@ -5855,13 +5964,13 @@ var $author$project$HdlChecker$inferExpr = F2(
 											function (argType, result) {
 												return A2(
 													$elm$core$Result$andThen,
-													function (_v14) {
-														var nextType = _v14.a;
-														var nextSubst = _v14.b;
-														var _v15 = nextType.value;
-														if (_v15.$ === 'TFun') {
-															var fromType = _v15.a;
-															var toType = _v15.b;
+													function (_v19) {
+														var nextType = _v19.a;
+														var nextSubst = _v19.b;
+														var _v20 = nextType.value;
+														if (_v20.$ === 'TFun') {
+															var fromType = _v20.a;
+															var toType = _v20.b;
 															return $elm$core$Result$Ok(
 																_Utils_Tuple2(
 																	toType,
@@ -5889,9 +5998,9 @@ var $author$project$HdlChecker$inferExpr = F2(
 										argTypes);
 									return A2(
 										$elm$core$Result$map,
-										function (_v13) {
-											var resultType = _v13.a;
-											var resultSubst = _v13.b;
+										function (_v18) {
+											var resultType = _v18.a;
+											var resultSubst = _v18.b;
 											return _Utils_Tuple3(
 												A2($author$project$HdlChecker$applySubstToType, resultSubst, resultType),
 												c3,
@@ -5906,10 +6015,10 @@ var $author$project$HdlChecker$inferExpr = F2(
 									function (arg, argResult) {
 										return A2(
 											$elm$core$Result$andThen,
-											function (_v10) {
-												var nextTypes = _v10.a;
-												var nextCtx = _v10.b;
-												var nextSubst = _v10.c;
+											function (_v15) {
+												var nextTypes = _v15.a;
+												var nextCtx = _v15.b;
+												var nextSubst = _v15.c;
 												return A2(
 													$elm$core$Result$map,
 													$TSFoster$elm_tuple_extra$Tuple3$mapFirst(
@@ -6828,9 +6937,23 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 					}),
 				'{ ',
 				r.value) + ' }';
-		default:
+		case 'IntLiteral':
 			var i = e.a;
 			return $elm$core$String$fromInt(i.value);
+		default:
+			var l = e.a;
+			return '[ ' + (A2(
+				$elm$core$String$join,
+				', ',
+				A2(
+					$elm$core$List$map,
+					A2(
+						$elm$core$Basics$composeL,
+						$author$project$HdlEmitter$emitExpr,
+						function ($) {
+							return $.value;
+						}),
+					l.value)) + '].reduce(function (number, digit) { return (number << 1) + digit; })');
 	}
 };
 var $author$project$HdlEmitter$emitParam = function (p) {
@@ -6877,6 +7000,18 @@ var $author$project$HdlChecker$getNamesFromExpr = function (expr) {
 								return $.value;
 							}),
 						$pzp1997$assoc_list$AssocList$values(r.value)));
+			case 'BusLiteral':
+				var l = expr.a;
+				return $elm$core$List$concat(
+					A2(
+						$elm$core$List$map,
+						A2(
+							$elm$core$Basics$composeL,
+							$author$project$HdlChecker$getNamesFromExpr,
+							function ($) {
+								return $.value;
+							}),
+						l.value));
 			default:
 				return _List_Nil;
 		}
@@ -7534,11 +7669,16 @@ var $author$project$HdlParser$checkIndent = function (parser) {
 				$elm$parser$Parser$Advanced$getIndent),
 			$elm$parser$Parser$Advanced$getCol));
 };
+var $author$project$HdlParser$BusLiteral = function (a) {
+	return {$: 'BusLiteral', a: a};
+};
 var $author$project$HdlParser$Call = F2(
 	function (a, b) {
 		return {$: 'Call', a: a, b: b};
 	});
+var $author$project$HdlParser$ExpectingLeftBracket = {$: 'ExpectingLeftBracket'};
 var $author$project$HdlParser$ExpectingLeftParen = {$: 'ExpectingLeftParen'};
+var $author$project$HdlParser$ExpectingRightBracket = {$: 'ExpectingRightBracket'};
 var $author$project$HdlParser$ExpectingRightParen = {$: 'ExpectingRightParen'};
 var $author$project$HdlParser$Indexing = F2(
 	function (a, b) {
@@ -7548,8 +7688,6 @@ var $author$project$HdlParser$Record = function (a) {
 	return {$: 'Record', a: a};
 };
 var $author$project$HdlParser$ExpectingDotDot = {$: 'ExpectingDotDot'};
-var $author$project$HdlParser$ExpectingLeftBracket = {$: 'ExpectingLeftBracket'};
-var $author$project$HdlParser$ExpectingRightBracket = {$: 'ExpectingRightBracket'};
 var $elm$core$Basics$always = F2(
 	function (a, _v0) {
 		return a;
@@ -8510,8 +8648,36 @@ function $author$project$HdlParser$cyclic$expr() {
 				$author$project$HdlParser$cyclic$group(),
 				$author$project$HdlParser$cyclic$bindingOrCall(),
 				$author$project$HdlParser$cyclic$record(),
+				$author$project$HdlParser$cyclic$busLiteral(),
 				$author$project$HdlParser$intLiteral
 			]));
+}
+function $author$project$HdlParser$cyclic$busLiteral() {
+	return $author$project$HdlParser$checkIndent(
+		A2(
+			$elm$parser$Parser$Advanced$keeper,
+			$elm$parser$Parser$Advanced$succeed($author$project$HdlParser$BusLiteral),
+			$author$project$HdlParser$located(
+				$elm$parser$Parser$Advanced$sequence(
+					{
+						end: A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket),
+						item: A2(
+							$elm$parser$Parser$Advanced$keeper,
+							$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+							$author$project$HdlParser$located(
+								$elm$parser$Parser$Advanced$oneOf(
+									_List_fromArray(
+										[
+											$author$project$HdlParser$cyclic$group(),
+											$author$project$HdlParser$cyclic$bindingOrCall(),
+											$author$project$HdlParser$cyclic$record(),
+											$author$project$HdlParser$intLiteral
+										])))),
+						separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
+						spaces: $author$project$HdlParser$sps,
+						start: A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket),
+						trailing: $elm$parser$Parser$Advanced$Forbidden
+					}))));
 }
 function $author$project$HdlParser$cyclic$record() {
 	return $author$project$HdlParser$checkIndent(
@@ -8520,11 +8686,10 @@ function $author$project$HdlParser$cyclic$record() {
 			$elm$parser$Parser$Advanced$succeed(
 				function (locatedList) {
 					return $author$project$HdlParser$Record(
-						{
-							from: locatedList.from,
-							to: locatedList.to,
-							value: $pzp1997$assoc_list$AssocList$fromList(locatedList.value)
-						});
+						A2(
+							$author$project$HdlParser$withLocation,
+							locatedList,
+							$pzp1997$assoc_list$AssocList$fromList(locatedList.value)));
 				}),
 			$author$project$HdlParser$located(
 				$elm$parser$Parser$Advanced$sequence(
@@ -8673,6 +8838,10 @@ try {
 	$author$project$HdlParser$cyclic$expr = function () {
 		return $author$project$HdlParser$expr;
 	};
+	var $author$project$HdlParser$busLiteral = $author$project$HdlParser$cyclic$busLiteral();
+	$author$project$HdlParser$cyclic$busLiteral = function () {
+		return $author$project$HdlParser$busLiteral;
+	};
 	var $author$project$HdlParser$record = $author$project$HdlParser$cyclic$record();
 	$author$project$HdlParser$cyclic$record = function () {
 		return $author$project$HdlParser$record;
@@ -8686,7 +8855,7 @@ try {
 		return $author$project$HdlParser$group;
 	};
 } catch ($) {
-	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    expr\n  │     ↓\n  │    record\n  │     ↓\n  │    bindingOrCall\n  │     ↓\n  │    group\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
+	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    expr\n  │     ↓\n  │    busLiteral\n  │     ↓\n  │    record\n  │     ↓\n  │    bindingOrCall\n  │     ↓\n  │    group\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $elm$parser$Parser$Advanced$Located = F3(
 	function (row, col, context) {
 		return {col: col, context: context, row: row};
@@ -9534,10 +9703,17 @@ var $author$project$HdlChecker$showProblem = F2(
 					$elm$core$String$join,
 					', ',
 					$pzp1997$assoc_list$AssocList$keys(actualRecordType)))))));
-			default:
+			case 'DuplicatedBindingRecordKey':
 				var firstKey = problem.a;
 				var secondKey = problem.b;
 				return 'I found that you are trying to assign a record key to two bindings.\n\n' + ('The first assignment is here:\n' + (A2($author$project$HdlChecker$showLocation, src, firstKey) + ('\n' + ('The second assignment is here:\n' + (A2($author$project$HdlChecker$showLocation, src, secondKey) + ('\n' + 'Hint: Try removing one of the assignments.'))))));
+			case 'BusLiteralElementTooLarge':
+				var elementSize = problem.a;
+				var element = problem.b;
+				return 'I expect the element of a bus literal to be 1 bit here:\n' + (A2($author$project$HdlChecker$showLocation, src, element) + ('\n' + ('but found an element of size ' + ($elm$core$String$fromInt(elementSize) + ('.\n' + 'Hint: Try reducing the element\'s size to 1.')))));
+			default:
+				var t = problem.a;
+				return 'I\'m expecting a 1-bit number here:\n' + (A2($author$project$HdlChecker$showLocation, src, t) + ('\n' + ('but found a value of type ' + ($author$project$HdlChecker$typeToString(t.value) + ('.\n' + 'Hint: The bus literal expects a list of 1-bit numbers.\nTry changing the element to a 1-bit number.')))));
 		}
 	});
 var $author$project$HdlChecker$showProblems = F2(
@@ -9550,7 +9726,7 @@ var $author$project$HdlChecker$showProblems = F2(
 				$author$project$HdlChecker$showProblem(src),
 				problems));
 	});
-var $author$project$Main$source = '{-\n{a, b, c, d, e, f, g, h} = {input, 0, 0, 0, 0, 0, 0, 0} if sel == 000\n                           {0, input, 0, 0, 0, 0, 0, 0} if sel == 001\n                           etc.\n                           {0, 0, 0, 0, 0, 0, 0, input} if sel == 111\n-}\ndmux_8_way input[n] sel[3] ->\n    { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] } =\n    let\n        { a = a, b = b, c = c, d = d } =\n            dmux_4_way input sel[0..1]\n        { a = e, b = f, c = g, d = h } =\n            dmux_4_way input sel[0..1]\n        sel_when_0 output[n] -> [n] =\n            and output (not (fill sel[2]))\n        sel_when_1 output[n] -> [n] =\n            and output (fill sel[2])\n    in\n    { a = sel_when_0 a\n    , b = sel_when_0 b\n    , c = sel_when_0 c\n    , d = sel_when_0 d\n    , e = sel_when_1 e\n    , f = sel_when_1 f\n    , g = sel_when_1 g\n    , h = sel_when_1 h\n    }\n\ndmux_4_way_test sel[2] -> { a[1], b[1], c[1], d[1] } =\n    dmux_4_way 1 sel\n\n{-\n{a, b, c, d} = {input, 0, 0, 0} if sel == 00\n               {0, input, 0, 0} if sel == 01\n               {0, 0, input, 0} if sel == 10\n               {0, 0, 0, input} if sel == 11\n-}\ndmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =\n    let\n        { a = a, b = b } =\n            dmux input sel[0]\n        { a = c, b = d } =\n            dmux input sel[0]\n    in\n    { a = and a (not (fill sel[1]))\n    , b = and b (not (fill sel[1]))\n    , c = and c (fill sel[1])\n    , d = and d (fill sel[1])\n    }\n\ndmux_test sel[1] -> { a[1], b[1] } =\n    dmux 1 sel\n\n{-\n{a, b} = {input, 0} if sel == 0\n         {0, input} if sel == 1\n-}\ndmux input[n] sel[1] -> { a[n], b[n] } =\n    let\n        a =\n            and input (not (fill sel))\n        b =\n            and input (fill sel)\n    in\n    { a = a, b = b }\n\nmux_4_way_test i[1] -> { r1[4], r2[1] } =\n    let\n        r1 =\n            mux_4_way 10 11 12 13 0b01\n        r2 =\n            mux_4_way 0 1 0 0 0b01\n    in\n    { r1 = r1, r2 = r2 }\n\nmux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =\n    let\n        sel_a_b =\n            mux a b sel[0]\n        sel_c_d =\n            mux c d sel[0]\n    in\n    mux sel_a_b sel_c_d sel[1]\n\nmux a[n] b[n] sel[1] -> [n] =\n    let\n        sel_a =\n            and (not (fill sel)) a\n        sel_b =\n            and (fill sel) b\n    in\n    or sel_a sel_b\n\nxor a[n] b[n] -> [n] =\n    let\n        nand_a_b = nand a b\n    in\n    nand\n    (nand a nand_a_b)\n    (nand b nand_a_b)\n\nor a[n] b[n] -> [n] =\n    nand (not a) (not b)\n\nnot a[n] -> [n] =\n    nand a a\n\nand a[n] b[n] -> [n] =\n    let\n        nand_a_b = nand a b\n    in\n    nand nand_a_b nand_a_b\n  ';
+var $author$project$Main$source = 'f a[1] b[2] c[1] -> [4] =\n let\n  bus = [1, a, 1, b]\n in\n bus';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$main = function () {

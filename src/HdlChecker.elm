@@ -18,6 +18,8 @@ type Problem
   | UnexpectedBindingRecordKey (Located String) (Dict String (Located Type)) -- recordKey actualRecordType
   | DuplicatedBindingRecordKey (Located String) (Located String)
   | BindingNotAllowedAtTopLevel (Located BindingTarget) -- bindingName
+  | BusLiteralElementTooLarge Int (Located Expr) -- elementSize element
+  | ExpectingBusLiteralElement (Located Type)
 
 
 prelude : List Def
@@ -735,6 +737,49 @@ inferExpr ctx expr =
       , ctx
       , emptySubst
       )
+
+    BusLiteral list ->
+      Result.map (\(c, s) -> (withLocation list <| TBus (IntSize <| List.length list.value) EqualToSize, c, s)) <|
+        List.foldl
+          (\element result ->
+            Result.andThen
+            (\(resultCtx, resultSubst) ->
+              inferExpr resultCtx element |>
+                Result.andThen
+                (\(t, nextCtx, nextSubst) ->
+                  case t.value of
+                    TBus size _ ->
+                      case size of
+                        IntSize i ->
+                          if i /= 1 then
+                            Err [ BusLiteralElementTooLarge i element ]
+                          else
+                            Ok ( nextCtx
+                              , combineSubsts resultSubst nextSubst
+                              )
+                        
+                        VarSize n ->
+                          Ok ( nextCtx
+                            , combineSubsts
+                              (combineSubsts resultSubst nextSubst)
+                              (Subst <| Dict.singleton n (withLocation element <| TBus (IntSize 1) EqualToSize))
+                            )
+
+                    TVar n ->
+                      Ok ( nextCtx
+                        , combineSubsts
+                          (combineSubsts resultSubst nextSubst)
+                          (Subst <| Dict.singleton n (withLocation element <| TBus (IntSize 1) EqualToSize))
+                        )
+                    
+                    _ ->
+                      Err [ ExpectingBusLiteralElement t ]
+                )
+            )
+            result
+          )
+          (Ok (ctx, emptySubst))
+          list.value
     
     Indexing e (from, to) ->
       inferExpr ctx e |>
@@ -1243,6 +1288,16 @@ showProblem src problem =
       ++ "The second assignment is here:\n"
       ++ showLocation src secondKey ++ "\n"
       ++ "Hint: Try removing one of the assignments."
+    BusLiteralElementTooLarge elementSize element ->
+      "I expect the element of a bus literal to be 1 bit here:\n"
+      ++ showLocation src element ++ "\n"
+      ++ "but found an element of size " ++ String.fromInt elementSize ++ ".\n"
+      ++ "Hint: Try reducing the element's size to 1."
+    ExpectingBusLiteralElement t ->
+      "I'm expecting a 1-bit number here:\n"
+      ++ showLocation src t ++ "\n"
+      ++ "but found a value of type " ++ typeToString t.value ++ ".\n"
+      ++ "Hint: The bus literal expects a list of 1-bit numbers.\nTry changing the element to a 1-bit number."
 
 
 prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
@@ -1400,6 +1455,9 @@ getNamesFromExpr expr =
     
     Record r ->
       List.concat <| List.map (getNamesFromExpr << .value) <| Dict.values r.value
+
+    BusLiteral l ->
+      List.concat <| List.map (getNamesFromExpr << .value) l.value
     
     IntLiteral _ ->
       []

@@ -3,7 +3,7 @@ module CheckerTest exposing (suite)
 import Test exposing (Test, describe)
 import Expect
 import HdlChecker exposing (Type(..), Problem(..), SizeComparator(..))
-import HdlParser exposing (Size(..), BindingTarget(..))
+import HdlParser exposing (Size(..), BindingTarget(..), Expr(..))
 import AssocList as Dict
 
 suite : Test
@@ -272,6 +272,23 @@ suite =
       , test "duplicated local name previously defined at top level"
         "duplicated i[1] -> [1] = nand i 0\nf i[1] -> [1] =\n let\n  duplicated = nand i 1\n in\n 0" <|
         Err [DuplicatedName { from = (1,1), to = (1,11), value = "duplicated" } { from = (4,3), to = (4,13), value = "duplicated" }]
+      ]
+      , describe "bus literal"
+      [ test "simple bus literal containing int literals"
+        "f i[1] -> [3] =\n let\n  bus = [ 0, 1, 0 ]\n in\n bus" <|
+        Ok ()
+      , test "bus literal containing names"
+        "f a[1] b[1] c[1] -> [3] =\n let\n  bus = [a, b, c]\n in\n bus" <|
+        Ok ()
+      , test "bus literal containing mixed names and int literals"
+        "f a[1] b[1] c[1] -> [4] =\n let\n  bus = [1, a, 0, b]\n in\n bus" <|
+        Ok ()
+      , test "bus literal with oversized elements"
+        "f a[1] b[1] c[1] -> [4] =\n let\n  bus = [1, a, 2, b]\n in\n bus" <|
+        Err [BusLiteralElementTooLarge 2 { from = (3,16), to = (3,17), value = IntLiteral { from = (3,16), to = (3,17), value = 2 } }]
+      , test "bus literal with elements that are not bus type"
+        "f a[1] b[1] c[1] -> [4] =\n let\n  bus = [1, a, { a = 2 }, b]\n in\n bus" <|
+        Err [ExpectingBusLiteralElement { from = (3,16), to = (3,25), value = TRecord (Dict.fromList [("a",{ from = (3,22), to = (3,23), value = TBus (IntSize 2) EqualToSize })]) }]
       ]
     ]
 

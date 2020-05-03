@@ -260,6 +260,14 @@ emitExpr e =
       ++ " }"
     IntLiteral i ->
       String.fromInt i.value
+    BusLiteral l ->
+      "[ " ++
+      (String.join ", " <|
+        List.map
+          (emitExpr << .value)
+          l.value
+      )
+      ++ "].reduce(function (number, digit) { return (number << 1) + digit; })"
 
 
 emitParam : Param -> String
