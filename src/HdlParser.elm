@@ -476,13 +476,7 @@ record =
         |. sps
         |. token (Token "=" ExpectingEqual)
         |. sps
-        |= (located <| oneOf
-          [ group
-          , bindingOrCall
-          , intLiteral
-          , busLiteral
-          ]
-        )
+        |= lazy (\_ -> expr)
     , trailing = Forbidden
     }
     )
