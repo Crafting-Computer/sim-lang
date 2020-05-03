@@ -7,7 +7,7 @@
 </head>
 <body style="overflow: hidden; background-color: rgb(231, 231, 231);">
 
-  <main style="display: flex; flex-direction: row; padding-top: 52px; margin: 0 10px 0px 10px !important; height: 100%;">
+  <main style="display: flex; flex-direction: row; padding-top: 52px; margin: 0 10px 0px 10px !important; height: 90%;">
     <div id="editor" style="width: 49vw; height: 90vh; border: grey 1px solid; margin: 0 20px;"></div>
     <div id="rightPanel" style="width: 40vw; height: 90vh"></div>
   </main>
@@ -183,13 +183,32 @@
       console.log(def);
       var func = window[def.name];
       var params = def.params;
+      console.log("params: ", params);
+      console.log(params.reduce(function(sizeProduct, currentParam) { return sizeProduct * currentParam.size; }, 1));
       var outputs = def.outputs;
       // full truth table too large
       if (params.some(function(param) { return typeof param.size === "string"; })
-        ||params.reduce(function(lengthProduct, currentParam) { return lengthProduct * currentParam.length; }, 1) > 32
+        ||params.reduce(function(sizeProduct, currentParam) { return sizeProduct * currentParam.size; }, 1) >= 12
       ) {
         var body = generateInputs(params.map(function(param) {
-          return { ...param, size : 1 };
+          if (params.length >= 8) {
+            var reducedSize = 1;
+          } else if (params.length >= 4) {
+            if (typeof param.size === "string" || param.size > 2) {
+              var reducedSize = 2;
+            } else {
+              var reducedSize = param.size;
+            }
+          } else {
+            if (typeof param.size === "string") {
+              var reducedSize = 3;
+            } else if (param.size > 3) {
+              var reducedSize = 3;
+            } else {
+              var reducedSize = param.size;
+            }
+          }
+          return { ...param, size : reducedSize };
         }));
       } else {
         var body = generateInputs(params);
