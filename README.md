@@ -649,6 +649,11 @@ MIT
 
 # Change Log
 
+## Release v0.5.0
+* Add busLiteral expression, e.g. [0, 1, 0, 0]
+* Better generate and display truth tables of different sizes
+* Lock caption and header of truth table when scrolling
+
 ## Release v0.4.0
 * Fix indentation checking for record, intLiteral, and bindingOrCall
 * Detect binding record assignment mismatches
