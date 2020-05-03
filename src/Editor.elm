@@ -448,12 +448,20 @@ viewTruthTable table =
           , Html.Attributes.style "border" "1px grey solid"
           , Html.Attributes.style "border-collapse" "collapse"
           ] <|
-          Html.caption [ Html.Attributes.style "font-weight" "bold", Html.Attributes.style "margin-bottom" "10px" ] [ Html.text defName ]
+          Html.caption
+            [ Html.Attributes.style "position" "fixed"
+            , Html.Attributes.style "top" "25px"
+            , Html.Attributes.style "left" "calc(50% + 45px)"
+            , Html.Attributes.style "font-weight" "bold"
+            , Html.Attributes.style "margin-bottom" "10px"
+            ] [ Html.text defName ]
           :: Html.thead []
             (List.map
               (\name ->
                 Html.th
-                [ Html.Attributes.style "padding" "10px"
+                [ Html.Attributes.style "position" "sticky"
+                , Html.Attributes.style "top" "0px"
+                , Html.Attributes.style "padding" "10px"
                 , Html.Attributes.style "text-align" "center"
                 , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length header)) ++ "%"
                 , Html.Attributes.style "border" "1px grey solid"
