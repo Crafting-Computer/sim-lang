@@ -216,11 +216,18 @@
       body = body.map(function(row) {
         var results = func(...row);
         var resultList = [];
+        function parseNumber(value) {
+          if (typeof value === "string") {
+            return parseInt(value, 2)
+          } else {
+            return value;
+          }
+        }
         if (outputs.length === 1) {
-          resultList = [ results ];
+          resultList = [ parseNumber(results) ];
         } else {
           outputs.forEach(function(output) {
-            resultList.push(results[output.name]);
+            resultList.push(parseNumber(results[output.name]));
           });
         }
         return row.concat(resultList);
