@@ -5270,8 +5270,14 @@ var $author$project$HdlChecker$BusLiteralElementTooLarge = F2(
 	function (a, b) {
 		return {$: 'BusLiteralElementTooLarge', a: a, b: b};
 	});
+var $author$project$HdlChecker$ConcatOperandHasUncertainSize = function (a) {
+	return {$: 'ConcatOperandHasUncertainSize', a: a};
+};
 var $author$project$HdlChecker$ExpectingBusLiteralElement = function (a) {
 	return {$: 'ExpectingBusLiteralElement', a: a};
+};
+var $author$project$HdlChecker$ExpectingConcatOperand = function (a) {
+	return {$: 'ExpectingConcatOperand', a: a};
 };
 var $author$project$HdlChecker$FromIndexBiggerThanToIndex = F2(
 	function (a, b) {
@@ -5913,7 +5919,7 @@ var $author$project$HdlChecker$inferExpr = F2(
 						$elm$core$Result$Ok(
 							_Utils_Tuple3($pzp1997$assoc_list$AssocList$empty, ctx, $author$project$HdlChecker$emptySubst)),
 						r.value));
-			default:
+			case 'Call':
 				var callee = _v0.a;
 				var args = _v0.b;
 				return A2(
@@ -6046,6 +6052,99 @@ var $author$project$HdlChecker$inferExpr = F2(
 							$author$project$HdlParser$withLocation,
 							callee,
 							$author$project$HdlParser$Binding(callee))));
+			default:
+				var left = _v0.a;
+				var right = _v0.b;
+				return A2(
+					$elm$core$Result$andThen,
+					function (_v21) {
+						var leftType = _v21.a;
+						var c1 = _v21.b;
+						var s1 = _v21.c;
+						var _v22 = leftType.value;
+						if (_v22.$ === 'TBus') {
+							var leftSize = _v22.a;
+							var leftComparator = _v22.b;
+							if (leftSize.$ === 'VarSize') {
+								return $elm$core$Result$Err(
+									_List_fromArray(
+										[
+											$author$project$HdlChecker$ConcatOperandHasUncertainSize(
+											A2($author$project$HdlParser$withLocation, left, leftType.value))
+										]));
+							} else {
+								var leftIntSize = leftSize.a;
+								if (leftComparator.$ === 'GreaterThanSize') {
+									return $elm$core$Result$Err(
+										_List_fromArray(
+											[
+												$author$project$HdlChecker$ConcatOperandHasUncertainSize(
+												A2($author$project$HdlParser$withLocation, left, leftType.value))
+											]));
+								} else {
+									return A2(
+										$elm$core$Result$andThen,
+										function (_v25) {
+											var rightType = _v25.a;
+											var c2 = _v25.b;
+											var s2 = _v25.c;
+											var _v26 = rightType.value;
+											if (_v26.$ === 'TBus') {
+												var rightSize = _v26.a;
+												var rightComparator = _v26.b;
+												if (rightSize.$ === 'VarSize') {
+													return $elm$core$Result$Err(
+														_List_fromArray(
+															[
+																$author$project$HdlChecker$ConcatOperandHasUncertainSize(
+																A2($author$project$HdlParser$withLocation, right, rightType.value))
+															]));
+												} else {
+													var rightIntSize = rightSize.a;
+													if (rightComparator.$ === 'GreaterThanSize') {
+														return $elm$core$Result$Err(
+															_List_fromArray(
+																[
+																	$author$project$HdlChecker$ConcatOperandHasUncertainSize(
+																	A2($author$project$HdlParser$withLocation, right, rightType.value))
+																]));
+													} else {
+														return $elm$core$Result$Ok(
+															_Utils_Tuple3(
+																A2(
+																	$author$project$HdlParser$withLocation,
+																	expr,
+																	A2(
+																		$author$project$HdlChecker$TBus,
+																		$author$project$HdlParser$IntSize(leftIntSize + rightIntSize),
+																		$author$project$HdlChecker$EqualToSize)),
+																c2,
+																A2($author$project$HdlChecker$combineSubsts, s1, s2)));
+													}
+												}
+											} else {
+												return $elm$core$Result$Err(
+													_List_fromArray(
+														[
+															$author$project$HdlChecker$ExpectingConcatOperand(rightType)
+														]));
+											}
+										},
+										A2(
+											$author$project$HdlChecker$inferExpr,
+											A2($author$project$HdlChecker$applySubstToCtx, s1, c1),
+											right));
+								}
+							}
+						} else {
+							return $elm$core$Result$Err(
+								_List_fromArray(
+									[
+										$author$project$HdlChecker$ExpectingConcatOperand(leftType)
+									]));
+						}
+					},
+					A2($author$project$HdlChecker$inferExpr, ctx, left));
 		}
 	});
 var $author$project$HdlChecker$match = F2(
@@ -6641,7 +6740,7 @@ var $author$project$HdlChecker$typeToString = function (t) {
 			} else {
 				var i = s.a;
 				if (c.$ === 'GreaterThanSize') {
-					return '[' + ($elm$core$String$fromInt(i + 1) + ']');
+					return '[' + ('k > ' + ($elm$core$String$fromInt(i) + ']'));
 				} else {
 					return $author$project$HdlChecker$sizeToString(s);
 				}
@@ -6926,7 +7025,7 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 			var to = _v1.b;
 			var shiftRightBinaryPlaces = $elm$core$String$fromInt(from.value);
 			var andFilter = '0b' + A2($elm$core$String$repeat, (to.value - from.value) + 1, '1');
-			return '(' + ('(' + ($author$project$HdlEmitter$emitExpr(expr.value) + (')' + (' >>> ' + (shiftRightBinaryPlaces + (' & ' + (andFilter + ')')))))));
+			return '(' + ($author$project$HdlEmitter$emitExpr(expr.value) + (')' + (' >>> ' + (shiftRightBinaryPlaces + (' & ' + andFilter)))));
 		case 'Record':
 			var r = e.a;
 			return A3(
@@ -6940,11 +7039,11 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 		case 'IntLiteral':
 			var i = e.a;
 			return $elm$core$String$fromInt(i.value);
-		default:
+		case 'BusLiteral':
 			var l = e.a;
-			return '[ ' + (A2(
+			return '\"\" + ' + A2(
 				$elm$core$String$join,
-				', ',
+				' + ',
 				A2(
 					$elm$core$List$map,
 					A2(
@@ -6953,7 +7052,11 @@ var $author$project$HdlEmitter$emitExpr = function (e) {
 						function ($) {
 							return $.value;
 						}),
-					l.value)) + '].reduce(function (number, digit) { return (number << 1) + digit; })');
+					l.value));
+		default:
+			var l = e.a;
+			var r = e.b;
+			return '(' + ($author$project$HdlEmitter$emitExpr(l.value) + (').toString(2)' + (' + ' + ('(' + ($author$project$HdlEmitter$emitExpr(r.value) + ').toString(2)')))));
 	}
 };
 var $author$project$HdlEmitter$emitParam = function (p) {
@@ -7012,8 +7115,14 @@ var $author$project$HdlChecker$getNamesFromExpr = function (expr) {
 								return $.value;
 							}),
 						l.value));
-			default:
+			case 'IntLiteral':
 				return _List_Nil;
+			default:
+				var l = expr.a;
+				var r = expr.b;
+				return _Utils_ap(
+					$author$project$HdlChecker$getNamesFromExpr(l.value),
+					$author$project$HdlChecker$getNamesFromExpr(r.value));
 		}
 	}
 };
@@ -7676,8 +7785,13 @@ var $author$project$HdlParser$Call = F2(
 	function (a, b) {
 		return {$: 'Call', a: a, b: b};
 	});
+var $author$project$HdlParser$Concat = F2(
+	function (a, b) {
+		return {$: 'Concat', a: a, b: b};
+	});
 var $author$project$HdlParser$ExpectingLeftBracket = {$: 'ExpectingLeftBracket'};
 var $author$project$HdlParser$ExpectingLeftParen = {$: 'ExpectingLeftParen'};
+var $author$project$HdlParser$ExpectingPlusPlus = {$: 'ExpectingPlusPlus'};
 var $author$project$HdlParser$ExpectingRightBracket = {$: 'ExpectingRightBracket'};
 var $author$project$HdlParser$ExpectingRightParen = {$: 'ExpectingRightParen'};
 var $author$project$HdlParser$Indexing = F2(
@@ -8299,6 +8413,136 @@ var $author$project$HdlParser$binding = $author$project$HdlParser$checkIndent(
 					})),
 			$author$project$HdlParser$name),
 		$author$project$HdlParser$optional($author$project$HdlParser$indexing)));
+var $dmy$elm_pratt_parser$Pratt$Advanced$Config = function (a) {
+	return {$: 'Config', a: a};
+};
+var $dmy$elm_pratt_parser$Pratt$Advanced$filter = F3(
+	function (_v0, currentPrecedence, leftExpression) {
+		var precedence = _v0.a;
+		var parser = _v0.b;
+		return (_Utils_cmp(precedence, currentPrecedence) > 0) ? $elm$core$Maybe$Just(
+			parser(leftExpression)) : $elm$core$Maybe$Nothing;
+	});
+var $elm$core$List$maybeCons = F3(
+	function (f, mx, xs) {
+		var _v0 = f(mx);
+		if (_v0.$ === 'Just') {
+			var x = _v0.a;
+			return A2($elm$core$List$cons, x, xs);
+		} else {
+			return xs;
+		}
+	});
+var $elm$core$List$filterMap = F2(
+	function (f, xs) {
+		return A3(
+			$elm$core$List$foldr,
+			$elm$core$List$maybeCons(f),
+			_List_Nil,
+			xs);
+	});
+var $dmy$elm_pratt_parser$Pratt$Advanced$operation = F3(
+	function (config, precedence, leftExpression) {
+		var conf = config.a;
+		return $elm$parser$Parser$Advanced$oneOf(
+			A2(
+				$elm$core$List$filterMap,
+				function (toOperation) {
+					return A3(
+						$dmy$elm_pratt_parser$Pratt$Advanced$filter,
+						toOperation(config),
+						precedence,
+						leftExpression);
+				},
+				conf.andThenOneOf));
+	});
+var $dmy$elm_pratt_parser$Pratt$Advanced$expressionHelp = function (_v0) {
+	var config = _v0.a;
+	var conf = config.a;
+	var precedence = _v0.b;
+	var leftExpression = _v0.c;
+	return A2(
+		$elm$parser$Parser$Advanced$keeper,
+		A2(
+			$elm$parser$Parser$Advanced$ignorer,
+			$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+			conf.spaces),
+		$elm$parser$Parser$Advanced$oneOf(
+			_List_fromArray(
+				[
+					A2(
+					$elm$parser$Parser$Advanced$map,
+					function (expr) {
+						return $elm$parser$Parser$Advanced$Loop(
+							_Utils_Tuple3(config, precedence, expr));
+					},
+					A3($dmy$elm_pratt_parser$Pratt$Advanced$operation, config, precedence, leftExpression)),
+					$elm$parser$Parser$Advanced$succeed(
+					$elm$parser$Parser$Advanced$Done(leftExpression))
+				])));
+};
+var $elm$parser$Parser$Advanced$lazy = function (thunk) {
+	return $elm$parser$Parser$Advanced$Parser(
+		function (s) {
+			var _v0 = thunk(_Utils_Tuple0);
+			var parse = _v0.a;
+			return parse(s);
+		});
+};
+var $dmy$elm_pratt_parser$Pratt$Advanced$subExpression = F2(
+	function (precedence, config) {
+		var conf = config.a;
+		return A2(
+			$elm$parser$Parser$Advanced$andThen,
+			function (leftExpression) {
+				return A2(
+					$elm$parser$Parser$Advanced$loop,
+					_Utils_Tuple3(config, precedence, leftExpression),
+					$dmy$elm_pratt_parser$Pratt$Advanced$expressionHelp);
+			},
+			A2(
+				$elm$parser$Parser$Advanced$keeper,
+				A2(
+					$elm$parser$Parser$Advanced$ignorer,
+					$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+					conf.spaces),
+				$elm$parser$Parser$Advanced$lazy(
+					function (_v0) {
+						return $elm$parser$Parser$Advanced$oneOf(
+							A2(
+								$elm$core$List$map,
+								$elm$core$Basics$apR(config),
+								conf.oneOf));
+					})));
+	});
+var $dmy$elm_pratt_parser$Pratt$Advanced$expression = function (config) {
+	return A2(
+		$dmy$elm_pratt_parser$Pratt$Advanced$subExpression,
+		0,
+		$dmy$elm_pratt_parser$Pratt$Advanced$Config(
+			{andThenOneOf: config.andThenOneOf, oneOf: config.oneOf, spaces: config.spaces}));
+};
+var $dmy$elm_pratt_parser$Pratt$Advanced$infixHelp = F4(
+	function (_v0, operator, apply, config) {
+		var leftPrecedence = _v0.a;
+		var rightPrecedence = _v0.b;
+		return _Utils_Tuple2(
+			leftPrecedence,
+			function (left) {
+				return A2(
+					$elm$parser$Parser$Advanced$keeper,
+					A2(
+						$elm$parser$Parser$Advanced$ignorer,
+						$elm$parser$Parser$Advanced$succeed(
+							apply(left)),
+						operator),
+					A2($dmy$elm_pratt_parser$Pratt$Advanced$subExpression, rightPrecedence, config));
+			});
+	});
+var $dmy$elm_pratt_parser$Pratt$Advanced$infixLeft = function (precedence) {
+	return $dmy$elm_pratt_parser$Pratt$Advanced$infixHelp(
+		_Utils_Tuple2(precedence, precedence));
+};
 var $author$project$HdlParser$IntLiteral = function (a) {
 	return {$: 'IntLiteral', a: a};
 };
@@ -8461,14 +8705,7 @@ var $author$project$HdlParser$intLiteral = function () {
 						octal: $elm$core$Result$Err(invalid)
 					}))));
 }();
-var $elm$parser$Parser$Advanced$lazy = function (thunk) {
-	return $elm$parser$Parser$Advanced$Parser(
-		function (s) {
-			var _v0 = thunk(_Utils_Tuple0);
-			var parse = _v0.a;
-			return parse(s);
-		});
-};
+var $dmy$elm_pratt_parser$Pratt$Advanced$literal = $elm$core$Basics$always;
 var $elm$parser$Parser$Advanced$sequenceEndForbidden = F5(
 	function (ender, ws, parseItem, sep, revItems) {
 		var chompRest = function (item) {
@@ -8641,43 +8878,41 @@ var $author$project$HdlParser$sps1 = A2(
 		return $elm$core$String$isEmpty(str) ? $elm$parser$Parser$Advanced$problem($author$project$HdlParser$ExpectingSpaces) : $elm$parser$Parser$Advanced$succeed(_Utils_Tuple0);
 	},
 	$elm$parser$Parser$Advanced$getChompedString($author$project$HdlParser$sps));
+var $elm$parser$Parser$Advanced$symbol = $elm$parser$Parser$Advanced$token;
 function $author$project$HdlParser$cyclic$expr() {
-	return $elm$parser$Parser$Advanced$oneOf(
-		_List_fromArray(
-			[
-				$author$project$HdlParser$cyclic$group(),
-				$author$project$HdlParser$cyclic$bindingOrCall(),
-				$author$project$HdlParser$cyclic$record(),
-				$author$project$HdlParser$cyclic$busLiteral(),
-				$author$project$HdlParser$intLiteral
-			]));
-}
-function $author$project$HdlParser$cyclic$busLiteral() {
-	return $author$project$HdlParser$checkIndent(
-		A2(
-			$elm$parser$Parser$Advanced$keeper,
-			$elm$parser$Parser$Advanced$succeed($author$project$HdlParser$BusLiteral),
-			$author$project$HdlParser$located(
-				$elm$parser$Parser$Advanced$sequence(
-					{
-						end: A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket),
-						item: A2(
-							$elm$parser$Parser$Advanced$keeper,
-							$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
-							$author$project$HdlParser$located(
-								$elm$parser$Parser$Advanced$oneOf(
-									_List_fromArray(
-										[
-											$author$project$HdlParser$cyclic$group(),
-											$author$project$HdlParser$cyclic$bindingOrCall(),
-											$author$project$HdlParser$cyclic$record(),
-											$author$project$HdlParser$intLiteral
-										])))),
-						separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
-						spaces: $author$project$HdlParser$sps,
-						start: A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket),
-						trailing: $elm$parser$Parser$Advanced$Forbidden
-					}))));
+	var subexpr = A2($elm$core$Basics$composeL, $dmy$elm_pratt_parser$Pratt$Advanced$literal, $author$project$HdlParser$located);
+	return $dmy$elm_pratt_parser$Pratt$Advanced$expression(
+		{
+			andThenOneOf: _List_fromArray(
+				[
+					A3(
+					$dmy$elm_pratt_parser$Pratt$Advanced$infixLeft,
+					1,
+					$elm$parser$Parser$Advanced$symbol(
+						A2($elm$parser$Parser$Advanced$Token, '++', $author$project$HdlParser$ExpectingPlusPlus)),
+					F2(
+						function (leftExpr, rightExpr) {
+							return {
+								from: leftExpr.from,
+								to: rightExpr.to,
+								value: A2($author$project$HdlParser$Concat, leftExpr, rightExpr)
+							};
+						}))
+				]),
+			oneOf: _List_fromArray(
+				[
+					subexpr(
+					$author$project$HdlParser$cyclic$group()),
+					subexpr(
+					$author$project$HdlParser$cyclic$bindingOrCall()),
+					subexpr(
+					$author$project$HdlParser$cyclic$record()),
+					subexpr(
+					$author$project$HdlParser$cyclic$busLiteral()),
+					subexpr($author$project$HdlParser$intLiteral)
+				]),
+			spaces: $author$project$HdlParser$sps
+		});
 }
 function $author$project$HdlParser$cyclic$record() {
 	return $author$project$HdlParser$checkIndent(
@@ -8714,11 +8949,38 @@ function $author$project$HdlParser$cyclic$record() {
 										[
 											$author$project$HdlParser$cyclic$group(),
 											$author$project$HdlParser$cyclic$bindingOrCall(),
-											$author$project$HdlParser$intLiteral
+											$author$project$HdlParser$intLiteral,
+											$author$project$HdlParser$cyclic$busLiteral()
 										])))),
 						separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
 						spaces: $author$project$HdlParser$sps,
 						start: A2($elm$parser$Parser$Advanced$Token, '{', $author$project$HdlParser$ExpectingLeftBrace),
+						trailing: $elm$parser$Parser$Advanced$Forbidden
+					}))));
+}
+function $author$project$HdlParser$cyclic$busLiteral() {
+	return $author$project$HdlParser$checkIndent(
+		A2(
+			$elm$parser$Parser$Advanced$keeper,
+			$elm$parser$Parser$Advanced$succeed($author$project$HdlParser$BusLiteral),
+			$author$project$HdlParser$located(
+				$elm$parser$Parser$Advanced$sequence(
+					{
+						end: A2($elm$parser$Parser$Advanced$Token, ']', $author$project$HdlParser$ExpectingRightBracket),
+						item: A2(
+							$elm$parser$Parser$Advanced$keeper,
+							$elm$parser$Parser$Advanced$succeed($elm$core$Basics$identity),
+							$author$project$HdlParser$located(
+								$elm$parser$Parser$Advanced$oneOf(
+									_List_fromArray(
+										[
+											$author$project$HdlParser$cyclic$group(),
+											$author$project$HdlParser$cyclic$bindingOrCall(),
+											$author$project$HdlParser$intLiteral
+										])))),
+						separator: A2($elm$parser$Parser$Advanced$Token, ',', $author$project$HdlParser$ExpectingComma),
+						spaces: $author$project$HdlParser$sps,
+						start: A2($elm$parser$Parser$Advanced$Token, '[', $author$project$HdlParser$ExpectingLeftBracket),
 						trailing: $elm$parser$Parser$Advanced$Forbidden
 					}))));
 }
@@ -8784,7 +9046,8 @@ function $author$project$HdlParser$cyclic$bindingOrCall() {
 													$author$project$HdlParser$binding,
 													$author$project$HdlParser$cyclic$group(),
 													$author$project$HdlParser$cyclic$record(),
-													$author$project$HdlParser$intLiteral
+													$author$project$HdlParser$intLiteral,
+													$author$project$HdlParser$cyclic$busLiteral()
 												])))),
 									A2(
 									$elm$parser$Parser$Advanced$map,
@@ -8825,8 +9088,7 @@ function $author$project$HdlParser$cyclic$group() {
 						$elm$parser$Parser$Advanced$ignorer,
 						$elm$parser$Parser$Advanced$lazy(
 							function (_v1) {
-								return $author$project$HdlParser$located(
-									$author$project$HdlParser$cyclic$expr());
+								return $author$project$HdlParser$cyclic$expr();
 							}),
 						$author$project$HdlParser$sps),
 					$elm$parser$Parser$Advanced$token(
@@ -8838,13 +9100,13 @@ try {
 	$author$project$HdlParser$cyclic$expr = function () {
 		return $author$project$HdlParser$expr;
 	};
-	var $author$project$HdlParser$busLiteral = $author$project$HdlParser$cyclic$busLiteral();
-	$author$project$HdlParser$cyclic$busLiteral = function () {
-		return $author$project$HdlParser$busLiteral;
-	};
 	var $author$project$HdlParser$record = $author$project$HdlParser$cyclic$record();
 	$author$project$HdlParser$cyclic$record = function () {
 		return $author$project$HdlParser$record;
+	};
+	var $author$project$HdlParser$busLiteral = $author$project$HdlParser$cyclic$busLiteral();
+	$author$project$HdlParser$cyclic$busLiteral = function () {
+		return $author$project$HdlParser$busLiteral;
 	};
 	var $author$project$HdlParser$bindingOrCall = $author$project$HdlParser$cyclic$bindingOrCall();
 	$author$project$HdlParser$cyclic$bindingOrCall = function () {
@@ -8855,7 +9117,7 @@ try {
 		return $author$project$HdlParser$group;
 	};
 } catch ($) {
-	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    expr\n  │     ↓\n  │    busLiteral\n  │     ↓\n  │    record\n  │     ↓\n  │    bindingOrCall\n  │     ↓\n  │    group\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
+	throw 'Some top-level definitions from `HdlParser` are causing infinite recursion:\n\n  ┌─────┐\n  │    expr\n  │     ↓\n  │    record\n  │     ↓\n  │    busLiteral\n  │     ↓\n  │    bindingOrCall\n  │     ↓\n  │    group\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
 var $elm$parser$Parser$Advanced$Located = F3(
 	function (row, col, context) {
 		return {col: col, context: context, row: row};
@@ -9095,7 +9357,7 @@ function $author$project$HdlParser$cyclic$bindingDef() {
 										$author$project$HdlParser$optional(
 											$author$project$HdlParser$cyclic$locals()),
 										$author$project$HdlParser$sps)),
-								$author$project$HdlParser$located($author$project$HdlParser$expr)))));
+								$author$project$HdlParser$expr))));
 			},
 			A2(
 				$elm$parser$Parser$Advanced$keeper,
@@ -9236,7 +9498,7 @@ function $author$project$HdlParser$cyclic$funcDef() {
 										$author$project$HdlParser$optional(
 											$author$project$HdlParser$cyclic$locals()),
 										$author$project$HdlParser$sps)),
-								$author$project$HdlParser$located($author$project$HdlParser$expr)))));
+								$author$project$HdlParser$expr))));
 			},
 			A2(
 				$elm$parser$Parser$Advanced$keeper,
@@ -9428,8 +9690,10 @@ var $author$project$HdlParser$showProblem = function (problem) {
 			return 'a \'}\'';
 		case 'ExpectingComma':
 			return 'a \',\'';
-		default:
+		case 'ExpectingSpaces':
 			return 'a space or newline';
+		default:
+			return 'a \'++\'';
 	}
 };
 var $author$project$HdlParser$showProblemContext = function (context) {
@@ -9711,9 +9975,15 @@ var $author$project$HdlChecker$showProblem = F2(
 				var elementSize = problem.a;
 				var element = problem.b;
 				return 'I expect the element of a bus literal to be 1 bit here:\n' + (A2($author$project$HdlChecker$showLocation, src, element) + ('\n' + ('but found an element of size ' + ($elm$core$String$fromInt(elementSize) + ('.\n' + 'Hint: Try reducing the element\'s size to 1.')))));
-			default:
+			case 'ExpectingBusLiteralElement':
 				var t = problem.a;
 				return 'I\'m expecting a 1-bit number here:\n' + (A2($author$project$HdlChecker$showLocation, src, t) + ('\n' + ('but found a value of type ' + ($author$project$HdlChecker$typeToString(t.value) + ('.\n' + 'Hint: The bus literal expects a list of 1-bit numbers.\nTry changing the element to a 1-bit number.')))));
+			case 'ConcatOperandHasUncertainSize':
+				var busType = problem.a;
+				return 'I\'m expecting a bus with certain size here:\n' + (A2($author$project$HdlChecker$showLocation, src, busType) + ('\n' + ('but found a bus with variable size of ' + ($author$project$HdlChecker$typeToString(busType.value) + ('.\n' + 'Hint: The concatenation operator (++) expects both sides to have certain size.\nTry restricting the size by slicing.')))));
+			default:
+				var t = problem.a;
+				return 'I\'m expecting a bus here:\n' + (A2($author$project$HdlChecker$showLocation, src, t) + ('\n' + ('but found a value of type ' + ($author$project$HdlChecker$typeToString(t.value) + ('.\n' + 'Hint: The concatenation operator (++) expects both sides to be a bus.\nTry changing the operand to a bus.')))));
 		}
 	});
 var $author$project$HdlChecker$showProblems = F2(
@@ -9726,7 +9996,7 @@ var $author$project$HdlChecker$showProblems = F2(
 				$author$project$HdlChecker$showProblem(src),
 				problems));
 	});
-var $author$project$Main$source = 'f a[1] b[2] c[1] -> [4] =\n let\n  bus = [1, a, 1, b]\n in\n bus';
+var $author$project$Main$source = 'f i[1] -> [3] =\n let\n  bus = [ 0, i ] ++ { a = 2 }\n in\n bus';
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$main = function () {

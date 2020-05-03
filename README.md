@@ -649,6 +649,11 @@ MIT
 
 # Change Log
 
+## Release v0.6.0
+* Add concatenation operator (++)
+* Fix binary parsing and display
+* Fix line comment newline counting problem
+
 ## Release v0.5.0
 * Add busLiteral expression, e.g. [0, 1, 0, 0]
 * Better generate and display truth tables of different sizes
