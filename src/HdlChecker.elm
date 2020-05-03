@@ -1429,7 +1429,7 @@ typeToString t =
       ( String.join ", " <|
         List.map
           (\(k, v) ->
-            k ++ " = " ++ typeToString v.value
+            k ++ typeToString v.value
           )
           (Dict.toList r)
       ) ++ " }"
