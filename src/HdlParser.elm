@@ -584,6 +584,7 @@ bindingOrCall =
             , group
             , record
             , intLiteral
+            , busLiteral
             ]
           )
         , succeed ()
