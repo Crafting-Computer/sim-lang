@@ -315,6 +315,7 @@ view model =
     [ E.htmlAttribute <| Html.Attributes.style "margin" "0 10px"
     , E.htmlAttribute <| Html.Attributes.style "width" "45vw"
     , Font.size 16
+    , E.scrollbarY
     ] <|
     E.column
       []
