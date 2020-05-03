@@ -287,8 +287,8 @@ suite =
         "f a[1] b[1] c[1] -> [4] =\n let\n  bus = [1, a, 2, b]\n in\n bus" <|
         Err [BusLiteralElementTooLarge 2 { from = (3,16), to = (3,17), value = IntLiteral { from = (3,16), to = (3,17), value = 2 } }]
       , test "bus literal with elements that are not bus type"
-        "f a[1] b[1] c[1] -> [4] =\n let\n  bus = [1, a, { a = 2 }, b]\n in\n bus" <|
-        Err [ExpectingBusLiteralElement { from = (3,16), to = (3,25), value = TRecord (Dict.fromList [("a",{ from = (3,22), to = (3,23), value = TBus (IntSize 2) EqualToSize })]) }]
+        "f a[1] b[1] c[1] -> [4] =\n let\n  record = { a = 2 }\n  bus = [1, a, record, b]\n in\n bus" <|
+        Err [ExpectingBusLiteralElement { from = (3,12), to = (3,21), value = TRecord (Dict.fromList [("a",{ from = (3,18), to = (3,19), value = TBus (IntSize 2) EqualToSize })]) }]
       ]
     ]
 

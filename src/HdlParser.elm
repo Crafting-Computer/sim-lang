@@ -460,6 +460,7 @@ record =
           [ group
           , bindingOrCall
           , intLiteral
+          , busLiteral
           ]
         )
     , trailing = Forbidden
@@ -482,7 +483,6 @@ busLiteral =
           oneOf
             [ group
             , bindingOrCall
-            , record
             , intLiteral
             ]
         )
