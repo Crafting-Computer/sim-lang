@@ -24,11 +24,20 @@ Table of Contents
       * [Implementing Dmux](#implementing-dmux)
       * [Implementing 4-way Dmux](#implementing-4-way-dmux)
       * [Implementing 8-way Dmux](#implementing-8-way-dmux)
+      * [Implementing Arithmetic Circuits](#implementing-arithmetic-circuits)
+      * [Implementing Half Adder](#implementing-half-adder)
+      * [Implementing Full Adder](#implementing-full-adder)
+      * [Implementing 2-bit Full Adder](#implementing-2-bit-full-adder)
+      * [Implementing 4-bit Full Adder](#implementing-4-bit-full-adder)
+      * [Implementing 8-bit Full Adder](#implementing-8-bit-full-adder)
+      * [Implementing 16-bit Adder](#implementing-16-bit-adder)
    * [Development](#development)
       * [Set up](#set-up)
       * [Commands](#commands)
    * [License](#license)
    * [Change Log](#change-log)
+      * [Release v0.6.0](#release-v060)
+      * [Release v0.5.0](#release-v050)
       * [Release v0.4.0](#release-v040)
       * [Release v0.3.0](#release-v030)
       * [Release v0.2.0](#release-v020)
@@ -43,10 +52,11 @@ Even though Sim is very powerful, it's important to realize that Sim is just a l
 In order to master both the ideas and their expressions, we will guide you through the foundamentals of circuit design by creating a 16-bit computer from scratch. Don't worry too much, we will start simple and slow at first and gradually release the joy of explorations and creations to you after learning the basics.
 
 Here's a roadmap for building our computer:
-1. Common circuits
-2. Arithmetic Logic Unit
-3. Memory
-4. Central Processing Unit
+1. [Logic circuits](#basics)
+2. [Arithmetic circuits](#implementing-arithmetic-circuits)
+3. Arithmetic Logic Unit
+4. Memory
+5. Central Processing Unit
 
 We will cover each section in-depth so let's get started!
 
@@ -522,6 +532,23 @@ Here's the header for the 4-way mux:
 mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n]
 ```
 
+<details>
+<summary>Hints</summary>
+Fill in the blanks below:
+<pre>
+<code>
+mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
+    let
+        sel_a_b =
+            ___________________
+        sel_c_d =
+            ___________________
+    in
+    ____ sel_a_b sel_c_d ____
+</code>
+</pre>
+</details>
+
 Now implement the body by yourself and check the truth table of your function with the expected truth table above.
 
 > Note: By default the Sim editor outputs all values in the truth table in decimals. However, we always supply the expected truth table with all values in binary. We will add an option to output in binary in the future.
@@ -554,6 +581,23 @@ Now implement the body by yourself and check the truth table of your function wi
 mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n]
 ```
 
+<details>
+<summary>Hints</summary>
+Fill in the blanks below:
+<pre>
+<code>
+mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n] =
+    let
+        sel_a_b_c_d =
+            ___________________
+        sel_e_f_g_h =
+            ___________________
+    in
+    ____ sel_a_b_c_d sel_e_f_g_h ____
+</code>
+</pre>
+</details>
+
 ## Implementing Dmux
 
 Dmux is short for demultiplexer and does the inverse of what mux or multiplexer does. Given an input, the dmux select its output between several paths based on an address.
@@ -570,6 +614,38 @@ Dmux is short for demultiplexer and does the inverse of what mux or multiplexer 
 -}
 dmux input[n] sel[1] -> { a[n], b[n] }
 ```
+
+What's that `{ a[n], b[n] }` output? It's our first time seeing a function that returns more than one output. In Mathematics, we usually think of a function as a machine that accepts one or multiple inputs and produces a single output. Single output also makes working with return values a lot easier. However, for our `dmux` function, we clearly need to return two values. What do we do? To contain multiple outputs, we use a **record**. In sim, a record is a bunch of key-value pairs:
+
+```elm
+{ a = 0
+, b = 1
+, c = 0
+}
+```
+
+where `a`, `b`, and `c` are keys and `0`, `1`, and `0` are the keys' values.
+
+The great thing about the record is that we always know the names of our many output values, just like we do for our function inputs. Plus, a record is a single value, just like `0` and `input`!
+
+If you have ideas on how to use records and how to implement `dmux`, go ahead and implement it. If you get stuck any time, check out the hints:
+
+<details>
+<summary>Hints</summary>
+Fill in the blanks below:
+<pre>
+<code>
+dmux input[n] sel[1] -> { a[n], b[n] } =
+    let
+        a =
+            ___________________
+        b =
+            ___________________
+    in
+    { a = a, b = b }
+</code>
+</pre>
+</details>
 
 ## Implementing 4-way Dmux
 
@@ -589,6 +665,27 @@ dmux input[n] sel[1] -> { a[n], b[n] }
 -}
 dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] }
 ```
+
+<details>
+<summary>Hints</summary>
+Fill in the blanks below:
+<pre>
+<code>
+dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
+    let
+        { a = a, b = b } =
+            ___________________
+        { a = c, b = d } =
+            ___________________
+    in
+    { a = ___________________
+    , b = ___________________
+    , c = ___________________
+    , d = ___________________
+    }
+</code>
+</pre>
+</details>
 
 ## Implementing 8-way Dmux
 
@@ -614,7 +711,239 @@ dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] }
 dmux_8_way input[n] sel[3] -> { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] }
 ```
 
-🎉 We just completed all the common building blocks for our computer!
+<details>
+<summary>Hints</summary>
+Fill in the blanks below:
+<pre>
+<code>
+dmux_8_way input[n] sel[3] ->
+    { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] } =
+    let
+        { a = a, b = b, c = c, d = d } =
+            ___________________
+        { a = e, b = f, c = g, d = h } =
+            ___________________
+        sel_when_0 output[n] -> [n] =
+            ___________________
+        sel_when_1 output[n] -> [n] =
+            ___________________
+    in
+    { a = ___________________
+    , b = ___________________
+    , c = ___________________
+    , d = ___________________
+    , e = ___________________
+    , f = ___________________
+    , g = ___________________
+    , h = ___________________
+    }
+</code>
+</pre>
+</details>
+
+🎉 We just completed all the common logic circuits for our computer!
+
+## Implementing Arithmetic Circuits
+
+Logic is fun but as the name computer suggests, we need to conduct arithmetic computations in order to do more interesting stuff. We will learn how to add and subtract two binary numbers with an added bonus of multiplication.
+
+## Implementing Half Adder
+
+Let's start from the bare minimum - adding two 1-bit numbers together. Binary addition works the same way as decimal addition. The only difference is that it's much simpler! A bit can only be either `0` or `1`. Addition of two bits have only four cases:
+
+| a | b |
+|:-:|:-:|
+| 0 | 0 |
+| 0 | 1 |
+| 1 | 0 |
+| 1 | 1 |
+
+For the first three cases, the sum is very straight forward:
+
+| a | b |sum|
+|:-:|:-:|:-:|
+| 0 | 0 | 0 + 0 = 0 |
+| 0 | 1 | 0 + 1 = 1 |
+| 1 | 0 | 1 + 0 = 1 |
+
+The fourth case is a little tricky. In decimals, `1 + 1` equals `2`. However, the highest digit we got in binary is `1`. What do we do now? Let's think about what we do in this situation when adding two decimals. If we add `1` and `9`, we get the sum equal to `0` with a carry of `1`. Because the carry is at a more significant digit, we right the result as carry (`1`) then sum (`0`) or `10`.
+
+Similarly in binary, we also get a sum of `0` and a carry of `1` or `10`. However, `10` in binary means `(1 + 2 ^ 1) + (0 * 2 ^ 0) = 2 + 0 = 2`. This makes sense because we expect `1 + 1` to equal `2` no matter what base we are in!
+
+Ok. Let's add the fourth case to our truth table while introducing a new carry output:
+
+| a | b |carry|sum|
+|:-:|:-:|:---:|:-:|
+| 0 | 0 |  0  | 0 |
+| 0 | 1 |  0  | 1 |
+| 1 | 0 |  0  | 1 |
+| 1 | 1 |  1  | 0 |
+
+It's time for you to implement the half adder in Sim:
+
+```elm
+half_adder a b -> { carry, sum }
+```
+
+<details>
+<summary>Hints</summary>
+Look at carry and sum separately. Do their truth tables look familiar?
+</details>
+
+## Implementing Full Adder
+
+Half adder works well for adding two 1-bit numbers. However, when we need to add two multi-bit numbers, we need to take acount of the carry bit from the previous less significant digit. That's when the full adder comes in:
+
+| a | b | c |carry|sum|
+|:-:|:-:|:-:|:---:|:-:|
+| 0 | 0 | 0 |  0  | 0 |
+| 0 | 0 | 1 |  0  | 1 |
+| 0 | 1 | 0 |  0  | 1 |
+| 0 | 1 | 1 |  1  | 0 |
+| 1 | 0 | 0 |  0  | 1 |
+| 1 | 0 | 1 |  1  | 0 |
+| 1 | 1 | 0 |  1  | 0 |
+| 1 | 1 | 1 |  1  | 1 |
+
+```elm
+full_adder a b c -> { carry, sum }
+```
+
+<details>
+<summary>Hints</summary>
+<pre>
+<code>
+full_adder a b c -> { carry, sum } =
+    let
+        { carry = ____, sum = ____ } =
+            ___________________
+        { carry = ____, sum = ____ } =
+            ___________________
+        ____ =
+            ___________________
+    in
+    { carry = ____, sum = ____ }
+</code>
+</pre>
+</details>
+
+## Implementing 2-bit Full Adder
+
+There are only very few things you can do with 1-bit numbers. It's time to spice up our full adder to accept multi-bit numbers.
+
+The full truth table has `(2 ^ 2) ^ 3 = 64` cases so we will not show it here. You can do some quick checks by addting the numbers yourself to see if your 2-bit full adder works.
+
+```elm
+full_adder2 a[2] b[2] c -> { carry, sum[2] }
+```
+
+The idea for the 2-bit full adder is:
+* Calculate the sum of the first bits, i.e. `c0, s0 = a[0] + b[0]`
+* Calculate the sum of the second bits
+  and the carry of the previous sum, i.e. `c1, s1 = a[1] + b[1] + c0`
+
+There's a little challenge though. How do we combine the two sums `s0` and `s1` together as the final 2-bit sum? For this, we need the **bus literal**. Bus literals are a list of bits stringed together, hence the name bus. Here's an example:
+
+```elm
+[ 0, 1, 1, 0, 1 ]
+```
+
+Note that bus is much stricter than a list or array in other languages. For instance, buses can only contain 1-bit numbers. The followings **is not legal**:
+
+```elm
+-- 2 or 0b10 occupies 2 bit (bigger than 1 bit).
+[ 0, 1, 2 ]
+
+-- Elements can only be 1-bit numbers.
+-- records like { a = 2 } and any other type are not allowed.
+[ 0, { a = 2} ]
+```
+
+One important property of bus literal is that it preserves leading zeros:
+
+```elm
+-- Leading zeros are preserved
+[ 0, 0, 1, 0 ]
+```
+
+This is not that important for a single bus literal. However, sometimes we need to concatenate or combine two buses together using `++`:
+
+```elm
+-- Prefixing a `1` to our bus literal
+-- results in [ 1, 0, 0, 1, 0 ]
+[ 1 ] ++ [ 0, 0, 1, 0]
+```
+
+Concat the bus literals results in `[ 1, 0, 0, 1, 0 ]` (preserving leading zeros) instead of `[ 1, 0, 1, 0 ]` (discarding leading zeros). Compare this to int literals with the same values:
+
+```elm
+-- Prefixing a `1` to our int literal
+-- results in 0b110
+0b1 ++ 0b0010
+```
+
+Concating the int literals results in `0b110` (discarding leading zeros) instead of `0b10010` (preserving leading zeros).
+
+If you now understand bus literals and have ideas on how to implement the 2-bit full adder, give it a go. If you get stuck any time, check out the hints:
+
+<details>
+<summary>Hints</summary>
+<pre>
+<code>
+full_adder2 a[2] b[2] c -> { carry, sum[2] } =
+    let
+        { carry = ____, sum = ____ } =
+            ___________________
+        { carry = ____, sum = ____ } =
+            ___________________
+    in
+    { carry = ____, sum = [ ____, ____ ] }
+</code>
+</pre>
+</details>
+
+## Implementing 4-bit Full Adder
+
+```elm
+full_adder4 a[4] b[4] c -> { carry, sum[4] }
+```
+
+<details>
+<summary>Hints</summary>
+<pre>
+<code>
+full_adder4 a[4] b[4] c -> { carry, sum[4] } =
+    let
+        { carry = ____, sum = ____ } =
+            ___________________
+        { carry = ____, sum = ____ } =
+            ___________________
+    in
+    { carry = ____, sum = [ ____, ____ ] }
+</code>
+</pre>
+</details>
+
+
+
+
+
+## Implementing 8-bit Full Adder
+
+By far you should get the patterns of a multi-bit full adder. We can repeat this pattern any many time we want to generate arbitrary-sized full adders. However, we will only go until 16-bit which is the size of our computer registers (more on that later).
+
+```elm
+full_adder8 a[8] b[8] c -> { carry, sum[8] }
+```
+
+## Implementing 16-bit Adder
+
+Our last adder in the series will be a half adder because we don't need to compose the 16-bit adder even more to create bigger adders.
+
+```elm
+adder16 a[16] b[16] -> { carry, sum[16] }
+```
+
 
 # Development
 ## Set up
