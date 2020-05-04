@@ -48,7 +48,7 @@ type alias Param =
 
 type Size
   = IntSize Int
-  | VarSize String
+  | VarSize (Located String)
 
 
 type Problem
@@ -374,8 +374,8 @@ funcDef =
           }
       )
       |. sps
-      |= params
-      |= outputs
+      |= params funcName
+      |= outputs funcName
       |. sps
       |. token (Token "=" ExpectingEqual)
       |. sps
@@ -631,18 +631,18 @@ optional parser =
     ]
 
 
-outputs : HdlParser (Located (List Param))
-outputs =
+outputs : Located String -> HdlParser (Located (List Param))
+outputs funcName =
   let
     singleRetType =
-      map (\s -> [ Param (fakeLocated "") s ]) size
+      map (\s -> [ Param (withLocation s "result") s ]) (size funcName)
     manyRetTypes =
       sequence
         { start = Token "{" ExpectingLeftBrace
         , separator = Token "," ExpectingComma
         , end = Token "}" ExpectingRightBrace
         , spaces = sps
-        , item = param
+        , item = param funcName
         , trailing = Forbidden
         }
   in
@@ -656,19 +656,19 @@ outputs =
     )
 
 
-params : HdlParser (List Param)
-params =
+params : Located String -> HdlParser (List Param)
+params funcName =
   loop [] <| \revParams -> oneOf
     [ succeed (\p -> Loop (p :: revParams))
-      |= param
+      |= param funcName
       |. sps
     , succeed ()
         |> map (\_ -> Done (List.reverse revParams))
     ]
 
 
-param : HdlParser Param
-param =
+param : Located String -> HdlParser Param
+param funcName =
   succeed (\n s1 ->
     case s1 of
       Just s2 ->
@@ -677,17 +677,17 @@ param =
         Param n { from = n.from, to = n.to, value = IntSize 1 }
     )
     |= name
-    |= optional size
+    |= optional (size funcName)
 
 
-size : HdlParser (Located Size)
-size =
+size : Located String -> HdlParser (Located Size)
+size funcName =
   succeed identity
     |. token (Token "[" ExpectingLeftBracket)
     |. sps
     |= (located <| oneOf
       [ map IntSize integer
-      , map (\n -> VarSize n.value) name
+      , map (.value >> withLocation funcName >> VarSize) name
       ])
     |. sps
     |. token (Token "]" ExpectingRightBracket)

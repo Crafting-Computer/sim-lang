@@ -22,22 +22,30 @@ type Problem
   | ExpectingBusLiteralElement (Located Type)
   | ConcatOperandHasUncertainSize (Located Type)
   | ExpectingConcatOperand (Located Type)
+  | DowncastingDeclaredVarSizeToIntSize (Located String) (Located (Int, SizeComparator))
 
 
 prelude : List Def
 prelude =
+  let
+    nsize name =
+      { name = name, size = VarSize (fakeLocated "n") }
+    
+    isize name size =
+      { name = name, size = IntSize size }
+  in
   [ preludeFuncDef
     "nand"
-    [ { name = "a", size = VarSize "n" }
-    , { name = "b", size = VarSize "n" }
+    [ nsize "a"
+    , nsize "b"
     ]
-    [ { name = "out", size = VarSize "n" }
+    [ nsize "result"
     ]
   , preludeFuncDef
     "fill"
-    [ { name = "a", size = IntSize 1 }
+    [ isize "a" 1
     ]
-    [ { name = "out", size = VarSize "n" }
+    [ nsize "result"
     ]
   ]
 
@@ -128,7 +136,7 @@ addToCtxAllowDuplicates n t c =
 
 newTVar : Located a -> Ctx -> (Located Type, Ctx)
 newTVar location ctx =
-  ( withLocation location <| TVar ("T" ++ String.fromInt ctx.nextId)
+  ( withLocation location <| TVar <| withLocation location ("T" ++ String.fromInt ctx.nextId)
   , { ctx
     | nextId =
       ctx.nextId + 1
@@ -143,7 +151,7 @@ type alias Env =
 
 -- Map type variable id to type
 type Subst
-  = Subst (Dict String (Located Type))
+  = Subst (Dict (Located String) (Located Type))
   | SubstError (List Problem)
 
 
@@ -185,7 +193,7 @@ applySubstToType subst t =
               n
 
             IntSize _ ->
-              nameFromLocated t
+              substNameForIntSize t
       in
       case subst of
         Subst s ->
@@ -232,7 +240,8 @@ applySubstToCtx subst ctx =
         ctx.env
   }
 
-
+{- Used to match afunction declared params and inferred params
+-}
 match : Located Type -> Located Type -> List Problem
 match expectedType actualType =
   let
@@ -343,10 +352,10 @@ unify t1 t2 =
         (IntSize i1, IntSize i2) ->
           let
             n1 =
-              nameFromLocated t1
+              substNameForIntSize t1
             
             n2 =
-              nameFromLocated t2
+              substNameForIntSize t2
 
             subst1 =
               Subst <| Dict.singleton n2 t1
@@ -406,37 +415,33 @@ unify t1 t2 =
       combineSubsts fromSubst toSubst
 
     (TVar v1, _) ->
-      varBind (withLocation t1 v1) t2
+      varBind v1 t2
     
     (_, TVar v2) ->
-      varBind (withLocation t2 v2) t1
+      varBind v2 t1
 
     _ ->
       mismatch
 
 
-nameFromLocated : Located a -> String
-nameFromLocated i =
-  let
-    locationToString (row, col) =
-      String.fromInt row ++ "_" ++ String.fromInt col
-  in
-  "_located_" ++ locationToString i.from ++ "_" ++ locationToString i.to
+substNameForIntSize : Located a -> Located String
+substNameForIntSize i =
+  withLocation i "TIntSize"
 
 
 varBind : Located TVarId -> Located Type -> Subst
 varBind id1 t =
   let
     testContains =
-      if contains id1.value t.value then
-        SubstError [ MismatchedTypes (withLocation id1 <| TVar id1.value) t ]
+      if contains id1 t.value then
+        SubstError [ MismatchedTypes (withLocation id1 <| TVar id1) t ]
       else
         Subst <|
-          Dict.singleton id1.value t
+          Dict.singleton id1 t
   in
   case t.value of
     TVar id2 ->
-      if id1.value == id2 then
+      if id1 == id2 then
         emptySubst
       else
         testContains
@@ -445,7 +450,7 @@ varBind id1 t =
       testContains
 
 
-contains : TVarId -> Type -> Bool
+contains : Located String -> Type -> Bool
 contains id1 t =
   case t of
     TVar id2 ->
@@ -462,7 +467,7 @@ type Type
   = TBus Size SizeComparator
   | TRecord (Dict String (Located Type))
   | TFun (Located Type) (Located Type)
-  | TVar TVarId
+  | TVar (Located String)
 
 
 type SizeComparator
@@ -472,7 +477,7 @@ type SizeComparator
 
 impossibleLocatedType : Located Type
 impossibleLocatedType =
-  fakeLocated <| TVar "impossible"
+  fakeLocated <| TVar <| fakeLocated "impossible"
 
 
 check : List Def -> Result (List Problem) ()
@@ -628,7 +633,7 @@ inferDef ctx def =
       else
         inferLocalsAndBody ctx locals body
     
-    FuncDef { params, outputs, locals, body } ->
+    FuncDef { name, params, outputs, locals, body } ->
       let
         paramCtx =
           List.foldl
@@ -683,19 +688,58 @@ inferDef ctx def =
             funcSubst =
               unify declaredFuncType actualFuncType
 
+            downCastingProblems =
+              case funcSubst of
+                SubstError _ ->
+                  []
+                
+                Subst subst ->
+                  Dict.foldl
+                    (\k v problems ->
+                      if String.startsWith "T" k.value then
+                        problems
+                      else
+                        case v.value of
+                          TBus size sizeComparator ->
+                            case size of
+                              IntSize i ->
+                                if atSameLocation k name then -- varSize defined by this function
+                                  DowncastingDeclaredVarSizeToIntSize k (withLocation v (i, sizeComparator)) :: problems
+                                else
+                                  problems
+
+                              VarSize _ ->
+                                problems
+                          
+                          _ ->
+                            problems
+                    )
+                    []
+                    subst
+
             resultFuncType =
               applySubstToType funcSubst actualFuncType
-              
+
             resultSubst =
               combineSubsts outputSubst funcSubst
           in
-          case match declaredFuncType resultFuncType of
+          case match (applySubstToType funcSubst declaredFuncType) resultFuncType of
             [] ->
-              Ok (resultFuncType, outputCtx, resultSubst)
+              case downCastingProblems of
+                [] ->
+                  Ok (resultFuncType, outputCtx, resultSubst)
+                
+                _ ->
+                  Err downCastingProblems
 
             matchErrs ->
               Err matchErrs
         )
+
+
+atSameLocation : Located a -> Located b -> Bool
+atSameLocation l1 l2 =
+  l1.from == l2.from && l1.to == l2.to
 
 
 inferLocalsAndBody : Ctx -> List Def -> Located Expr -> Result (List Problem) (Located Type, Ctx, Subst)
@@ -800,7 +844,7 @@ inferExpr ctx expr =
                       IntSize s ->
                         if to.value >= s then
                           ( Ok <| withLocation expr <| TBus (IntSize (to.value - from.value + 1)) EqualToSize
-                          , Subst <| Dict.singleton (nameFromLocated t) (withLocation e <| TBus (IntSize to.value) GreaterThanSize)
+                          , Subst <| Dict.singleton (substNameForIntSize t) (withLocation e <| TBus (IntSize to.value) GreaterThanSize)
                           )
                         else
                           ( Ok <| withLocation expr <| TBus (IntSize (to.value - from.value + 1)) EqualToSize
@@ -1355,6 +1399,13 @@ showProblem src problem =
       ++ showLocation src t ++ "\n"
       ++ "but found a value of type " ++ typeToString t.value ++ ".\n"
       ++ "Hint: The concatenation operator (++) expects both sides to be a bus.\nTry changing the operand to a bus."
+    DowncastingDeclaredVarSizeToIntSize varSizeName intSize ->
+      "I found that you are trying to downcast a variable size " ++ varSizeName.value ++ " declared here:\n"
+      ++ showLocation src varSizeName ++ "\n"
+      ++ "to a concrete size " ++ intSizeTBusToString intSize.value ++ " defined here:\n"
+      ++ showLocation src intSize ++ "\n"
+      ++ "Casting from a declared variable size to a concrete size is not allowed.\n"
+      ++ "Hint: Try declaring a concrete size instead of the variable size."
 
 
 prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
@@ -1407,6 +1458,16 @@ showLocationRange src start end =
   HdlParser.showProblemLocationRange fromRow fromCol toRow toCol src
 
 
+intSizeTBusToString : (Int, SizeComparator) -> String
+intSizeTBusToString (size, comparator) =
+  case comparator of
+    GreaterThanSize ->
+      "[" ++ "k > " ++ String.fromInt size ++ "]"
+    
+    EqualToSize ->
+      sizeToString <| IntSize size
+
+
 typeToString : Type -> String
 typeToString t =
   case t of
@@ -1416,13 +1477,7 @@ typeToString t =
           sizeToString s
 
         IntSize i ->
-          case c of
-            GreaterThanSize ->
-              "[" ++ "k > " ++ String.fromInt i ++ "]"
-            
-            EqualToSize ->
-              sizeToString s
-      
+          intSizeTBusToString (i, c)
     
     TRecord r ->
       "{ " ++
@@ -1445,7 +1500,7 @@ typeToString t =
       fromType ++ " -> " ++ toType
     
     TVar id ->
-      id
+      id.value
     
 
 sizeToString : Size -> String
@@ -1455,9 +1510,23 @@ sizeToString s =
     IntSize i ->
       String.fromInt i
     VarSize n ->
-      n
+      n.value
   )
   ++ "]"
+  ++ case s of
+    IntSize _ ->
+      ""
+    
+    VarSize n ->
+      let
+        location =
+          if n.from == (-1, -1) then
+            "prelude"
+          else
+            "(" ++ (String.fromInt <| Tuple.first n.from) ++ ", " ++ (String.fromInt <| Tuple.second n.from) ++ ")"
+      in
+      " defined at " ++ location
+    
 
 -- c = nand a b
 -- target names : [ c ]

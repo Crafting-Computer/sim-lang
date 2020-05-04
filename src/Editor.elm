@@ -593,7 +593,7 @@ generateTruthTable output =
               IntSize i ->
                 Encode.int i
               VarSize n ->
-                Encode.string n
+                Encode.string n.value
         in
         generateTruthTablePort <| Encode.list encodeDefOutput defs
       else

@@ -72,7 +72,7 @@ suite =
             src =
               "not a[n] -> [1] = nand a a"
             expected =
-              Err [MismatchedTypes { from = (1,13), to = (1,16), value = TBus (IntSize 1) EqualToSize } { from = (1,19), to = (1,27), value = TBus (VarSize "n") EqualToSize }]
+              Err [MismatchedTypes { from = (1,13), to = (1,16), value = TBus (IntSize 1) EqualToSize } { from = (1,19), to = (1,27), value = TBus (VarSize { from = (-1, -1), to = (-1, -1), value = "n" }) EqualToSize }]
           in
           Expect.equal expected (check src)
       ]
@@ -121,7 +121,7 @@ suite =
             src =
               "combine a b -> { a, b } = { a = a, c = b }"
             expected =
-              Err [MismatchedTypes { from = (1,27), to = (1,43), value = TRecord (Dict.fromList [("c",{ from = (1,11), to = (1,12), value = TVar "T1" }),("a",{ from = (1,9), to = (1,10), value = TVar "T0" })]) } { from = (1,16), to = (1,24), value = TRecord (Dict.fromList [("b",{ from = (1,21), to = (1,22), value = TBus (IntSize 1) EqualToSize }),("a",{ from = (1,18), to = (1,19), value = TBus (IntSize 1) EqualToSize })]) }]
+              Err [MismatchedTypes { from = (1,27), to = (1,43), value = TRecord (Dict.fromList [("c",{ from = (1,11), to = (1,12), value = TVar { from = (1,11), to = (1,12), value = "T1" } }),("a", { from = (1,9), to = (1,10), value = TVar { from = (1,9), to = (1,10), value = "T0" } })]) } { from = (1,16), to = (1,24), value = TRecord (Dict.fromList [("b",{ from = (1,21), to = (1,22), value = TBus (IntSize 1) EqualToSize }),("a",{ from = (1,18), to = (1,19), value = TBus (IntSize 1) EqualToSize })]) }]
           in
           Expect.equal expected (check src)
       , Test.test "Record assignment in locals" <|
@@ -224,7 +224,7 @@ suite =
             src =
               "f i -> [1] = let a = nand 0 0 0 in i"
             expected =
-              Err [ WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ from = (-1,-1), to = (-1,-1), value = TBus (VarSize "n") EqualToSize },{ from = (-1,-1), to = (-1,-1), value = TBus (VarSize "n") EqualToSize }] [{ from = (1,27), to = (1,28), value = TBus (IntSize 1) EqualToSize },{ from = (1,29), to = (1,30), value = TBus (IntSize 1) EqualToSize },{ from = (1,31), to = (1,32), value = TBus (IntSize 1) EqualToSize }]]
+              Err [ WrongCallArity { from = (1,22), to = (1,26), value = "nand" } [{ from = (-1,-1), to = (-1,-1), value = TBus (VarSize { from = (-1,-1), to = (-1,-1), value = "n" }) EqualToSize },{ from = (-1,-1), to = (-1,-1), value = TBus (VarSize { from = (-1,-1), to = (-1,-1), value = "n" }) EqualToSize }] [{ from = (1,27), to = (1,28), value = TBus (IntSize 1) EqualToSize },{ from = (1,29), to = (1,30), value = TBus (IntSize 1) EqualToSize },{ from = (1,31), to = (1,32), value = TBus (IntSize 1) EqualToSize }]]
           in
           Expect.equal expected (check src)
       ]
@@ -235,7 +235,7 @@ suite =
 
       , test "Indexing a VarSize bus"
         "head bus[n] -> [1] = bus[0]" <|
-        Err [MismatchedTypes { from = (1,10), to = (1,11), value = TBus (VarSize "n") EqualToSize } { from = (1,22), to = (1,25), value = TBus (IntSize 0) GreaterThanSize }]
+        Err [DowncastingDeclaredVarSizeToIntSize { from = (1,1), to = (1,5), value = "n" } { from = (1,22), to = (1,25), value = (0,GreaterThanSize) }]
       
       , test "Slicing a bus"
         "first4 bus[16] -> [4] = bus[0..3]" <|

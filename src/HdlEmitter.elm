@@ -73,7 +73,7 @@ emitPrelude =
       { name = name, size = IntSize size }
 
     nsize name =
-      { name = name, size = VarSize "n" }
+      { name = name, size = VarSize <| HdlParser.fakeLocated "n" }
     
     helper : String -> String -> DefOutput
     helper name body =
