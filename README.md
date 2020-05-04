@@ -50,9 +50,9 @@ Table of Contents
 
 ## Introduction
 
-Even though Sim is very powerful, it's important to realize that Sim is just a language that expresses logic gates and the wires that connect them. My goal of creating Sim is not for you to learn a new language. Instead, we wish that you can express the elegant ideas and logics of electric circuit in a hopefully equally elegant form. Just as a traditional Chinese proverb says: "Languages carry philosophies" (文以載道), ideas and expressions of them are inseparable.
+Even though Sim is very powerful, it's important to realize that Sim is just a language that expresses logic gates and the wires that connect them. My goal of creating Sim is not for you to learn a new language. Instead, we wish that you can express the elegant ideas and logics of electric circuits in a hopefully equally elegant form. Just as a traditional Chinese proverb says: "Languages carry philosophies" (文以載道), ideas and expressions of them are inseparable.
 
-In order to master both the ideas and their expressions, we will guide you through the foundamentals of circuit design by creating a 16-bit computer from scratch. Don't worry too much, we will start simple and slow at first and gradually release the joy of explorations and creations to you after learning the basics.
+In order to master both the ideas and their expressions, we will guide you through the fundamentals of circuit design by creating a 16-bit computer from scratch. Don't worry too much, we will start simple and slow at first and gradually release the joy of explorations and creations to you after learning the basics.
 
 Here's a roadmap for building our computer:
 1. [Logic circuits](#basics)
@@ -189,7 +189,7 @@ let
 in
 or first second
 ```
-`let` expression allows us to give descriptive names to subexpressions. It is esepcially useful when the expression is becoming to cluttered or we wish to reuse certain expressions multiple times. As you will see later, `let` expression also reduce repeated code, boost performance, and reduce the complexity and cost of circuits.
+`let` expression allows us to give descriptive names to subexpressions. It is especially useful when the expression is becoming to cluttered or we wish to reuse certain expressions multiple times. As you will see later, `let` expression also reduce repeated code, boost performance, and reduce the complexity and cost of circuits.
 
 Combining the header and the body, we got:
 ```elm
@@ -202,11 +202,11 @@ xor a[1] b[1] -> [1] =
 ```
 
 ## Optimizing Xor Gate
-If we just care about creating a `xor` gate that works, we can happily wrap up here. However, if we want to produce the circuit as a part of a real computer, we need to worry about both cost and efficiency. Two most basic ways to assess cost and efficiency is by calculating the total number of logic gates used and the amount of gate delays.
+If we just care about creating a `xor` gate that works, we can happily wrap up here. However, if we want to produce the circuit as a part of a real computer, we need to worry about both cost and efficiency. The two most basic ways to assess cost and efficiency is by calculating the total number of logic gates used and the amount of gate delays.
 
 ### Decrease Gate Counts
 First, let's count the number of gates used.
-> The reason we care is because `xor` gate is a foundamental logic gate that's used in adders and many other circuits. We will likely end up using tens if not hundreds of `xor` gate in our CPU so even reducing the subgate count by one or two can save us loads of extraneous gates, silicon space, and production cost.
+> The reason we care is because `xor` gate is a fundamental logic gate that's used in adders and many other circuits. We will likely end up using tens if not hundreds of `xor` gate in our CPU so even reducing the subgate count by one or two can save us loads of extraneous gates, silicon space, and production cost.
 
 Counting gates in Sim is easy, we just need to track the number of function calls like so:
 ```elm
@@ -245,7 +245,7 @@ Alright, let's attempt to optimize the `xor` gate. One thing we can try is to ex
 |not |-a    |0|
 |and |a * b |1|
 |or  |a + b |2|
-> Note: The symbols are borrowed from decimal number algebra to boolean algebra. They are similar algebraic properties and operator precedence. Also, smaller number means higher precedence.
+> Note: The symbols are borrowed from decimal number algebra to boolean algebra. They are similar algebraic properties and operator precedence. Also, a smaller number means higher precedence.
 
 In the beginning we came up with a definition for `xor` like so:
 ```
@@ -359,13 +359,13 @@ Because the truth table is rather big, we will show the gate diagram instead:
 
 ![or_4_way horizontal](/media/or_4_way_horizontal.png)
 
-So far, we have seen most logic gates layed out horizontally like the above: inputs on the left and outputs on the right. This layout also suggests that we have four inputs and one output like so:
+So far, we have seen most logic gates laid out horizontally like the above: inputs on the left and outputs on the right. This layout also suggests that we have four inputs and one output like so:
 
 ```elm
 or_4_way a[1] b[1] c[1] d[1] -> [1]
 ```
 
-The problem with the above header is verbosity. While it's managable to lay out all inputs individually for our 4-way or gate, consider laying out all inputs for a 8-way or 16-way or gate:
+The problem with the above header is verbosity. While it's manageable to lay out all inputs individually for our 4-way or gate, consider laying out all inputs for a 8-way or 16-way or gate:
 
 8-way Or Gate:
 ```elm
@@ -377,7 +377,7 @@ or_8_way a[1] b[1] c[1] d[1] e[1] f[1] g[1] h[1] -> [1]
 or_16_way a[1] b[1] c[1] d[1] e[1] f[1] g[1] h[1] i[1] j[1] k[1] l[1] m[1] n[1] o[1] p[1] -> [1]
 ```
 
-It's getting very hard to keep track of the letters and count how many inputs we have specified. In summary, laying out inputs individually for a large number of inputs is a messy strategy which we will avoid most of the times unless there are no other ways. Is there a better way here? For that we need a **bus**, which is a bunch of 1-bit values stringed together. So instead of listing out our four inputs like above:
+It's getting very hard to keep track of the letters and count how many inputs we have specified. In summary, laying out inputs individually for a large number of inputs is a messy strategy which we will avoid most of the time unless there are no other ways. Is there a better way here? For that we need a **bus**, which is a bunch of 1-bit values stringed together. So instead of listing out our four inputs like above:
 
 ```elm
 or_4_way a[1] b[1] c[1] d[1] -> [1]
@@ -405,7 +405,7 @@ input[2]
 input[3]
 ```
 
-Here's how a 4-bit number `0101` or `6` in decimals will be layed out:
+Here's how a 4-bit number `0101` or `6` in decimals will be laid out:
 
 ![bus indices demo](/media/bus_indices.png)
 
@@ -434,7 +434,7 @@ or_4_way input[4] -> [1] =
 
 ## 8-way Or Gate
 
-We can follow the same logic as 4-way or gate to implement an 8-way or gate.
+We can follow the same logic as a 4-way or gate to implement an 8-way or gate.
 
 We have been showing you how to implement circuits up till now. It's time for you to experiment a little. Before we set you loose, we have a new concept to cover. It turns out that `input[0]` and the like are not the only way to access the bits of a bus. You can also slice a section of a bus like so:
 
@@ -549,7 +549,7 @@ mux a[1] b[1] sel[1] -> [1] =
     nand sel_a sel_b
 ```
 
-Since we use 1 bit input pins quite often, we can omit the `[1]` and Sim will assume it's 1 bit:
+Since we use 1-bit input pins quite often, we can omit the `[1]` and Sim will assume it's 1 bit:
 
 ```elm
 mux a b sel -> [1] =
@@ -648,7 +648,7 @@ Here's the truth table for the 4-way mux:
 Here's the header for the 4-way mux:
 ```elm
 {-
-    4-way multiplexor:
+    4-way multiplexer:
     result = a if sel == 00
              b if sel == 01
              c if sel == 10
@@ -693,7 +693,7 @@ Now implement the body by yourself and check the truth table of your function wi
 
 ```elm
 {-
-    8-way multiplexor:
+    8-way multiplexer:
     result = a if sel == 000
              b if sel == 001
              c if sel == 010
@@ -740,7 +740,7 @@ Dmux is short for demultiplexer and does the inverse of what mux or multiplexer 
 dmux input[n] sel[1] -> { a[n], b[n] }
 ```
 
-What's that `{ a[n], b[n] }` output? It's our first time seeing a function that returns more than one output. In Mathematics, we usually think of a function as a machine that accepts one or multiple inputs and produces a single output. Single output also makes working with return values a lot easier. However, for our `dmux` function, we clearly need to return two values. What do we do? To contain multiple outputs, we use a **record**. In sim, a record is a bunch of key-value pairs:
+What's that `{ a[n], b[n] }` output? It's our first time seeing a function that returns more than one output. In Mathematics, we usually think of a function as a machine that accepts one or multiple inputs and produces a single output. Single output also makes working with return values a lot easier. However, for our `dmux` function, we clearly need to return two values. What do we do? To contain multiple outputs, we use a **record**. In Sim, a record is a bunch of key-value pairs:
 
 ```elm
 { a = 0
@@ -917,7 +917,7 @@ Look at carry and sum separately. Do their truth tables look familiar?
 
 ## Full Adder
 
-Half adder works well for adding two 1-bit numbers. However, when we need to add two multi-bit numbers, we need to take acount of the carry bit from the previous less significant digit. That's when the full adder comes in:
+Half adder works well for adding two 1-bit numbers. However, when we need to add two multi-bit numbers, we need to take account of the carry bit from the previous less significant digit. That's when the full adder comes in:
 
 | a | b | c |carry|sum|
 |:-:|:-:|:-:|:---:|:-:|
@@ -956,7 +956,7 @@ full_adder a b c -> { carry, sum } =
 
 There are only very few things you can do with 1-bit numbers. It's time to spice up our full adder to accept multi-bit numbers.
 
-The full truth table has `(2 ^ 2) ^ 3 = 64` cases so we will not show it here. You can do some quick checks by addting the numbers yourself to see if your 2-bit full adder works.
+The full truth table has `(2 ^ 2) ^ 3 = 64` cases so we will not show it here. You can do some quick checks by adding the numbers yourself to see if your 2-bit full adder works.
 
 ```elm
 full_adder2 a[2] b[2] c -> { carry, sum[2] }
@@ -973,7 +973,7 @@ There's a little challenge though. How do we combine the two sums `s0` and `s1` 
 [ 0, 1, 1, 0, 1 ]
 ```
 
-Note that bus is much stricter than a list or array in other languages. For instance, buses can only contain 1-bit numbers. The followings **is not legal**:
+Note that a bus is much stricter than a list or array in other languages. For instance, buses can only contain 1-bit numbers. The followings **is not legal**:
 
 ```elm
 -- 2 or 0b10 occupies 2 bit (bigger than 1 bit).
@@ -1007,7 +1007,7 @@ Concat the bus literals results in `[ 1, 0, 0, 1, 0 ]` (preserving leading zeros
 0b1 ++ 0b0010
 ```
 
-Concating the int literals results in `0b110` (discarding leading zeros) instead of `0b10010` (preserving leading zeros).
+Concatenating the int literals results in `0b110` (discarding leading zeros) instead of `0b10010` (preserving leading zeros).
 
 If you now understand bus literals and have ideas on how to implement the 2-bit full adder, give it a go. If you get stuck any time, check out the hints:
 
@@ -1095,7 +1095,7 @@ What about `0`? We unfortunately get two representations of `0`: `+0` and `-0`.
 
 Two zeros are an extreme pain to deal with both in the hardware and software level. For example, a simple check whether a number is zero need to handle two cases - whether it's a positive or a negative zero.
 
-This looks fine until we try to do a subtraction, say `7 - 3`. Because subtraction is just addition of the negation, `7 - 3` is just `(+7) + (-3)`. If we look up the above table for `+7` and `-3` and add them together:
+This looks fine until we try to do a subtraction, say `7 - 3`. Because subtraction is just the addition of the negated, `7 - 3` is just `(+7) + (-3)`. If we look up the above table for `+7` and `-3` and add them together:
 
 ```
        s|mag
@@ -1173,7 +1173,7 @@ We get back `0011` or `3` which is not the right answer. However, if we add the 
 
 Voila! We get back `0100` which is the correct answer `+4` in binary!
 
-This seems like a neat trick and works every time. However, as computer scientists, we want to understand exactly how things work instead of memorizing tricks. In this case, the explaination is simple with some clever tweaks:
+This seems like a neat trick and works every time. However, as computer scientists, we want to understand exactly how things work instead of memorizing tricks. In this case, the explanation is simple with some clever tweaks:
 
 ```
   a - b
@@ -1186,7 +1186,7 @@ Notice that `1111 - b` is our 1's complement of `b`. Continue from the previous 
 = a + (1111 - b)  - 1111
 = result - 1111
 ```
-Notice the `result` means the result of adding `a` and the 1's complement of `b`. This is analagous to the result `10011` we got previously when adding `0111` (`+7`) and `1100` (`-3`). Continue from the previous step:
+Notice the `result` means the result of adding `a` and the 1's complement of `b`. This is analogous to the result `10011` we got previously when adding `0111` (`+7`) and `1100` (`-3`). Continue from the previous step:
 ```
 = result - 1111
 = result - (10000 - 1)
