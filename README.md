@@ -6,31 +6,32 @@ Sim aims to make circuit design as simple and fun as possible by using intuitive
 Table of Contents
 =================
 
+   * [Sim](#sim)
    * [Create a Computer from Scratch Using Sim](#create-a-computer-from-scratch-using-sim)
       * [Introduction](#introduction)
       * [Basics](#basics)
-      * [Implementing And Gate](#implementing-and-gate)
-      * [Implementing Or Gate](#implementing-or-gate)
-      * [Implementing Xor Gate](#implementing-xor-gate)
+      * [And Gate](#and-gate)
+      * [Or Gate](#or-gate)
+      * [Xor Gate](#xor-gate)
       * [Optimizing Xor Gate](#optimizing-xor-gate)
          * [Decrease Gate Counts](#decrease-gate-counts)
          * [Decrease Gate Delays](#decrease-gate-delays)
             * [Not Gate Delays](#not-gate-delays)
             * [And Gate Delays](#and-gate-delays)
             * [Or Gate Delays](#or-gate-delays)
-      * [Implementing Mux](#implementing-mux)
-      * [Implementing 4-way Mux](#implementing-4-way-mux)
-      * [Implementing 8-way Mux](#implementing-8-way-mux)
-      * [Implementing Dmux](#implementing-dmux)
-      * [Implementing 4-way Dmux](#implementing-4-way-dmux)
-      * [Implementing 8-way Dmux](#implementing-8-way-dmux)
-      * [Implementing Arithmetic Circuits](#implementing-arithmetic-circuits)
-      * [Implementing Half Adder](#implementing-half-adder)
-      * [Implementing Full Adder](#implementing-full-adder)
-      * [Implementing 2-bit Full Adder](#implementing-2-bit-full-adder)
-      * [Implementing 4-bit Full Adder](#implementing-4-bit-full-adder)
-      * [Implementing 8-bit Full Adder](#implementing-8-bit-full-adder)
-      * [Implementing 16-bit Adder](#implementing-16-bit-adder)
+      * [Mux](#mux)
+      * [4-way Mux](#4-way-mux)
+      * [8-way Mux](#8-way-mux)
+      * [Dmux](#dmux)
+      * [4-way Dmux](#4-way-dmux)
+      * [8-way Dmux](#8-way-dmux)
+      * [Arithmetic Circuits](#arithmetic-circuits)
+      * [Half Adder](#half-adder)
+      * [Full Adder](#full-adder)
+      * [2-bit Full Adder](#2-bit-full-adder)
+      * [4-bit Full Adder](#4-bit-full-adder)
+      * [8-bit Full Adder](#8-bit-full-adder)
+      * [16-bit Adder](#16-bit-adder)
    * [Development](#development)
       * [Set up](#set-up)
       * [Commands](#commands)
@@ -98,7 +99,7 @@ nand(a, a)
 ```
 Now you may also wonder where is `nand` defined. The answer is that unlike the `not` gate which is defined by the user, `nand` gate is a built-in circuit provided by Sim. It's the most fundamental logic gate and we can build all other gates and circuits from the `nand` gate.
 
-## Implementing And Gate
+## And Gate
 The `not` gate we implemented just now is very simple, let's now check out a more complex circuit - the `and` gate.
 
 We start by specifying the interface of the `and` gate.
@@ -128,7 +129,7 @@ and a[1] b[1] -> [1] =
     not (nand a b)
 ```
 
-## Implementing Or Gate
+## Or Gate
 Following the same procedure for implementing `and` gate, we start by specifying the interface of the `or` gate.
 
 Looking at the truth table of `or`, we notice that it expects two inputs `a` and `b` and produces a single output.
@@ -156,7 +157,7 @@ or a[1] b[1] -> [1] =
     nand (not a) (not b)
 ```
 
-## Implementing Xor Gate
+## Xor Gate
 Following the same procedure for implementing `or` gate, we start by specifying the interface of the exclusive or gate.
 
 Looking at the truth table of `xor`, we notice that it expects two inputs `a` and `b` and produces a single output.
@@ -348,7 +349,7 @@ Notice that any electric signal passes through `3` nand gates before reaching th
 
 **In conclusion, our optimization saves us 5 gates and 2 gate delays. This means half the cost and almost double the performance!**
 
-## Implementing Mux
+## Mux
 Since you should be familiar with Sim by now, we will use the multiplexer's truth table to directly derive its implementation.
 
 | a | b |sel|result|
@@ -507,7 +508,7 @@ not a[n] -> [n] =
 
 You will see that we just implied that `n = 1` in the `not` function. Since the `n` value is global, we implied that all `n = 1` which is not what we want. This is not a problem you should concern about as it's a problem that `Sim` needs to solve. Just watch out for weired bugs like this in the future.
 
-## Implementing 4-way Mux
+## 4-way Mux
 
 Now that you have learned to how to construct basic logic gates such as `and`, `or`, and `mux`, we will let you carry on the work to create the rest of the computer. Don't panic. We will specify exactly what you need to construct and cover new concepts in details as usual.
 
@@ -553,7 +554,7 @@ Now implement the body by yourself and check the truth table of your function wi
 
 > Note: By default the Sim editor outputs all values in the truth table in decimals. However, we always supply the expected truth table with all values in binary. We will add an option to output in binary in the future.
 
-## Implementing 8-way Mux
+## 8-way Mux
 
 | a | b | c | d | e | f | g | h |sel|result|
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-----:|
@@ -598,7 +599,7 @@ mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n] =
 </pre>
 </details>
 
-## Implementing Dmux
+## Dmux
 
 Dmux is short for demultiplexer and does the inverse of what mux or multiplexer does. Given an input, the dmux select its output between several paths based on an address.
 
@@ -647,7 +648,7 @@ dmux input[n] sel[1] -> { a[n], b[n] } =
 </pre>
 </details>
 
-## Implementing 4-way Dmux
+## 4-way Dmux
 
 | input | sel | a | b | c | d |
 |:-----:|:---:|:-:|:-:|:-:|:-:|
@@ -687,7 +688,7 @@ dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
 </pre>
 </details>
 
-## Implementing 8-way Dmux
+## 8-way Dmux
 
 | input | sel | a | b | c | d | e | f | g | h |
 |:-----:|:---:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -743,11 +744,11 @@ dmux_8_way input[n] sel[3] ->
 
 🎉 We just completed all the common logic circuits for our computer!
 
-## Implementing Arithmetic Circuits
+## Arithmetic Circuits
 
 Logic is fun but as the name computer suggests, we need to conduct arithmetic computations in order to do more interesting stuff. We will learn how to add and subtract two binary numbers with an added bonus of multiplication.
 
-## Implementing Half Adder
+## Half Adder
 
 Let's start from the bare minimum - adding two 1-bit numbers together. Binary addition works the same way as decimal addition. The only difference is that it's much simpler! A bit can only be either `0` or `1`. Addition of two bits have only four cases:
 
@@ -790,7 +791,7 @@ half_adder a b -> { carry, sum }
 Look at carry and sum separately. Do their truth tables look familiar?
 </details>
 
-## Implementing Full Adder
+## Full Adder
 
 Half adder works well for adding two 1-bit numbers. However, when we need to add two multi-bit numbers, we need to take acount of the carry bit from the previous less significant digit. That's when the full adder comes in:
 
@@ -827,7 +828,7 @@ full_adder a b c -> { carry, sum } =
 </pre>
 </details>
 
-## Implementing 2-bit Full Adder
+## 2-bit Full Adder
 
 There are only very few things you can do with 1-bit numbers. It's time to spice up our full adder to accept multi-bit numbers.
 
@@ -902,7 +903,7 @@ full_adder2 a[2] b[2] c -> { carry, sum[2] } =
 </pre>
 </details>
 
-## Implementing 4-bit Full Adder
+## 4-bit Full Adder
 
 ```elm
 full_adder4 a[4] b[4] c -> { carry, sum[4] }
@@ -924,11 +925,7 @@ full_adder4 a[4] b[4] c -> { carry, sum[4] } =
 </pre>
 </details>
 
-
-
-
-
-## Implementing 8-bit Full Adder
+## 8-bit Full Adder
 
 By far you should get the patterns of a multi-bit full adder. We can repeat this pattern any many time we want to generate arbitrary-sized full adders. However, we will only go until 16-bit which is the size of our computer registers (more on that later).
 
@@ -936,7 +933,7 @@ By far you should get the patterns of a multi-bit full adder. We can repeat this
 full_adder8 a[8] b[8] c -> { carry, sum[8] }
 ```
 
-## Implementing 16-bit Adder
+## 16-bit Adder
 
 Our last adder in the series will be a half adder because we don't need to compose the 16-bit adder even more to create bigger adders.
 
