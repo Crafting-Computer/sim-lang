@@ -626,31 +626,11 @@ Finally, we can finish our generalized implementation of `mux` by expanding `sel
 ```elm
 mux a[n] b[n] sel -> [n] =
     let
-        sel_a = nand (not (fill sel)) a
-        sel_b = nand (fill sel) b
-    in
-    nand sel_a sel_b
-```
-
-Before we move on, we need to understand a little caveat of `Sim`. Currently, you can only use one bus size variable `n` and it acts as a global integer constant. So the below implementation will not work:
-
-```elm
-mux a[n] b[n] sel -> [n] =
-    let
         sel_a = nand (fill (not sel)) a
         sel_b = nand (fill sel) b
     in
     nand sel_a sel_b
 ```
-
-Because `fill` requires its argument to be of size `1`, meaning that `not` takes in an argument of size `1`. If you look at `not`'s header:
-
-```elm
-not a[n] -> [n] =
-    nand a a
-```
-
-You will see that we just implied that `n = 1` in the `not` function. Since the `n` value is global, we implied that all `n = 1` which is not what we want. This is not a problem you should concern about as it's a problem that `Sim` needs to solve. Just watch out for weired bugs like this in the future.
 
 ## 4-way Mux
 
