@@ -501,7 +501,7 @@ viewCloseTab unitIndex =
       Nothing
     , label =
       E.el [ E.centerX ] <|
-        E.text "x"
+        E.html (FeatherIcons.x |> FeatherIcons.withSize 12 |> FeatherIcons.toHtml [])
     }
 
 
@@ -522,7 +522,7 @@ viewAddTab =
     { onPress =
       Just <| AddTab
     , label =
-      E.text "+"
+      E.html (FeatherIcons.plus |> FeatherIcons.withSize 15 |> FeatherIcons.toHtml [])
     }
 
 
