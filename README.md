@@ -1,5 +1,7 @@
 # Create a Computer from Scratch Using Sim
 
+> See this tutorial with full features in [GitBook](https://kevinli.gitbook.io/create-a-computer-from-scratch)
+
 ### What is Sim?
 
 Sim aims to make circuit design as simple and fun as possible by using intuitive interfaces and powerful abstractions.
