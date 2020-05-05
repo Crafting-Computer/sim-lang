@@ -51,6 +51,12 @@ MIT
 
 # Change Log
 
+## Release v0.8.0
+
+* Detect varSize casting problems (approach having decent type inference)
+* Move tutorial to a separate [ebook](https://kevinli.gitbook.io/crafting-computer/)
+* Make README specific to Sim
+
 ## Release v0.7.0
 
 * Constrain VarSize names to the function they are defined in
