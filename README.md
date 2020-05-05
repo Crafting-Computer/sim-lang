@@ -14,29 +14,26 @@ Sim aims to make circuit design as simple and fun as possible by using intuitive
 ### Commands
 
 * Run editor:
-
-  ```bash
-  sed -i 's+src="elm.js"+src="/public/elm.js"+' public/index.html
-  elm-live src/Editor.elm --start-page public/index.html -- --output=public/elm.js
-  ```
+```bash
+sed -i 's+src="elm.js"+src="/public/elm.js"+' public/index.html
+elm-live src/Editor.elm --start-page public/index.html -- --output=public/elm.js
+```
 
 * Build optimized version of editor:
+```bash
+./build.sh
+```
 
-  ```bash
-  ./build.sh
-  ```
+Note: you may need to enable execution permission before running the command:
 
-  Note: you may need to enable execution permission before running the command:
-
-  ```bash
-  chmod +x ./build.sh
-  ```
+```bash
+chmod +x ./build.sh
+```
 
 * Run Sim compiler on a source string:
-
-  ```bash
-  elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
-  ```
+```bash
+elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
+```
 
 ## Credits
 
