@@ -50,11 +50,15 @@ emit defs =
   ++ List.map
     (\def ->
       case def of
-        FuncDef { name, params, outputs } ->
+        FuncDef { name, params, outputs, locals } ->
+          let
+            hasMutualRecursions =
+              checkMutualRecursions locals
+          in
           { name = name.value
           , params = paramsToParamsOutput params
           , outputs = paramsToParamsOutput outputs.value
-          , body = emitDef 0 True def
+          , body = emitDef 0 hasMutualRecursions def
           }
         BindingDef _ ->
           { name = "BINDING IS NOT ALLOWED AT TOP LEVEL"
@@ -62,6 +66,54 @@ emit defs =
           , outputs = []
           , body = ""
           }
+    )
+    defs
+
+
+checkMutualRecursions : List Def -> Bool
+checkMutualRecursions defs =
+  List.any
+  (\def ->
+    let
+      targetNames =
+        getTargetNamesFromDef def
+              
+      sourceNames =
+        getSourceNamesFromDef def
+    in
+    List.any
+      (\name ->
+        checkMutualRecursionsHelper name sourceNames defs
+      )
+      targetNames
+  )
+  defs
+
+
+checkMutualRecursionsHelper : String -> List String -> List Def -> Bool
+checkMutualRecursionsHelper targetName sourceNames allDefs =
+  let
+    sourceDefs =
+      List.filterMap identity <|
+      List.map (getDef allDefs) sourceNames
+  in
+  List.any
+    (\sourceDef ->
+      let
+        nextSourceNames =
+          getSourceNamesFromDef sourceDef
+      in
+      (List.member targetName <| nextSourceNames)
+      || checkMutualRecursionsHelper targetName nextSourceNames allDefs
+    )
+    sourceDefs
+
+
+getDef : List Def -> String -> Maybe Def
+getDef defs targetName =
+  List.Extra.find
+    (\def ->
+      List.member targetName <| getTargetNamesFromDef def
     )
     defs
 
@@ -116,38 +168,45 @@ emitPrelude =
 --   return nand(nand_a_b, nand_a_b);
 -- }
 emitDef : Int -> Bool -> Def -> String
-emitDef indent declareVars def =
+emitDef indent hasMutualRecursions def =
   case def of
     FuncDef { name, params, locals, body } ->
       let
-        localTargets =
-          List.concat <| List.Extra.unique <| List.map getTargetNamesFromDef locals
-        
-        localDeclarations =
-          "var " ++ String.join ", " localTargets ++ ";"
-        
         paramDeclarations =
           String.join ", " (List.map emitParam params)
         
         emittedBody =
-          case locals of
-            [] ->
-              [ "return function(" ++ paramDeclarations ++ ") {"
-              , "  return " ++ emitExpr body.value ++ ";"
+          if List.isEmpty locals then
+            [ "return function(" ++ paramDeclarations ++ ") {"
+            , "  return " ++ emitExpr body.value ++ ";"
+            , "}"
+            ]
+          else if hasMutualRecursions then
+            let
+                localTargets =
+                  List.concat <| List.Extra.unique <| List.map getTargetNamesFromDef locals
+                
+                localDeclarations =
+                  "var " ++ String.join ", " localTargets ++ ";"
+            in
+            [ localDeclarations
+            , "return function(" ++ paramDeclarations ++ ") {"
+            , emitBlock 1 <|
+              [ "for (var _ = 0; _ < 2; _++) {"
+              , emitLocals 1 False locals
               , "}"
+              , "return " ++ emitExpr body.value ++ ";"
               ]
-
-            _ ->
-              [ localDeclarations
-              , "return function(" ++ paramDeclarations ++ ") {"
-              , emitBlock 1 <|
-                [ "for (var _ = 0; _ < 2; _++) {"
-                , emitLocals 1 False locals
-                , "}"
-                , "return " ++ emitExpr body.value ++ ";"
-                ]
-              , "}"
+            , "}"
+            ]
+          else
+            [ "return function(" ++ paramDeclarations ++ ") {"
+            , emitBlock 1 <|
+              [ emitLocals 0 True locals
+              , "return " ++ emitExpr body.value ++ ";"
               ]
+            , "}"
+            ]
       in
       case indent of
         0 ->
@@ -170,14 +229,14 @@ emitDef indent declareVars def =
         [] ->
           emitIndentation indent
           ++ (
-            if declareVars then
+            if hasMutualRecursions then
               "var "
             else
               "("
           )
           ++ emittedName ++ " = " ++ emitExpr body.value
           ++ (
-            if declareVars then
+            if hasMutualRecursions then
               ""
             else
               ")"
@@ -185,16 +244,16 @@ emitDef indent declareVars def =
           ++ ";"
         locs ->
           emitBlock indent
-            [ if declareVars then "var " else "(" ++ emittedName ++ " ="
+            [ if hasMutualRecursions then "var " else "(" ++ emittedName ++ " ="
             , "function () {"
-            , emitLocals (indent + 1) declareVars locs
+            , emitLocals (indent + 1) hasMutualRecursions locs
             , "  return " ++ emitExpr body.value ++ ";"
-            , "}()" ++ if declareVars then "" else ")" ++  ";"
+            , "}()" ++ if hasMutualRecursions then "" else ")" ++  ";"
             ]
 
 
 emitLocals : Int -> Bool -> List Def -> String
-emitLocals indent declareVars defs =
+emitLocals indent hasMutualRecursions defs =
   let
     orderedLocals =
       List.sortWith
@@ -228,7 +287,7 @@ emitLocals indent declareVars defs =
         )
         defs
   in
-  String.join "\n" <| List.map (emitDef indent declareVars) orderedLocals
+  String.join "\n" <| List.map (emitDef indent hasMutualRecursions) orderedLocals
 
 
 emitIndentation : Int -> String
