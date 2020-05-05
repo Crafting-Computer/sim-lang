@@ -30,20 +30,20 @@ We will cover each section in-depth so let's get started!
 
 Let's start by looking at how to implement a logical not gate in Sim:
 
-```text
+```elm
 not a[1] -> [1] =
     nand a a
 ```
 
 Notice that we first specify the interface of the circuit by declaring:
 
-```text
+```elm
 not a[1] -> [1]
 ```
 
 This means that the `not` circuit takes one input pin called `a` that has a size of `1` and produces an output of size `1`. We can use `not` as follows:
 
-```text
+```elm
 not_0 = not 0
 -- not_0 is now 1
 not_1 = not 1
@@ -60,7 +60,7 @@ not_0 = not(0)
 
 In Sim, to make function calls cleaner, we do not use parentheses around arguments. In addition, we use space instead of comma to separate arguments:
 
-```text
+```elm
 nand a a
 ```
 
@@ -89,7 +89,7 @@ Looking at the truth table of `and`, we notice that it expects two inputs `a` an
 
 So we can declare the header of the `and` gate as:
 
-```text
+```elm
 and a[1] b[1] -> [1]
 ```
 
@@ -97,13 +97,13 @@ Great!
 
 Now since `a and b` is equivalent to `not (a nand b)`, we can implement the body of the `and` gate as:
 
-```text
+```elm
 not (nand a b)
 ```
 
 Combining the header and the body, we got:
 
-```text
+```elm
 and a[1] b[1] -> [1] =
     not (nand a b)
 ```
@@ -123,7 +123,7 @@ Looking at the truth table of `or`, we notice that it expects two inputs `a` and
 
 So we can declare the header of the `or` gate as:
 
-```text
+```elm
 or a[1] b[1] -> [1]
 ```
 
@@ -131,13 +131,13 @@ Not bad!
 
 Using De Morgan's laws, we can rewrite `a or b` as `not ((not a) and (not b))`. Since `not (_ and _)` is equivalent to `_ nand _`, we can further rewrite `a or b` as `(not a) nand (not b)`. We can implement the body of the `or` gate as:
 
-```text
+```elm
 nand (not a) (not b)
 ```
 
 Combining the header and the body, we got:
 
-```text
+```elm
 or a[1] b[1] -> [1] =
     nand (not a) (not b)
 ```
@@ -157,7 +157,7 @@ Looking at the truth table of `xor`, we notice that it expects two inputs `a` an
 
 So we can declare the header of the `xor` gate as:
 
-```text
+```elm
 xor a[1] b[1] -> [1]
 ```
 
@@ -165,13 +165,13 @@ Not bad!
 
 Now since `a xor b` is equivalent to `((not a) and b) or (a and (not b))`, we can implement the body of the `xor` gate as:
 
-```text
+```elm
 or (and (not a) b) (and a (not b))
 ```
 
 We can finish the implementation right here and combine the header and the body as usual. However, the logic is getting cluttered in a single line. We can improve the readability by using the `let` expression:
 
-```text
+```elm
 let
     first = and (not a) b
     second = and a (not b)
@@ -183,7 +183,7 @@ or first second
 
 Combining the header and the body, we got:
 
-```text
+```elm
 xor a[1] b[1] -> [1] =
     let
         first = and (not a) b
@@ -204,7 +204,7 @@ First, let's count the number of gates used.
 
 Counting gates in Sim is easy, we just need to track the number of function calls like so:
 
-```text
+```elm
 xor a[1] b[1] -> [1] =
     let
         first = and (not a) b -- 2 calls: 1 and, 1 not
@@ -215,14 +215,14 @@ xor a[1] b[1] -> [1] =
 
 Adding up the number of calls in the body of `xor` got us `2 + 2 + 1 = 5`. So it seems that we used `5` logic gates to construct the `xor` gate. However, don't forget that each `not` and `and` gate is composed of one or several `nand` gates. Indeed, if we look up our definition for `not`:
 
-```text
+```elm
 not a[1] -> [1] =
     nand a a
 ```
 
 We used one `nand` gate so the number of `nand` gates remains the same. If we look up our definition for `and`:
 
-```text
+```elm
 and a[1] b[1] -> [1] =
     not (nand a b)
 ```
@@ -231,7 +231,7 @@ We used one `not` gate and one `nand` gate, so `1 + 1 = 2` nand gates in total f
 
 Looking up our definition for `or` gate:
 
-```text
+```elm
 or a[1] b[1] -> [1] =
     nand (not a) (not b)
 ```
@@ -278,7 +278,7 @@ The following expansion steps require knowledge of boolean algebra. We show them
 
 Now you may notice we have a shared subexpression `-a + -b`. We can express this optimized version in Sim:
 
-```text
+```elm
 xor a[1] b[1] -> [1] =
     let
         nand_a_b = nand a b
@@ -300,7 +300,7 @@ Let's start by calculating the gate delays of the `not` gate.
 
 **Not Gate Delays**
 
-```text
+```elm
 not a[1] -> [1] =
     nand a a
 ```
@@ -311,7 +311,7 @@ Notice that any electric signal passes through `1` nand gate before reaching the
 
 **And Gate Delays**
 
-```text
+```elm
 and a[1] b[1] -> [1] =
     not (nand a b)
 ```
@@ -322,7 +322,7 @@ Notice that any electric signal passes through `2` nand gates before reaching th
 
 **Or Gate Delays**
 
-```text
+```elm
 or a[1] b[1] -> [1] =
     nand (not a) (not b)
 ```
@@ -333,7 +333,7 @@ Notice that any electric signal passes through `2` nand gates before reaching th
 
 Finally, we can calculate the gate delays of our original `xor` gate:
 
-```text
+```elm
 xor a[1] b[1] -> [1] =
     let
         first = and (not a) b
@@ -354,7 +354,7 @@ before reaching the output light bulb. This implies `1 + 2 + 2 = 5` gate delays.
 
 Now let's calculate the gate delays of our optimized `xor` gate from the previous section:
 
-```text
+```elm
 xor a[1] b[1] -> [1] =
     let
         nand_a_b = nand a b
@@ -380,7 +380,7 @@ Because the truth table is rather big, we will show the gate diagram instead:
 
 So far, we have seen most logic gates laid out horizontally like the above: inputs on the left and outputs on the right. This layout also suggests that we have four inputs and one output like so:
 
-```text
+```elm
 or_4_way a[1] b[1] c[1] d[1] -> [1]
 ```
 
@@ -388,31 +388,31 @@ The problem with the above header is verbosity. While it's manageable to lay out
 
 8-way Or Gate:
 
-```text
+```elm
 or_8_way a[1] b[1] c[1] d[1] e[1] f[1] g[1] h[1] -> [1]
 ```
 
 16-way Or Gate:
 
-```text
+```elm
 or_16_way a[1] b[1] c[1] d[1] e[1] f[1] g[1] h[1] i[1] j[1] k[1] l[1] m[1] n[1] o[1] p[1] -> [1]
 ```
 
 It's getting very hard to keep track of the letters and count how many inputs we have specified. In summary, laying out inputs individually for a large number of inputs is a messy strategy which we will avoid most of the time unless there are no other ways. Is there a better way here? For that we need a **bus**, which is a bunch of 1-bit values stringed together. So instead of listing out our four inputs like above:
 
-```text
+```elm
 or_4_way a[1] b[1] c[1] d[1] -> [1]
 ```
 
 we will condense them into a 4-bit bus:
 
-```text
+```elm
 or_4_way input[4] -> [1]
 ```
 
 See how much cleaner our code becomes? To get the individual bits of our bus `input`, all we need to do is to specify the index we are looking for:
 
-```text
+```elm
 -- get the 0th index
 input[0]
 
@@ -448,7 +448,7 @@ Now that we understand what a bus is, we will show a 4-way or gate in bus layout
 
 We can implement `or_4_way` in Sim like so:
 
-```text
+```elm
 or_4_way input[4] -> [1] =
     or (or input[0] input[1]) (or input[2] input[3])
 ```
@@ -459,7 +459,7 @@ We can follow the same logic as a 4-way or gate to implement an 8-way or gate.
 
 We have been showing you how to implement circuits up till now. It's time for you to experiment a little. Before we set you loose, we have a new concept to cover. It turns out that `input[0]` and the like are not the only way to access the bits of a bus. You can also slice a section of a bus like so:
 
-```text
+```elm
 -- Create a 3-bit slice from the bus `input`
 input[0..2]
 ```
@@ -468,7 +468,7 @@ input[0..2]
 
 Here's an example:
 
-```text
+```elm
 get_first_3_bits input[4] -> [3] =
     input[0..2]
 ```
@@ -477,7 +477,7 @@ Now you have all the needed knowledge to create `or_8_way` yourself!
 
 Here's the header:
 
-```text
+```elm
 or_8_way input[8] -> [1]
 ```
 
@@ -489,7 +489,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 or_8_way input[8] -> [1] =
     or (____ input[_.._]) (____ input[_.._])
 ```
@@ -502,7 +502,7 @@ Try implement a 16-way or gate using 8-way or gates.
 
 Here's the header:
 
-```text
+```elm
 or_16_way input[16] -> [1]
 ```
 
@@ -514,7 +514,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 or_16_way input[16] -> [1] =
     or (____ input[_.._]) (____ input[_.._])
 ```
@@ -545,7 +545,7 @@ Simply put, the multiplexer outputs the value of `a` when `sel = 0` and outputs 
 
 Now we have our truth table, we can derive the implementation like so:
 
-```text
+```elm
 mux a[1] b[1] sel[1] -> [1] =
     let
         sel_a =
@@ -567,7 +567,7 @@ a*-sel + b*sel
 
 Indeed, we can save `2` gates by switching from `or` to `nand` and still `2` more gates by switching from `and` to `nand`. Here's the optimized version:
 
-```text
+```elm
 mux a[1] b[1] sel[1] -> [1] =
     let
         sel_a =
@@ -580,7 +580,7 @@ mux a[1] b[1] sel[1] -> [1] =
 
 Since we use 1-bit input pins quite often, we can omit the `[1]` and Sim will assume it's 1 bit:
 
-```text
+```elm
 mux a b sel -> [1] =
     let
         sel_a =
@@ -593,7 +593,7 @@ mux a b sel -> [1] =
 
 Here's a problem though, what if we want to select between two values that are 2 bits, 8 bits, or 32 bits? Do we have to write a separate `mux2`, `mux8`, and `mux16` even though the logic for any bit is the same? What if we can declare a general `mux` function that works for any sized input pins like so where `n` can be any positive number?
 
-```text
+```elm
 mux a[n] b[n] sel -> [1]
 ```
 
@@ -601,20 +601,20 @@ But this requires our `nand` and `not` gate to handle arbitrary sized inputs as 
 
 So here's our updated `not` gate:
 
-```text
+```elm
 not a[n] -> [n] =
     nand a a
 ```
 
 What about `nand` gate? Sim has already done it for us if you check out `nand`'s header:
 
-```text
+```elm
 nand a[n] b[n] -> [n]
 ```
 
 Perfect! Now let's generalize our `mux` to n bits:
 
-```text
+```elm
 mux a[n] b[n] sel -> [n] =
     let
         sel_a = nand (not sel) a
@@ -634,25 +634,25 @@ but got the type [1].
 
 Why does Sim tell us this message? Let's check the place we used `sel`:
 
-```text
+```elm
 sel_a = nand (not sel) a
 ```
 
 and
 
-```text
+```elm
 sel_b = nand sel b
 ```
 
 Notice that `sel` is passed in as an argument to the `nand` function which expects both its input to have a size of `n`. However, `sel` has a fixed size of `1`. It will be neat if we can expand a 1-bit value into multiple bits by copying its value multiple times. That is exactly what the built-in function `fill` does:
 
-```text
+```elm
 fill a[1] -> [n]
 ```
 
 Finally, we can finish our generalized implementation of `mux` by expanding `sel` to size `n`:
 
-```text
+```elm
 mux a[n] b[n] sel -> [n] =
     let
         sel_a = nand (fill (not sel)) a
@@ -676,7 +676,7 @@ Here's the truth table for the 4-way mux:
 
 Here's the header for the 4-way mux:
 
-```text
+```elm
 {-
     4-way multiplexer:
     result = a if sel == 00
@@ -695,7 +695,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
     let
         sel_a_b =
@@ -725,7 +725,7 @@ Now implement the body by yourself and check the truth table of your function wi
 | x | x | x | x | x | x | g | x | 110 | g |
 | x | x | x | x | x | x | x | h | 111 | h |
 
-```text
+```elm
 {-
     8-way multiplexer:
     result = a if sel == 000
@@ -748,7 +748,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n] =
     let
         sel_a_b_c_d =
@@ -770,7 +770,7 @@ Dmux is short for demultiplexer and does the inverse of what mux or multiplexer 
 | input | 0 | input | 0 |
 | input | 1 | 0 | input |
 
-```text
+```elm
 {-
     {a, b} = {input, 0} if sel == 0
              {0, input} if sel == 1
@@ -780,7 +780,7 @@ dmux input[n] sel[1] -> { a[n], b[n] }
 
 What's that `{ a[n], b[n] }` output? It's our first time seeing a function that returns more than one output. In Mathematics, we usually think of a function as a machine that accepts one or multiple inputs and produces a single output. Single output also makes working with return values a lot easier. However, for our `dmux` function, we clearly need to return two values. What do we do? To contain multiple outputs, we use a **record**. In Sim, a record is a bunch of key-value pairs:
 
-```text
+```elm
 { a = 0
 , b = 1
 , c = 0
@@ -801,7 +801,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 dmux input[n] sel[1] -> { a[n], b[n] } =
     let
         a =
@@ -823,7 +823,7 @@ dmux input[n] sel[1] -> { a[n], b[n] } =
 | input | 10 | 0 | 0 | input | 0 |
 | input | 11 | 0 | 0 | 0 | input |
 
-```text
+```elm
 {-
     {a, b, c, d} = {input, 0, 0, 0} if sel == 00
                    {0, input, 0, 0} if sel == 01
@@ -841,7 +841,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 
 
 dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
@@ -873,7 +873,7 @@ dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
 | input | 110 | 0 | 0 | 0 | 0 | 0 | 0 | input | 0 |
 | input | 111 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | input |
 
-```text
+```elm
 {-
     {a, b, c, d, e, f, g, h} =
         {input, 0, 0, 0, 0, 0, 0, 0} if sel == 000
@@ -892,7 +892,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 dmux_8_way input[n] sel[3] ->
     { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] } =
     let
@@ -958,7 +958,7 @@ Ok. Let's add the fourth case to our truth table while introducing a new carry o
 
 It's time for you to implement the half adder in Sim:
 
-```text
+```elm
 half_adder a b -> { carry, sum }
 ```
 
@@ -987,7 +987,7 @@ Half adder works well for adding two 1-bit numbers. However, when we need to add
 | 1 | 1 | 0 | 1 | 0 |
 | 1 | 1 | 1 | 1 | 1 |
 
-```text
+```elm
 full_adder a b c -> { carry, sum }
 ```
 
@@ -999,7 +999,7 @@ If you get stuck, click on "See Hints"
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 full_adder a b c -> { carry, sum } =
     let
         { carry = ____, sum = ____ } =
@@ -1021,7 +1021,7 @@ There are only very few things you can do with 1-bit numbers. It's time to spice
 
 The full truth table has `(2 ^ 2) ^ 3 = 64` cases so we will not show it here. You can do some quick checks by adding the numbers yourself to see if your 2-bit full adder works.
 
-```text
+```elm
 full_adder2 a[2] b[2] c -> { carry, sum[2] }
 ```
 
@@ -1034,13 +1034,13 @@ The idea for the 2-bit full adder is:
 
 There's a little challenge though. How do we combine the two sums `s0` and `s1` together as the final 2-bit sum? For this, we need the **bus literal**. Bus literals are a list of bits stringed together, hence the name bus. Here's an example:
 
-```text
+```elm
 [ 0, 1, 1, 0, 1 ]
 ```
 
 Note that a bus is much stricter than a list or array in other languages. For instance, buses can only contain 1-bit numbers. The followings **is not legal**:
 
-```text
+```elm
 -- 2 or 0b10 occupies 2 bit (bigger than 1 bit).
 [ 0, 1, 2 ]
 
@@ -1051,14 +1051,14 @@ Note that a bus is much stricter than a list or array in other languages. For in
 
 One important property of bus literal is that it preserves leading zeros:
 
-```text
+```elm
 -- Leading zeros are preserved
 [ 0, 0, 1, 0 ]
 ```
 
 This is not that important for a single bus literal. However, sometimes we need to concatenate or combine two buses together using `++`:
 
-```text
+```elm
 -- Prefixing a `1` to our bus literal
 -- results in [ 1, 0, 0, 1, 0 ]
 [ 1 ] ++ [ 0, 0, 1, 0]
@@ -1066,7 +1066,7 @@ This is not that important for a single bus literal. However, sometimes we need 
 
 Concat the bus literals results in `[ 1, 0, 0, 1, 0 ]` \(preserving leading zeros\) instead of `[ 1, 0, 1, 0 ]` \(discarding leading zeros\). Compare this to int literals with the same values:
 
-```text
+```elm
 -- Prefixing a `1` to our int literal
 -- results in 0b110
 0b1 ++ 0b0010
@@ -1084,7 +1084,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 full_adder2 a[2] b[2] c -> { carry, sum[2] } =
     let
         { carry = ____, sum = ____ } =
@@ -1099,7 +1099,7 @@ full_adder2 a[2] b[2] c -> { carry, sum[2] } =
 
 ### 4-bit Full Adder
 
-```text
+```elm
 full_adder4 a[4] b[4] c -> { carry, sum[4] }
 ```
 
@@ -1111,7 +1111,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 full_adder4 a[4] b[4] c -> { carry, sum[4] } =
     let
         { carry = ____, sum = ____ } =
@@ -1128,7 +1128,7 @@ full_adder4 a[4] b[4] c -> { carry, sum[4] } =
 
 By far you should get the patterns of a multi-bit full adder. We can repeat this pattern any many time we want to generate arbitrary-sized full adders. However, we will only go until 16-bit which is the size of our computer registers \(more on that later\).
 
-```text
+```elm
 full_adder8 a[8] b[8] c -> { carry, sum[8] }
 ```
 
@@ -1136,7 +1136,7 @@ full_adder8 a[8] b[8] c -> { carry, sum[8] }
 
 Our last adder in the series will be a half adder because we don't need to compose the 16-bit adder even more to create bigger adders.
 
-```text
+```elm
 adder16 a[16] b[16] -> { carry, sum[16] }
 ```
 
@@ -1352,7 +1352,7 @@ Try implement the negator on your own.
 
 Here's the header:
 
-```text
+```elm
 neg16 input[16] -> [16]
 ```
 
@@ -1402,7 +1402,7 @@ if the ALU output < 0, ng is set to 1; otherwise ng is set to 0.
 
 Here's the header of the ALU:
 
-```text
+```elm
 alu
     x[16] y[16] -- 16-bit inputs
     zx -- zero the x input?
@@ -1428,7 +1428,7 @@ If you get stuck, click on "See Hints".
 {% tab title="See Hints" %}
 Fill in the blanks below:
 
-```text
+```elm
 alu
     x[16] y[16] -- 16-bit inputs
     zx -- zero the x input?
@@ -1492,7 +1492,7 @@ Now it's your turn to implement the 2-bit multiplier in Sim.
 
 Here's the header:
 
-```text
+```elm
 mul2 a[2] b[2] -> [4]
 ```
 
@@ -1529,26 +1529,26 @@ Do you recall a circuit we built for adding two 1-bit number? Also try breaking 
 
 * Run editor:
 
-  ```text
+  ```bash
   sed -i 's+src="elm.js"+src="/public/elm.js"+' public/index.html
   elm-live src/Editor.elm --start-page public/index.html -- --output=public/elm.js
   ```
 
 * Build optimized version of editor:
 
-  ```text
+  ```bash
   ./build.sh
   ```
 
   Note: you may need to enable execution permission before running the command:
 
-  ```text
+  ```bash
   chmod +x ./build.sh
   ```
 
 * Run Sim compiler on a source string:
 
-  ```text
+  ```bash
   elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
   ```
 
