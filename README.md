@@ -511,7 +511,7 @@ or_16_way input[16] -> [1]
 If you get stuck, click on "See Hints".
 {% endtab %}
 
-{% tab title="Second Tab" %}
+{% tab title="See Hints" %}
 Fill in the blanks below:
 
 ```text
@@ -520,8 +520,6 @@ or_16_way input[16] -> [1] =
 ```
 {% endtab %}
 {% endtabs %}
-
-
 
 ### Mux
 
@@ -689,7 +687,13 @@ Here's the header for the 4-way mux:
 mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n]
 ```
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
 mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
@@ -701,6 +705,8 @@ mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
     in
     ____ sel_a_b sel_c_d ____
 ```
+{% endtab %}
+{% endtabs %}
 
 Now implement the body by yourself and check the truth table of your function with the expected truth table above.
 
@@ -789,7 +795,7 @@ If you have ideas on how to use records and how to implement `dmux`, go ahead an
 
 {% tabs %}
 {% tab title="Hints" %}
-If you get stuck any time, click on "See Hints".
+If you get stuck, click on "See Hints".
 {% endtab %}
 
 {% tab title="See Hints" %}
@@ -827,7 +833,13 @@ dmux input[n] sel[1] -> { a[n], b[n] } =
 dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] }
 ```
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
 
@@ -844,8 +856,9 @@ dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
     , c = ___________________
     , d = ___________________
     }
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### 8-way Dmux
 
@@ -871,11 +884,15 @@ dmux_4_way input[n] sel[2] -> { a[n], b[n], c[n], d[n] } =
 dmux_8_way input[n] sel[3] -> { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] }
 ```
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 dmux_8_way input[n] sel[3] ->
     { a[n], b[n], c[n], d[n], e[n], f[n], g[n], h[n] } =
     let
@@ -897,8 +914,9 @@ dmux_8_way input[n] sel[3] ->
     , g = ___________________
     , h = ___________________
     }
-
 ```
+{% endtab %}
+{% endtabs %}
 
 🎉 We just completed all the common logic circuits for our computer!
 
@@ -944,7 +962,15 @@ It's time for you to implement the half adder in Sim:
 half_adder a b -> { carry, sum }
 ```
 
-Hints Look at carry and sum separately. Do their truth tables look familiar?
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints"
+{% endtab %}
+
+{% tab title="See Hints" %}
+Look at carry and sum separately. Do their truth tables look familiar?
+{% endtab %}
+{% endtabs %}
 
 ### Full Adder
 
@@ -965,11 +991,15 @@ Half adder works well for adding two 1-bit numbers. However, when we need to add
 full_adder a b c -> { carry, sum }
 ```
 
-Hints
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints"
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 full_adder a b c -> { carry, sum } =
     let
         { carry = ____, sum = ____ } =
@@ -982,6 +1012,8 @@ full_adder a b c -> { carry, sum } =
     { carry = ____, sum = ____ }
 
 ```
+{% endtab %}
+{% endtabs %}
 
 ### 2-bit Full Adder
 
@@ -1042,13 +1074,17 @@ Concat the bus literals results in `[ 1, 0, 0, 1, 0 ]` \(preserving leading zero
 
 Concatenating the int literals results in `0b110` \(discarding leading zeros\) instead of `0b10010` \(preserving leading zeros\).
 
-If you now understand bus literals and have ideas on how to implement the 2-bit full adder, give it a go. If you get stuck any time, check out the hints:
+If you now understand bus literals and have ideas on how to implement the 2-bit full adder, give it a go.
 
-Hints
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 full_adder2 a[2] b[2] c -> { carry, sum[2] } =
     let
         { carry = ____, sum = ____ } =
@@ -1057,8 +1093,9 @@ full_adder2 a[2] b[2] c -> { carry, sum[2] } =
             ___________________
     in
     { carry = ____, sum = [ ____, ____ ] }
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### 4-bit Full Adder
 
@@ -1066,11 +1103,15 @@ full_adder2 a[2] b[2] c -> { carry, sum[2] } =
 full_adder4 a[4] b[4] c -> { carry, sum[4] }
 ```
 
-Hints
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 full_adder4 a[4] b[4] c -> { carry, sum[4] } =
     let
         { carry = ____, sum = ____ } =
@@ -1079,8 +1120,9 @@ full_adder4 a[4] b[4] c -> { carry, sum[4] } =
             ___________________
     in
     { carry = ____, sum = [ ____, ____ ] }
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### 8-bit Full Adder
 
@@ -1314,7 +1356,15 @@ Here's the header:
 neg16 input[16] -> [16]
 ```
 
-Hints Does flipping bits sound similar to a logic gate we created before? Which circuit we designed earlier allows you add two numbers?
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Does flipping bits sound similar to a logic gate we created before? Which circuit we designed earlier allows you add two numbers?
+{% endtab %}
+{% endtabs %}
 
 ### Arithmetic Logic Unit
 
@@ -1370,11 +1420,15 @@ alu
 
 The ALU seems very complicated at first sight. However, it only uses the functions we defined earlier and apply the operations that depend on the control bits sequentially.
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 alu
     x[16] y[16] -- 16-bit inputs
     zx -- zero the x input?
@@ -1407,8 +1461,9 @@ alu
             ___________________
     in
     { out = out2, zr = zr, ng = ng }
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### Multiplication
 
