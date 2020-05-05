@@ -481,17 +481,20 @@ Here's the header:
 or_8_way input[8] -> [1]
 ```
 
-If you get stuck, check out the hints:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
 
-Hints Fill in the blanks below:
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 or_8_way input[8] -> [1] =
     or (____ input[_.._]) (____ input[_.._])
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### 16-way Or Gate
 
@@ -503,15 +506,22 @@ Here's the header:
 or_16_way input[16] -> [1]
 ```
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="Second Tab" %}
+Fill in the blanks below:
 
 ```text
-
-
 or_16_way input[16] -> [1] =
     or (____ input[_.._]) (____ input[_.._])
-
 ```
+{% endtab %}
+{% endtabs %}
+
+
 
 ### Mux
 
@@ -682,8 +692,6 @@ mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n]
 Hints Fill in the blanks below:
 
 ```text
-
-
 mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
     let
         sel_a_b =
@@ -692,7 +700,6 @@ mux_4_way a[n] b[n] c[n] d[n] sel[2] -> [n] =
             ___________________
     in
     ____ sel_a_b sel_c_d ____
-
 ```
 
 Now implement the body by yourself and check the truth table of your function with the expected truth table above.
@@ -727,11 +734,15 @@ Now implement the body by yourself and check the truth table of your function wi
 mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n]
 ```
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n] =
     let
         sel_a_b_c_d =
@@ -740,8 +751,9 @@ mux_8_way a[n] b[n] c[n] d[n] e[n] f[n] g[n] h[n] sel[3] -> [n] =
             ___________________
     in
     ____ sel_a_b_c_d sel_e_f_g_h ____
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### Dmux
 
@@ -773,13 +785,17 @@ where `a`, `b`, and `c` are keys and `0`, `1`, and `0` are the keys' values.
 
 The great thing about the record is that we always know the names of our many output values, just like we do for our function inputs. Plus, a record is a single value, just like `0` and `input`!
 
-If you have ideas on how to use records and how to implement `dmux`, go ahead and implement it. If you get stuck any time, check out the hints:
+If you have ideas on how to use records and how to implement `dmux`, go ahead and implement it.
 
-Hints Fill in the blanks below:
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck any time, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Fill in the blanks below:
 
 ```text
-
-
 dmux input[n] sel[1] -> { a[n], b[n] } =
     let
         a =
@@ -788,8 +804,9 @@ dmux input[n] sel[1] -> { a[n], b[n] } =
             ___________________
     in
     { a = a, b = b }
-
 ```
+{% endtab %}
+{% endtabs %}
 
 ### 4-way Dmux
 
@@ -1436,7 +1453,15 @@ x   11
   1001
 ```
 
-Hints Do you recall a circuit we built for adding two 1-bit number? Also try breaking the problem down into three stages.
+{% tabs %}
+{% tab title="Hints" %}
+If you get stuck, click on "See Hints".
+{% endtab %}
+
+{% tab title="See Hints" %}
+Do you recall a circuit we built for adding two 1-bit number? Also try breaking the problem down into three stages.
+{% endtab %}
+{% endtabs %}
 
 ## Development
 
