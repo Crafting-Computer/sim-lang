@@ -313,6 +313,37 @@ suite =
         "f i[1] -> [3] =\n let\n  bus = [ 0, i ] ++ { a = 2 }\n in\n bus" <|
         Err [ExpectingConcatOperand { from = (3,21), to = (3,30), value = TRecord (Dict.fromList [("a",{ from = (3,27), to = (3,28), value = TBus (IntSize 2) EqualToSize })]) }]
       ]
+      , describe "CastingOneDeclaredVarSizeToAnother"
+      [ test "identity function"
+        "f2 a[m] -> [n] = id a\nid a[n] -> [n] = a" <|
+        Err [CastingOneDeclaredVarSizeToAnother { from = (1,1), to = (1,3), value = "n" } { from = (1,1), to = (1,3), value = "m" }]
+      , test "and gate"
+        "and a[x] b[y] -> [x] =\n let\n  nand_a_b = nand a b\n in\n nand nand_a_b nand_a_b" <|
+        Err [CastingOneDeclaredVarSizeToAnother { from = (1,1), to = (1,4), value = "x" } { from = (1,1), to = (1,4), value = "y" }]
+      , test "mux"
+        """mux a[a] b[b] sel[1] -> [c] =
+    let
+        sel_a =
+            and (not (fill sel)) a
+        sel_b =
+            and (fill sel) b
+    in
+    or sel_a sel_b
+
+or a[n] b[n] -> [n] =
+    nand (not a) (not b)
+
+not a[n] -> [n] =
+    nand a a
+
+and a[n] b[n] -> [n] =
+    let
+        nand_a_b = nand a b
+    in
+    nand nand_a_b nand_a_b
+        """ <|
+        Err [CastingOneDeclaredVarSizeToAnother { from = (1,1), to = (1,4), value = "c" } { from = (1,1), to = (1,4), value = "b" }]
+      ]
     ]
 
 test : String -> String -> Result (List HdlChecker.Problem) () -> Test

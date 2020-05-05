@@ -23,6 +23,7 @@ type Problem
   | ConcatOperandHasUncertainSize (Located Type)
   | ExpectingConcatOperand (Located Type)
   | DowncastingDeclaredVarSizeToIntSize (Located String) (Located (Int, SizeComparator))
+  | CastingOneDeclaredVarSizeToAnother (Located String) (Located String)
 
 
 prelude : List Def
@@ -688,33 +689,56 @@ inferDef ctx def =
             funcSubst =
               unify declaredFuncType actualFuncType
 
-            downCastingProblems =
+            castingProblem =
               case funcSubst of
                 SubstError _ ->
-                  []
+                  Nothing
                 
                 Subst subst ->
                   Dict.foldl
-                    (\k v problems ->
-                      if String.startsWith "T" k.value then
-                        problems
-                      else
-                        case v.value of
-                          TBus size sizeComparator ->
-                            case size of
-                              IntSize i ->
-                                if atSameLocation k name then -- varSize defined by this function
-                                  DowncastingDeclaredVarSizeToIntSize k (withLocation v (i, sizeComparator)) :: problems
-                                else
-                                  problems
+                    (\k1 v1 problem ->
+                      case problem of
+                        Nothing ->
+                          if String.startsWith "T" k1.value then
+                            Nothing
+                          else
+                            -- atSameLocation means the VarSize `k1` is declared in the function called `name`
+                            case v1.value of
+                              TBus size sizeComparator ->
+                                case size of
+                                  IntSize i ->
+                                    if atSameLocation k1 name then
+                                      Just <| DowncastingDeclaredVarSizeToIntSize k1 (withLocation v1 (i, sizeComparator))
+                                    else
+                                      Nothing
 
-                              VarSize _ ->
-                                problems
-                          
-                          _ ->
-                            problems
+                                  VarSize n2 ->
+                                    let
+                                      badVarName =
+                                        Maybe.map Tuple.first <|
+                                        List.Extra.find
+                                        (\(k2, v2) ->
+                                          k2 /= k1 && atSameLocation k2 name && v2.value == v1.value
+                                        )
+                                        (Dict.toList subst)
+                                    in
+                                    case badVarName of
+                                      Just badName ->
+                                        Just <| CastingOneDeclaredVarSizeToAnother k1 badName
+                                      
+                                      Nothing ->
+                                        if atSameLocation k1 name && atSameLocation n2 name then
+                                          Just <| CastingOneDeclaredVarSizeToAnother k1 n2
+                                        else
+                                          Nothing
+                              
+                              _ ->
+                                Nothing
+                        
+                        Just _ ->
+                          problem
                     )
-                    []
+                    Nothing
                     subst
 
             resultFuncType =
@@ -725,12 +749,12 @@ inferDef ctx def =
           in
           case match (applySubstToType funcSubst declaredFuncType) resultFuncType of
             [] ->
-              case downCastingProblems of
-                [] ->
+              case castingProblem of
+                Nothing ->
                   Ok (resultFuncType, outputCtx, resultSubst)
                 
-                _ ->
-                  Err downCastingProblems
+                Just p ->
+                  Err [ p ]
 
             matchErrs ->
               Err matchErrs
@@ -1406,7 +1430,13 @@ showProblem src problem =
       ++ showLocation src intSize ++ "\n"
       ++ "Casting from a declared variable size to a concrete size is not allowed.\n"
       ++ "Hint: Try declaring a concrete size instead of the variable size."
-
+    CastingOneDeclaredVarSizeToAnother varSizeName1 varSizeName2 ->
+      "I found that you are trying to cast the variable size `" ++ varSizeName1.value ++ "`\n"
+      ++ "to another variable size `" ++ varSizeName2.value ++ "`.\n"
+      ++ "Both of them are declared here:\n"
+      ++ showLocation src varSizeName1 ++ "\n"
+      ++ "Casting from a declared variable size to another is not allowed.\n"
+      ++ "Hint: Try replacing `" ++ varSizeName1.value ++ "` with `" ++ varSizeName2.value ++ "` or replacing `" ++ varSizeName2.value ++ "` with `" ++ varSizeName1.value ++ "`."
 
 prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
 prettifyTypes t1 t2 =
