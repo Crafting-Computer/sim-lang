@@ -34,6 +34,14 @@ Table of Contents
       * [4-bit Full Adder](#4-bit-full-adder)
       * [8-bit Full Adder](#8-bit-full-adder)
       * [16-bit Adder](#16-bit-adder)
+      * [Subtraction and Negative Numbers](#subtraction-and-negative-numbers)
+         * [Option 1: Sign   Magnitude](#option-1-sign--magnitude)
+         * [Option 2: 1's Complement](#option-2-1s-complement)
+         * [Option 3: 2's Complement](#option-3-2s-complement)
+      * [16-bit Negator](#16-bit-negator)
+      * [Arithmetic Logic Unit](#arithmetic-logic-unit)
+      * [Multiplication](#multiplication)
+      * [2-bit Multiplication](#2-bit-multiplication)
    * [Development](#development)
       * [Set up](#set-up)
       * [Commands](#commands)
@@ -1201,7 +1209,7 @@ Subtracting any 4-bit number by `10000` does nothing to the 4-bits. Since we are
 
 Now you should understand why we add the `1` from the carry bit to our result.
 
-## Option 3: 2's Complement
+### Option 3: 2's Complement
 While 1's complement is much better than the sign + magnitude approach, we still need to deal with two zeros and had to add the carry bit when doing addition. Enter 2's complement which elegantly solves both issues. All you need to do is add `1` to a number's 1's complement to get its 2's complement.
 
 |n in decimal |n in binary|-n in decimal|-n in binary|
@@ -1442,6 +1450,12 @@ chmod +x ./build.sh
 ```
 elm-live src/Main.elm --start-page debug/index.html -- --output=debug/elm.js
 ```
+
+# Credits
+Thanks to all the wonderful projects below that inspired Sim:
+
+* [Nand to Tetris](https://www.nand2tetris.org/)
+* [Elm](http://elm-lang.org/)
 
 # License
 MIT
