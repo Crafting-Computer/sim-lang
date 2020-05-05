@@ -47,6 +47,7 @@ Table of Contents
       * [Commands](#commands)
    * [License](#license)
    * [Change Log](#change-log)
+      * [Release v0.7.0](#release-v070)
       * [Release v0.6.0](#release-v060)
       * [Release v0.5.0](#release-v050)
       * [Release v0.4.0](#release-v040)
@@ -1456,11 +1457,16 @@ Thanks to all the wonderful projects below that inspired Sim:
 
 * [Nand to Tetris](https://www.nand2tetris.org/)
 * [Elm](http://elm-lang.org/)
+* [Type inference for beginners — Part 1](https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-1-3e0a5be98a4b)
 
 # License
 MIT
 
 # Change Log
+
+## Release v0.7.0
+* Constrain VarSize names to the function they are defined in
+* Add ALU tutorial
 
 ## Release v0.6.0
 * Add concatenation operator (++)
