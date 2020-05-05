@@ -11,6 +11,8 @@ import Element.Font as Font
 import Element.Border as Border
 import Element.Background as Background
 import Element.Events as Events
+import Dropdown
+import FeatherIcons
 import Color
 import HdlParser exposing (Size(..))
 import HdlChecker
@@ -20,6 +22,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Field as Field
 import Dict exposing (Dict)
 import Array.NonEmpty as NonEmptyArray exposing (NonEmptyArray)
+import Binary
 
 
 port setEditorValuePort : String -> Cmd msg
@@ -36,7 +39,96 @@ port pageWillClosePort : (() -> msg) -> Sub msg
 type alias Model =
   { units : NonEmptyArray Unit
   , editingActiveUnitName : Bool
+  , numberFormatDropdownState : Dropdown.State NumberFormat
+  , numberFormat : NumberFormat 
   }
+
+
+type NumberFormat
+  = BinaryFormat
+  | DecimalFormat
+  | HexadecimalFormat
+
+
+numberFormatToString : NumberFormat -> String
+numberFormatToString format =
+  case format of
+    BinaryFormat ->
+      "Binary"
+    
+    DecimalFormat ->
+      "Decimal"
+    
+    HexadecimalFormat ->
+      "Hexadecimal"
+
+
+numberFormatDropdownOptions =
+  [ DecimalFormat, BinaryFormat, HexadecimalFormat ]
+
+
+numberFormatDropdownConfig =
+  let
+    containerAttrs =
+      [ E.width (E.px 120) ]
+
+    promptElement =
+      E.el
+        [ E.width <| E.px 120
+        , E.centerX
+        ]
+        (E.text <| "Decimal")
+
+    itemToPrompt item =
+      E.el
+        [ E.width <| E.px 120
+        , E.centerX
+        ]
+        (E.text <| numberFormatToString item)
+       
+    
+    itemToElement : Bool -> Bool -> NumberFormat -> E.Element Msg
+    itemToElement selected highlighted item =
+      let
+        bgColor =
+          if highlighted then
+            styles.lightGrey
+
+          else if selected then
+            styles.white
+
+          else
+            styles.lightGrey
+      in
+      E.el
+        [ Background.color bgColor
+        , E.padding 5
+        , E.width <| E.px 120
+        , E.centerX
+        , E.pointer
+        ]
+        (E.text <| numberFormatToString item)
+
+    selectAttrs =
+      [ Border.width 1, Border.rounded 5, E.padding 5 ]
+      
+    listAttrs =
+      [ Border.width 1
+      , Border.roundEach { topLeft = 0, topRight = 0, bottomLeft = 5, bottomRight = 5 }
+      , E.width E.fill
+      ]
+
+    openCloseButtons =
+      { openButton = E.html (FeatherIcons.chevronDown |> FeatherIcons.toHtml [])
+      , closeButton = E.html (FeatherIcons.chevronUp |> FeatherIcons.toHtml [])
+      }
+  in
+  Dropdown.basic NumberFormatDropdownMsg SelectedNumberFormat itemToPrompt itemToElement
+  |> Dropdown.withPromptElement promptElement
+  |> Dropdown.withSelectAttributes selectAttrs
+  |> Dropdown.withListAttributes listAttrs
+  |> Dropdown.withContainerAttributes containerAttrs
+  |> Dropdown.withOpenCloseButtons openCloseButtons
 
 
 type alias Unit =
@@ -61,6 +153,8 @@ type Msg
   | EditActiveUnitName String
   | StopEditingActiveUnitName
   | StoreModel ()
+  | NumberFormatDropdownMsg (Dropdown.Msg NumberFormat)
+  | SelectedNumberFormat (Maybe NumberFormat)
 
 
 type alias TruthTable =
@@ -198,6 +292,21 @@ update msg model =
       , storeModelPort (encodeModel model)
       )
 
+    NumberFormatDropdownMsg subMsg ->
+      let
+        ( state, cmd ) =
+          Dropdown.update numberFormatDropdownConfig subMsg model.numberFormatDropdownState numberFormatDropdownOptions
+      in
+      ( { model | numberFormatDropdownState = state }, cmd )
+
+    SelectedNumberFormat format ->
+      case format of
+        Nothing ->
+          ( model, Cmd.none)
+        
+        Just f ->
+          ({ model | numberFormat = f }, Cmd.none)
+
 
 changeTab : UnitIndex -> Model -> (Model, Cmd Msg)
 changeTab desiredUnitIndex model =
@@ -249,6 +358,8 @@ decodeModel =
     (\units ->
       { units = units
       , editingActiveUnitName = False
+      , numberFormatDropdownState = Dropdown.init "number-format-dropdown"
+      , numberFormat = DecimalFormat
       }
     )
     decodeUnits
@@ -422,7 +533,7 @@ viewRightPanel model =
       getActiveUnit model
   in
   case activeUnit.output of
-    Ok _ -> viewTruthTable activeUnit.truthTable
+    Ok _ -> viewTruthTable model activeUnit.truthTable
     Err str -> E.html <| Html.pre [ Html.Attributes.style "white-space" "pre-wrap" ] [ Html.text str ]
 
 
@@ -431,10 +542,26 @@ getActiveUnit model =
   NonEmptyArray.getSelected model.units
 
 
-viewTruthTable : TruthTable -> E.Element Msg
-viewTruthTable table =
+viewTruthTable : Model -> TruthTable -> E.Element Msg
+viewTruthTable model table =
   E.column [ E.spacing 10 ] <|
   [ E.html <|
+    Html.span
+    [ Html.Attributes.style "position" "fixed"
+    , Html.Attributes.style "top" "20px"
+    , Html.Attributes.style "right" "200px"
+    , Html.Attributes.style "margin-bottom" "10px"
+    ]
+    [ Html.text "Format:" ]
+  , E.el
+    [ E.htmlAttribute <| Html.Attributes.style "position" "fixed"
+    , E.htmlAttribute <| Html.Attributes.style "top" "10px"
+    , E.htmlAttribute <| Html.Attributes.style "right" "70px"
+    , E.htmlAttribute <| Html.Attributes.style "margin-bottom" "10px"
+    , E.htmlAttribute <| Html.Attributes.style "z-index" "999"
+    ]
+    <| Dropdown.view numberFormatDropdownConfig model.numberFormatDropdownState numberFormatDropdownOptions
+  , E.html <|
     Html.div [] <|
     Dict.foldl
       (\defName defTable viewList ->
@@ -480,13 +607,40 @@ viewTruthTable table =
             [ Html.Attributes.style "text-align" "center"
             ] <|
             List.map (\value ->
+              let
+                valueString =
+                  case model.numberFormat of
+                    DecimalFormat ->
+                      String.fromInt value
+                    
+                    BinaryFormat ->
+                      let
+                        complementedValue =
+                          if value < 0 then
+                            2 ^ 4 + value
+                          else
+                            value
+                      in
+                      String.join "" <| List.map String.fromInt <| Binary.toIntegers <| Binary.fromDecimal complementedValue
+
+                    HexadecimalFormat ->
+                      let
+                        complementedValue =
+                          if value < 0 then
+                            16 ^ 4 + value
+                          else
+                            value
+                      in
+                      Binary.toHex <| Binary.fromDecimal complementedValue
+              in
               Html.td
               [ Html.Attributes.style "padding" "10px"
               , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
               , Html.Attributes.style "border" "1px grey solid"
               ]
-              [ Html.text <| String.fromInt value
-              ]) row
+              [ Html.text valueString
+              ])
+              row
           )
           defTable.body
         )
@@ -522,6 +676,10 @@ init storedModel =
         }
       , editingActiveUnitName =
         False
+      , numberFormatDropdownState =
+        Dropdown.init "number-format-dropdown"
+      , numberFormat =
+        DecimalFormat
       }
     
     defaultSource =
