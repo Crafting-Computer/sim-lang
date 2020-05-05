@@ -1,63 +1,10 @@
-# Tutorial
+# Create a Computer from Scratch Using Sim
 
-## Sim
+### What is Sim?
 
 Sim aims to make circuit design as simple and fun as possible by using intuitive interfaces and powerful abstractions.
 
 **Try the online Sim editor** [**here**](https://alienkevin.github.io/sim-lang/)**!**
-
-## Table of Contents
-
-* [Create a Computer from Scratch Using Sim](./#create-a-computer-from-scratch-using-sim)
-  * [Introduction](./#introduction)
-  * [Basics](./#basics)
-  * [And Gate](./#and-gate)
-  * [Or Gate](./#or-gate)
-  * [Xor Gate](./#xor-gate)
-  * [Optimizing Xor Gate](./#optimizing-xor-gate)
-    * [Decrease Gate Counts](./#decrease-gate-counts)
-    * [Decrease Gate Delays](./#decrease-gate-delays)
-      * [Not Gate Delays](./#not-gate-delays)
-      * [And Gate Delays](./#and-gate-delays)
-      * [Or Gate Delays](./#or-gate-delays)
-  * [4-way Or Gate](./#4-way-or-gate)
-  * [8-way Or Gate](./#8-way-or-gate)
-  * [16-way Or Gate](./#16-way-or-gate)
-  * [Mux](./#mux)
-  * [4-way Mux](./#4-way-mux)
-  * [8-way Mux](./#8-way-mux)
-  * [Dmux](./#dmux)
-  * [4-way Dmux](./#4-way-dmux)
-  * [8-way Dmux](./#8-way-dmux)
-  * [Arithmetic Circuits](./#arithmetic-circuits)
-  * [Half Adder](./#half-adder)
-  * [Full Adder](./#full-adder)
-  * [2-bit Full Adder](./#2-bit-full-adder)
-  * [4-bit Full Adder](./#4-bit-full-adder)
-  * [8-bit Full Adder](./#8-bit-full-adder)
-  * [16-bit Adder](./#16-bit-adder)
-  * [Subtraction and Negative Numbers](./#subtraction-and-negative-numbers)
-    * [Option 1: Sign   Magnitude](./#option-1-sign--magnitude)
-    * [Option 2: 1's Complement](./#option-2-1s-complement)
-    * [Option 3: 2's Complement](./#option-3-2s-complement)
-  * [16-bit Negator](./#16-bit-negator)
-  * [Arithmetic Logic Unit](./#arithmetic-logic-unit)
-  * [Multiplication](./#multiplication)
-  * [2-bit Multiplication](./#2-bit-multiplication)
-* [Development](./#development)
-  * [Set up](./#set-up)
-  * [Commands](./#commands)
-* [License](./#license)
-* [Change Log](./#change-log)
-  * [Release v0.7.0](./#release-v070)
-  * [Release v0.6.0](./#release-v060)
-  * [Release v0.5.0](./#release-v050)
-  * [Release v0.4.0](./#release-v040)
-  * [Release v0.3.0](./#release-v030)
-  * [Release v0.2.0](./#release-v020)
-  * [Release v0.1.0](./#release-v010)
-
-## Create a Computer from Scratch Using Sim
 
 ### Introduction
 
@@ -65,7 +12,17 @@ Even though Sim is very powerful, it's important to realize that Sim is just a l
 
 In order to master both the ideas and their expressions, we will guide you through the fundamentals of circuit design by creating a 16-bit computer from scratch. Don't worry too much, we will start simple and slow at first and gradually release the joy of explorations and creations to you after learning the basics.
 
-Here's a roadmap for building our computer: 1. [Logic circuits](./#basics) 2. [Arithmetic circuits](./#implementing-arithmetic-circuits) 3. Arithmetic Logic Unit 4. Memory 5. Central Processing Unit
+Here's a roadmap for building our computer:
+
+1. Logic circuits
+
+2. Arithmetic circuits
+
+3. Arithmetic Logic Unit
+
+4. Memory
+
+5. Central Processing Unit
 
 We will cover each section in-depth so let's get started!
 

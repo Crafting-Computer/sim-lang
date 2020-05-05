@@ -1,4 +1,4 @@
 # Table of contents
 
-* [Tutorial](README.md)
+* [Create a Computer from Scratch Using Sim](README.md)
 
