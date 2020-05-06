@@ -73,6 +73,7 @@ type Problem
   | ExpectingComma
   | ExpectingSpaces
   | ExpectingPlusPlus
+  | ExpectingDefinition
 
 
 type Context
@@ -290,22 +291,36 @@ showProblem problem =
       "a space or newline"
     ExpectingPlusPlus ->
       "a '++'"
+    ExpectingDefinition ->
+      "a definition"
 
 
 defs : HdlParser (List Def)
 defs =
-  loop [] <| \revDefs ->
-    oneOf
-    [ succeed (\d -> Loop (d :: revDefs))
-      |. sps
-      |= oneOf
-        [ bindingDef
-        , funcDef          
-        ]
-      |. sps
-    , succeed ()
-      |> map (\_ -> Done (List.reverse revDefs))
-    ]
+  ( succeed (\start definitions end -> (start, definitions, end))
+    |= getOffset
+    |= ( loop [] <| \revDefs ->
+      oneOf
+      [ succeed (\d -> Loop (d :: revDefs))
+        |. sps
+        |= oneOf
+          [ bindingDef
+          , funcDef          
+          ]
+        |. sps
+      , succeed ()
+        |> map (\_ -> Done (List.reverse revDefs))
+      ]
+    )
+    |= getOffset
+  )
+  |> andThen
+    (\(start, definitions, end) ->
+      if start == end then
+        problem ExpectingDefinition
+      else
+        succeed definitions
+    )
 
 
 bindingDef : HdlParser Def
