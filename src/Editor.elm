@@ -424,11 +424,17 @@ subscriptions model =
     ]
 
 
+-- the width of the right panel in "vw"
+rightPanelWidth : Int
+rightPanelWidth =
+  48
+
+
 view : Model -> Html Msg
 view model =
   E.layout
     [ E.htmlAttribute <| Html.Attributes.style "margin" "0 10px"
-    , E.htmlAttribute <| Html.Attributes.style "width" "45vw"
+    , E.htmlAttribute <| Html.Attributes.style "width" <| String.fromInt rightPanelWidth ++ "vw"
     , Font.size 16
     , E.scrollbarY
     ] <|
@@ -442,8 +448,6 @@ view model =
 viewTabSelector : Model -> E.Element Msg
 viewTabSelector model =
   let
-    activeUnit =
-      NonEmptyArray.getSelected model.units
     activeUnitIndex =
       NonEmptyArray.selectedIndex model.units
   in
@@ -579,15 +583,14 @@ viewTruthTable model table =
             List.map .size <| defTable.params ++ defTable.outputs
         in
         ( Html.table
-          [ Html.Attributes.style "table-layout" "fixed"
-          , Html.Attributes.style "width" "100%"
+          [ Html.Attributes.style "overflow-y" "scroll"
           , Html.Attributes.style "border" "1px grey solid"
           , Html.Attributes.style "border-collapse" "collapse"
           ] <|
           Html.caption
             [ Html.Attributes.style "position" "fixed"
             , Html.Attributes.style "top" "25px"
-            , Html.Attributes.style "left" "calc(50% + 45px)"
+            , Html.Attributes.style "left" <| "calc(" ++ String.fromInt rightPanelWidth ++ "vw + 45px)"
             , Html.Attributes.style "font-weight" "bold"
             , Html.Attributes.style "margin-bottom" "10px"
             ] [ Html.text defName ]
@@ -599,7 +602,8 @@ viewTruthTable model table =
                 , Html.Attributes.style "top" "0px"
                 , Html.Attributes.style "padding" "10px"
                 , Html.Attributes.style "text-align" "center"
-                , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length headerNames)) ++ "%"
+                , Html.Attributes.style "min-width" <|
+                  (String.fromFloat <| (toFloat rightPanelWidth - (toFloat <| List.length headerNames) * 1.55) / (toFloat <| List.length headerNames)) ++ "vw"
                 , Html.Attributes.style "border" "1px grey solid"
                 , Html.Attributes.style "background-color" <|
                   if List.member name (List.map .name defTable.params) then
@@ -649,7 +653,8 @@ viewTruthTable model table =
                 in
                 Html.td
                 [ Html.Attributes.style "padding" "10px"
-                , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
+                , Html.Attributes.style "min-width" <|
+                  (String.fromFloat <| (toFloat rightPanelWidth - (toFloat <| List.length row) * 1.55) / (toFloat <| List.length row)) ++ "vw"
                 , Html.Attributes.style "border" "1px grey solid"
                 ]
                 [ Html.text valueString
