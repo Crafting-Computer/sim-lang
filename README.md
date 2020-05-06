@@ -51,6 +51,13 @@ MIT
 
 # Change Log
 
+## Release v0.9.0
+
+* Keep track of scope levels independent of indentations in emitter
+* Add number format dropdown for truth table
+* Show numbers in truth table in their sizes (pad 0 and 1 if needed)
+* Detect mutual recursive definitions and emit specific outputs for them
+
 ## Release v0.8.0
 
 * Detect varSize casting problems (approach having decent type inference)
