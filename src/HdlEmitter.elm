@@ -58,7 +58,7 @@ emit defs =
           { name = name.value
           , params = paramsToParamsOutput params
           , outputs = paramsToParamsOutput outputs.value
-          , body = emitDef 0 hasMutualRecursions def
+          , body = emitDef 0 0 hasMutualRecursions def
           }
         BindingDef _ ->
           { name = "BINDING IS NOT ALLOWED AT TOP LEVEL"
@@ -167,8 +167,8 @@ emitPrelude =
 --   var nand_a_b = nand(a, b);
 --   return nand(nand_a_b, nand_a_b);
 -- }
-emitDef : Int -> Bool -> Def -> String
-emitDef indent hasMutualRecursions def =
+emitDef : Int -> Int -> Bool -> Def -> String
+emitDef indent level hasMutualRecursions def =
   case def of
     FuncDef { name, params, locals, body } ->
       let
@@ -193,7 +193,7 @@ emitDef indent hasMutualRecursions def =
             , "return function(" ++ paramDeclarations ++ ") {"
             , emitBlock 1 <|
               [ "for (var _ = 0; _ < 2; _++) {"
-              , emitLocals 1 False locals
+              , emitLocals 1 (level + 1) False locals
               , "}"
               , "return " ++ emitExpr body.value ++ ";"
               ]
@@ -202,13 +202,13 @@ emitDef indent hasMutualRecursions def =
           else
             [ "return function(" ++ paramDeclarations ++ ") {"
             , emitBlock 1 <|
-              [ emitLocals 0 True locals
+              [ emitLocals 0 (level + 1) True locals
               , "return " ++ emitExpr body.value ++ ";"
               ]
             , "}"
             ]
       in
-      case indent of
+      case level of
         0 ->
           emitBlock indent emittedBody
         
@@ -246,14 +246,14 @@ emitDef indent hasMutualRecursions def =
           emitBlock indent
             [ if hasMutualRecursions then "var " else "(" ++ emittedName ++ " ="
             , "function () {"
-            , emitLocals (indent + 1) hasMutualRecursions locs
+            , emitLocals (indent + 1) (level + 1) hasMutualRecursions locs
             , "  return " ++ emitExpr body.value ++ ";"
             , "}()" ++ if hasMutualRecursions then "" else ")" ++  ";"
             ]
 
 
-emitLocals : Int -> Bool -> List Def -> String
-emitLocals indent hasMutualRecursions defs =
+emitLocals : Int -> Int -> Bool -> List Def -> String
+emitLocals indent level hasMutualRecursions defs =
   let
     orderedLocals =
       List.sortWith
@@ -287,7 +287,7 @@ emitLocals indent hasMutualRecursions defs =
         )
         defs
   in
-  String.join "\n" <| List.map (emitDef indent hasMutualRecursions) orderedLocals
+  String.join "\n" <| List.map (emitDef indent level hasMutualRecursions) orderedLocals
 
 
 emitIndentation : Int -> String
