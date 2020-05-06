@@ -595,8 +595,8 @@ viewTruthTable model table =
             , Html.Attributes.style "margin-bottom" "10px"
             ] [ Html.text defName ]
           :: Html.thead []
-            (List.map
-              (\name ->
+            (List.indexedMap
+              (\index name ->
                 Html.th
                 [ Html.Attributes.style "position" "sticky"
                 , Html.Attributes.style "top" "0px"
@@ -606,10 +606,10 @@ viewTruthTable model table =
                   (String.fromFloat <| (toFloat rightPanelWidth - (toFloat <| List.length headerNames) * 1.55) / (toFloat <| List.length headerNames)) ++ "vw"
                 , Html.Attributes.style "border" "1px grey solid"
                 , Html.Attributes.style "background-color" <|
-                  if List.member name (List.map .name defTable.params) then
-                    "lightgreen"
-                  else
+                  if index >= List.length defTable.params then
                     "#ffd8a7"
+                  else
+                    "lightgreen"
                 ]
                 [ Html.text name ]
               )
