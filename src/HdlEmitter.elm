@@ -1,4 +1,4 @@
-module HdlEmitter exposing (emit, emitString, DefOutput)
+module HdlEmitter exposing (emit, emitString, DefOutput, ParamOutput)
 
 import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..), bindingTargetToString)
 import HdlChecker exposing (getTargetNamesFromDef, getSourceNamesFromDef)

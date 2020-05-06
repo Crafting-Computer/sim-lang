@@ -183,14 +183,13 @@
       console.log(def);
       var func = window[def.name];
       var params = def.params;
-      console.log("params: ", params);
-      console.log(params.reduce(function(sizeProduct, currentParam) { return sizeProduct * currentParam.size; }, 1));
       var outputs = def.outputs;
+      var varSizeSubst = Object.create(null);
       // full truth table too large
       if (params.some(function(param) { return typeof param.size === "string"; })
         ||params.reduce(function(sizeProduct, currentParam) { return sizeProduct * currentParam.size; }, 1) >= 12
       ) {
-        var body = generateInputs(params.map(function(param) {
+        params = params.map(function(param) {
           if (params.length >= 8) {
             var reducedSize = 1;
           } else if (params.length >= 4) {
@@ -208,11 +207,13 @@
               var reducedSize = param.size;
             }
           }
+          if (typeof param.size === "string") {
+            varSizeSubst[param.size] = reducedSize;
+          }
           return { ...param, size : reducedSize };
-        }));
-      } else {
-        var body = generateInputs(params);
+        });
       }
+      var body = generateInputs(params);
       body = body.map(function(row) {
         var results = func(...row);
         var resultList = [];
@@ -236,15 +237,21 @@
       var table = Object.create(null);
       table[def.name] = Object.create(null);
 
-      var tableParams = params.map(function(param) { return param.name; })
-      var tableOutputs = (
+      function applyVarSizeSubst(param) {
+        if (typeof param.size === "string") {
+          return { ...param, size : varSizeSubst[param.size] };
+        }
+        return param;
+      }
+
+      var outputs = (
         outputs.length === 1
-        ? [ "result" ]
-        : outputs.map(function(output) { return output.name; })
+        ? [ { ...applyVarSizeSubst(outputs[0]), name : "result" } ]
+        : outputs.map(function(output) { return applyVarSizeSubst(output); })
       );
 
-      table[def.name].params = tableParams;
-      table[def.name].outputs = tableOutputs;
+      table[def.name].params = params;
+      table[def.name].outputs = outputs;
       table[def.name].body = body;
       console.log(table);
       app.ports.receiveTruthTablePort.send(JSON.stringify(table));

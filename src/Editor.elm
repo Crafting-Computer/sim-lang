@@ -160,10 +160,14 @@ type Msg
 type alias TruthTable =
   Dict
     String
-    { params : List String
-    , outputs : List String
+    { params : List TruthTableParam
+    , outputs : List TruthTableParam
     , body : List (List Int)
     }
+
+
+type alias TruthTableParam =
+  { name : String, size : Int }
 
 
 preludeLength : Int
@@ -566,8 +570,13 @@ viewTruthTable model table =
     Dict.foldl
       (\defName defTable viewList ->
         let
-          header =
-            defTable.params ++ defTable.outputs
+          headerNames : List String
+          headerNames =
+            List.map .name <| defTable.params ++ defTable.outputs
+          
+          headerSizes : List Int
+          headerSizes =
+            List.map .size <| defTable.params ++ defTable.outputs
         in
         ( Html.table
           [ Html.Attributes.style "table-layout" "fixed"
@@ -590,57 +599,63 @@ viewTruthTable model table =
                 , Html.Attributes.style "top" "0px"
                 , Html.Attributes.style "padding" "10px"
                 , Html.Attributes.style "text-align" "center"
-                , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length header)) ++ "%"
+                , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length headerNames)) ++ "%"
                 , Html.Attributes.style "border" "1px grey solid"
                 , Html.Attributes.style "background-color" <|
-                  if List.member name defTable.params then
+                  if List.member name (List.map .name defTable.params) then
                     "lightgreen"
                   else
                     "#ffd8a7"
                 ]
                 [ Html.text name ]
               )
-            header
+              headerNames
             )
           :: List.map (\row ->
             Html.tr
             [ Html.Attributes.style "text-align" "center"
             ] <|
-            List.map (\value ->
-              let
-                valueString =
-                  case model.numberFormat of
-                    DecimalFormat ->
-                      String.fromInt value
-                    
-                    BinaryFormat ->
-                      let
-                        complementedValue =
-                          if value < 0 then
-                            2 ^ 4 + value
-                          else
-                            value
-                      in
-                      String.join "" <| List.map String.fromInt <| Binary.toIntegers <| Binary.fromDecimal complementedValue
+            List.map
+              (\(size, value) ->
+                let
+                  valueString =
+                    case model.numberFormat of
+                      DecimalFormat ->
+                        String.fromInt value
+                      
+                      BinaryFormat ->
+                        let
+                          complementedValue =
+                            if value < 0 then
+                              2 ^ size + value
+                            else
+                              value
+                        in
+                        String.join "" <| List.map String.fromInt <|
+                        Binary.toIntegers <| Binary.ensureSize size <|
+                        Binary.fromDecimal complementedValue
 
-                    HexadecimalFormat ->
-                      let
-                        complementedValue =
-                          if value < 0 then
-                            16 ^ 4 + value
-                          else
-                            value
-                      in
-                      Binary.toHex <| Binary.fromDecimal complementedValue
-              in
-              Html.td
-              [ Html.Attributes.style "padding" "10px"
-              , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
-              , Html.Attributes.style "border" "1px grey solid"
-              ]
-              [ Html.text valueString
-              ])
-              row
+                      HexadecimalFormat ->
+                        let
+                          complementedValue =
+                            if value < 0 then
+                              2 ^ size + value
+                            else
+                              value
+                        in
+                        Binary.toHex <|
+                        Binary.ensureSize size <|
+                        Binary.fromDecimal complementedValue
+                in
+                Html.td
+                [ Html.Attributes.style "padding" "10px"
+                , Html.Attributes.style "width" <| (String.fromFloat <| 100 / (toFloat <| List.length row)) ++ "%"
+                , Html.Attributes.style "border" "1px grey solid"
+                ]
+                [ Html.text valueString
+                ]
+              )
+              (List.map2 Tuple.pair headerSizes row)
           )
           defTable.body
         )
@@ -726,6 +741,7 @@ generateTruthTable output =
           -- , outputs : List ParamOutput
           -- , body : String
           -- }
+          encodeDefOutput : HdlEmitter.DefOutput -> Encode.Value
           encodeDefOutput def =
             Encode.object
               [ ( "name", Encode.string def.name )
@@ -737,6 +753,7 @@ generateTruthTable output =
           -- { name : String
           -- , size : Size
           -- }
+          encodeParamOutput : HdlEmitter.ParamOutput -> Encode.Value
           encodeParamOutput param =
             Encode.object
               [ ( "name", Encode.string param.name )
@@ -745,7 +762,8 @@ generateTruthTable output =
 
           -- type Size
           --   = IntSize Int
-          --   | VarSize String (Maybe Int)
+          --   | VarSize (Located String)
+          encodeSize : Size -> Encode.Value
           encodeSize size =
             case size of
               IntSize i ->
@@ -765,9 +783,22 @@ generateTruthTable output =
 decodeTruthTable : Decoder TruthTable
 decodeTruthTable =
   let
+    -- { name : String
+    -- , size : Int
+    -- }
+    decodeTruthTableParam : Decoder TruthTableParam
+    decodeTruthTableParam =
+      Field.require "name" Decode.string <| \name->
+      Field.require "size" Decode.int <| \size ->
+
+      Decode.succeed
+        { name = name
+        , size = size
+        }
+
     decodeTable =
-      Field.require "params" (Decode.list Decode.string) <| \params ->
-      Field.require "outputs" (Decode.list Decode.string) <| \outputs ->
+      Field.require "params" (Decode.list decodeTruthTableParam) <| \params ->
+      Field.require "outputs" (Decode.list decodeTruthTableParam) <| \outputs ->
       Field.require "body" (Decode.list <| Decode.list Decode.int) <| \body ->
 
       Decode.succeed
