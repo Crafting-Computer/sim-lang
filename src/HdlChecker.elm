@@ -1,6 +1,6 @@
 module HdlChecker exposing (Problem(..), Type(..), SizeComparator(..), check, showProblems, getTargetNamesFromDef, getSourceNamesFromDef)
 
-import HdlParser exposing (fakeLocated, bindingTargetToString, withLocation, changeLocation, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
+import HdlParser exposing (fakeLocated, bindingTargetToString, withLocation, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
 import List.Extra
 import Binary
@@ -166,7 +166,7 @@ combineSubsts subst1 subst2 =
     (Subst s1, Subst s2) ->
       Subst <| Dict.union
         (Dict.map
-          (\k v -> applySubstToType subst1 v)
+          (\_ v -> applySubstToType subst1 v)
           s2
         )
         s1
@@ -211,7 +211,7 @@ applySubstToType subst t =
       withLocation t <|
         TRecord <|
         Dict.map
-          (\k v -> applySubstToType subst v)
+          (\_ v -> applySubstToType subst v)
           r
     
     TFun from to ->
@@ -236,7 +236,7 @@ applySubstToCtx subst ctx =
   { ctx
     | env =
       Dict.map
-        (\k v -> applySubstToType subst v)
+        (\_ v -> applySubstToType subst v)
         ctx.env
   }
 
@@ -340,8 +340,7 @@ unify t1 t2 =
   case (t1.value, t2.value) of
     (TBus b1 c1, TBus b2 c2) ->
       case (b1, b2) of
-        (VarSize n1, VarSize n2) ->
-          -- Subst <| Dict.singleton n1 t2
+        (VarSize _, VarSize n2) ->
           Subst <| Dict.singleton n2 t1
         
         (VarSize n1, IntSize _) ->
@@ -712,7 +711,7 @@ inferDef ctx def =
                                     else
                                       Nothing
 
-                                  VarSize n2 ->
+                                  VarSize _ ->
                                     Nothing
 
                               _ ->
@@ -952,13 +951,6 @@ inferExpr ctx expr =
                     funcType
                     actualType
 
-                _ = Debug.log "AL -> s3" <| s3
-                _ = Debug.log "AL -> funcType" <| funcType
-                _ = Debug.log "AL -> s4" <| s4
-                _ = Debug.log "AL -> s4a" <| s4a
-                _ = Debug.log "AL -> s4b" <| s4b
-                _ = Debug.log "AL -> s5" <| s5
-
                 (s4a, s4b) =
                   case s4 of
                     Subst subst ->
@@ -973,9 +965,6 @@ inferExpr ctx expr =
                             TBus size _ ->
                               case size of
                                 VarSize n ->
-                                  let
-                                    _ = Debug.log "AL -> n" <| n
-                                  in
                                   if not <| List.member n (Dict.keys firstSubst) then
                                     if String.startsWith "T" k.value then
                                       (Dict.insert n (withLocation k <| TVar k) firstSubst, secondSubst)
@@ -1021,9 +1010,6 @@ inferExpr ctx expr =
                   else
                     s4a
                 
-
-                _ = Debug.log "AL -> funcType1" <| funcType1
-
                 funcType1 =
                   applySubstToType s5 actualType
 
@@ -1047,9 +1033,8 @@ inferExpr ctx expr =
                         Result.andThen
                           (\(nextType, nextSubst) ->
                             case nextType.value of
-                              TFun fromType toType ->
+                              TFun _ toType ->
                                 Ok ( toType
-                                -- , combineSubsts nextSubst (unify (applySubstToType nextSubst fromType) argType)
                                 , nextSubst
                                 )
 
@@ -1064,15 +1049,6 @@ inferExpr ctx expr =
                 Result.map
                   (\(resultType, resultSubst1) ->
                     let
-                      _ =
-                        if resultSubst1 /= resultSubst2 then
-                          let
-                            _ = Debug.log "AL -> resultSubst1" <| resultSubst1
-                            _ = Debug.log "AL -> resultSubst2" <| resultSubst2
-                          in
-                          ""
-                        else
-                          ""
                       resultSubst2 =
                         case resultSubst1 of
                           Subst subst ->
@@ -1081,10 +1057,6 @@ inferExpr ctx expr =
                                 if String.startsWith "T" k.value then
                                   True
                                 else
-                                  let
-                                    _ = Debug.log "AL -> funcType" <| funcType
-                                    _ = Debug.log "AL -> k" <| k
-                                  in
                                   not <| atSameLocation funcType k
                               )
                               subst

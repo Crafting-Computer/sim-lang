@@ -51,6 +51,22 @@ MIT
 
 # Change Log
 
+## Release v0.10.0
+
+* Require at least one definition in `defs`,
+  so no empty program or empty let...in expression
+* Largely fix varSize inference, so stuff like below compiles
+    ```elm
+    test i[i] j[j] k[k] -> [j] =
+    let
+        a = nand i i
+        b = nand j j
+        c = nand k k
+    in
+    b
+    ```
+* Better fit values in truth table
+
 ## Release v0.9.0
 
 * Keep track of scope levels independent of indentations in emitter
