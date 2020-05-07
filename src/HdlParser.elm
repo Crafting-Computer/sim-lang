@@ -1,4 +1,4 @@
-module HdlParser exposing (parse, fakeLocated, withLocation, showDeadEnds, showProblemLocation, showProblemLocationRange, bindingTargetToString, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
+module HdlParser exposing (parse, fakeLocated, withLocation, changeLocation, showDeadEnds, showProblemLocation, showProblemLocationRange, bindingTargetToString, Def(..), BindingTarget(..), Located, Expr(..), Param, Size(..))
 
 
 import Parser.Advanced exposing (..)
@@ -764,3 +764,7 @@ withLocation loc value =
   , value =
     value
   }
+
+changeLocation : Located a -> Located b -> Located b
+changeLocation loc value =
+  withLocation loc value.value

@@ -1,6 +1,6 @@
 module HdlChecker exposing (Problem(..), Type(..), SizeComparator(..), check, showProblems, getTargetNamesFromDef, getSourceNamesFromDef)
 
-import HdlParser exposing (fakeLocated, bindingTargetToString, withLocation, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
+import HdlParser exposing (fakeLocated, bindingTargetToString, withLocation, changeLocation, Located, Param, Def(..), Expr(..), BindingTarget(..), Size(..))
 import AssocList as Dict exposing (Dict)
 import List.Extra
 import Binary
@@ -23,7 +23,6 @@ type Problem
   | ConcatOperandHasUncertainSize (Located Type)
   | ExpectingConcatOperand (Located Type)
   | DowncastingDeclaredVarSizeToIntSize (Located String) (Located (Int, SizeComparator))
-  | CastingOneDeclaredVarSizeToAnother (Located String) (Located String)
 
 
 prelude : List Def
@@ -341,8 +340,9 @@ unify t1 t2 =
   case (t1.value, t2.value) of
     (TBus b1 c1, TBus b2 c2) ->
       case (b1, b2) of
-        (VarSize n1, VarSize _) ->
-          Subst <| Dict.singleton n1 t2
+        (VarSize n1, VarSize n2) ->
+          -- Subst <| Dict.singleton n1 t2
+          Subst <| Dict.singleton n2 t1
         
         (VarSize n1, IntSize _) ->
           Subst <| Dict.singleton n1 t2
@@ -713,25 +713,8 @@ inferDef ctx def =
                                       Nothing
 
                                   VarSize n2 ->
-                                    let
-                                      badVarName =
-                                        Maybe.map Tuple.first <|
-                                        List.Extra.find
-                                        (\(k2, v2) ->
-                                          k2 /= k1 && atSameLocation k2 name && v2.value == v1.value
-                                        )
-                                        (Dict.toList subst)
-                                    in
-                                    case badVarName of
-                                      Just badName ->
-                                        Just <| CastingOneDeclaredVarSizeToAnother k1 badName
-                                      
-                                      Nothing ->
-                                        if atSameLocation k1 name && atSameLocation n2 name then
-                                          Just <| CastingOneDeclaredVarSizeToAnother k1 n2
-                                        else
-                                          Nothing
-                              
+                                    Nothing
+
                               _ ->
                                 Nothing
                         
@@ -961,13 +944,88 @@ inferExpr ctx expr =
                 s3 =
                   combineSubsts s1 s2
                 
+                actualType =
+                  createTFunFromTypes argTypes outputType
+
                 s4 =
                   unify
                     funcType
-                    (createTFunFromTypes argTypes outputType)
+                    actualType
+
+                _ = Debug.log "AL -> s3" <| s3
+                _ = Debug.log "AL -> funcType" <| funcType
+                _ = Debug.log "AL -> s4" <| s4
+                _ = Debug.log "AL -> s4a" <| s4a
+                _ = Debug.log "AL -> s4b" <| s4b
+                _ = Debug.log "AL -> s5" <| s5
+
+                (s4a, s4b) =
+                  case s4 of
+                    Subst subst ->
+                      Tuple.mapBoth Subst Subst <|
+                      Dict.foldr
+                        (\k v (firstSubst, secondSubst) ->
+                          let
+                            normalInsert =
+                              (firstSubst, Dict.insert k v secondSubst)
+                          in
+                          case v.value of
+                            TBus size _ ->
+                              case size of
+                                VarSize n ->
+                                  let
+                                    _ = Debug.log "AL -> n" <| n
+                                  in
+                                  if not <| List.member n (Dict.keys firstSubst) then
+                                    if String.startsWith "T" k.value then
+                                      (Dict.insert n (withLocation k <| TVar k) firstSubst, secondSubst)
+                                    else
+                                      (Dict.insert n (withLocation k <| TBus (VarSize k) EqualToSize) firstSubst, secondSubst)
+                                  else
+                                    normalInsert
+                                
+                                IntSize _ ->
+                                  normalInsert
+                            
+                            _ ->
+                              normalInsert
+                        )
+                        (Dict.empty, Dict.empty)
+                        subst
+
+                    SubstError _ ->
+                      (s4, s4)
+                    
+                s5 =
+                  if s4a /= s4b then
+                    case combineSubsts s4a s4b of
+                      Subst subst ->
+                        case s4a of
+                          Subst s4aSubst ->
+                            Subst <| Dict.filter
+                              (\k v ->
+                                case Dict.get k s4aSubst of
+                                  Just s4aValue ->
+                                    v /= s4aValue
+                                  
+                                  Nothing ->
+                                    True
+                              )
+                              subst
+                          
+                          SubstError _ ->
+                            Subst subst -- impossible
+                      
+                      SubstError err ->
+                        SubstError err
+                  else
+                    s4a
                 
+
+                _ = Debug.log "AL -> funcType1" <| funcType1
+
                 funcType1 =
-                  applySubstToType s4 funcType
+                  applySubstToType s5 actualType
 
                 paramTypes =
                   paramTypesFromTFun funcType1
@@ -991,7 +1049,8 @@ inferExpr ctx expr =
                             case nextType.value of
                               TFun fromType toType ->
                                 Ok ( toType
-                                , combineSubsts nextSubst (unify (applySubstToType nextSubst fromType) argType)
+                                -- , combineSubsts nextSubst (unify (applySubstToType nextSubst fromType) argType)
+                                , nextSubst
                                 )
 
                               _ ->
@@ -999,14 +1058,43 @@ inferExpr ctx expr =
                           )
                           result
                       )
-                      (Ok (funcType1, combineSubsts s3 s4))
+                      (Ok (funcType1, combineSubsts s3 s5))
                       argTypes
                 in
                 Result.map
-                  (\(resultType, resultSubst) ->
-                    ( applySubstToType resultSubst resultType
+                  (\(resultType, resultSubst1) ->
+                    let
+                      _ =
+                        if resultSubst1 /= resultSubst2 then
+                          let
+                            _ = Debug.log "AL -> resultSubst1" <| resultSubst1
+                            _ = Debug.log "AL -> resultSubst2" <| resultSubst2
+                          in
+                          ""
+                        else
+                          ""
+                      resultSubst2 =
+                        case resultSubst1 of
+                          Subst subst ->
+                            Subst <| Dict.filter
+                              (\k _ ->
+                                if String.startsWith "T" k.value then
+                                  True
+                                else
+                                  let
+                                    _ = Debug.log "AL -> funcType" <| funcType
+                                    _ = Debug.log "AL -> k" <| k
+                                  in
+                                  not <| atSameLocation funcType k
+                              )
+                              subst
+                          
+                          SubstError _ ->
+                            resultSubst1
+                    in
+                    ( applySubstToType resultSubst1 resultType
                     , c3
-                    , resultSubst
+                    , resultSubst2
                     )
                   )
                   callResult
@@ -1430,13 +1518,6 @@ showProblem src problem =
       ++ showLocation src intSize ++ "\n"
       ++ "Casting from a declared variable size to a concrete size is not allowed.\n"
       ++ "Hint: Try declaring a concrete size instead of the variable size."
-    CastingOneDeclaredVarSizeToAnother varSizeName1 varSizeName2 ->
-      "I found that you are trying to cast the variable size `" ++ varSizeName1.value ++ "`\n"
-      ++ "to another variable size `" ++ varSizeName2.value ++ "`.\n"
-      ++ "Both of them are declared here:\n"
-      ++ showLocation src varSizeName1 ++ "\n"
-      ++ "Casting from a declared variable size to another is not allowed.\n"
-      ++ "Hint: Try replacing `" ++ varSizeName1.value ++ "` with `" ++ varSizeName2.value ++ "` or replacing `" ++ varSizeName2.value ++ "` with `" ++ varSizeName1.value ++ "`."
 
 prettifyTypes : Located Type -> Located Type -> (Located Type, Located Type)
 prettifyTypes t1 t2 =

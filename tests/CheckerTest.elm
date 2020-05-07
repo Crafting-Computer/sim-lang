@@ -316,10 +316,10 @@ suite =
       , describe "CastingOneDeclaredVarSizeToAnother"
       [ test "identity function"
         "f2 a[m] -> [n] = id a\nid a[n] -> [n] = a" <|
-        Err [CastingOneDeclaredVarSizeToAnother { from = (1,1), to = (1,3), value = "n" } { from = (1,1), to = (1,3), value = "m" }]
+        Err [MismatchedTypes { from = (1,6), to = (1,7), value = TBus (VarSize { from = (1,1), to = (1,3), value = "m" }) EqualToSize } { from = (1,13), to = (1,14), value = TBus (VarSize { from = (1,1), to = (1,3), value = "n" }) EqualToSize }]
       , test "and gate"
         "and a[x] b[y] -> [x] =\n let\n  nand_a_b = nand a b\n in\n nand nand_a_b nand_a_b" <|
-        Err [CastingOneDeclaredVarSizeToAnother { from = (1,1), to = (1,4), value = "x" } { from = (1,1), to = (1,4), value = "y" }]
+        Err [MismatchedTypes { from = (1,12), to = (1,13), value = TBus (VarSize { from = (1,1), to = (1,4), value = "y" }) EqualToSize } { from = (1,19), to = (1,20), value = TBus (VarSize { from = (1,1), to = (1,4), value = "x" }) EqualToSize }]
       , test "mux"
         """mux a[a] b[b] sel[1] -> [c] =
     let
@@ -342,7 +342,40 @@ and a[n] b[n] -> [n] =
     in
     nand nand_a_b nand_a_b
         """ <|
-        Err [CastingOneDeclaredVarSizeToAnother { from = (1,1), to = (1,4), value = "c" } { from = (1,1), to = (1,4), value = "b" }]
+        Err [MismatchedTypes { from = (1,7), to = (1,8), value = TBus (VarSize { from = (1,1), to = (1,4), value = "a" }) EqualToSize } { from = (1,26), to = (1,27), value = TBus (VarSize { from = (1,1), to = (1,4), value = "c" }) EqualToSize }]
+      ]
+      , describe "tricky tests"
+      [ test "pair"
+      """pair a[n] -> { a[n], b[n] } =
+    { a = a, b = a }
+
+test_pair a[n] -> { a[n], b[n] } =
+    let
+        pair1 =
+            pair 1
+        pair2 =
+            pair a
+    in
+    pair2""" <|
+        Ok ()
+      , test "3 nands"
+      """test i[i] j[j] k[k] -> [j] =
+  let
+    a = nand i i
+    b = nand j j
+    c = nand k k
+  in
+  b""" <|
+        Ok ()
+      , test "bad 3 nands"
+      """test i[i] j[j] k[k] -> [j] =
+  let
+    a = nand i i
+    b = nand j j
+    c = nand k k
+  in
+  c""" <|
+        Err [MismatchedTypes { from = (1,18), to = (1,19), value = TBus (VarSize { from = (1,1), to = (1,5), value = "k" }) EqualToSize } { from = (1,25), to = (1,26), value = TBus (VarSize { from = (1,1), to = (1,5), value = "j" }) EqualToSize }]
       ]
     ]
 
