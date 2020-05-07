@@ -4,6 +4,10 @@ Sim aims to make circuit design as simple and fun as possible by using intuitive
 
 **Try the online Sim editor** [**here**](https://alienkevin.github.io/sim-lang/)**!**
 
+<p align="center" style="margin: 40px 0;">
+  <img width="250" height="250" src="./media/sim_logo.png">
+</p>
+
 # Development
 
 We welcome all questions, suggestions, issues, and pull requests.
