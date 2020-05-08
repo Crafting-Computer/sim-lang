@@ -176,11 +176,16 @@
     // type Size = number | string
     app.ports.generateTruthTablePort.subscribe(function(defs) {
       // declare defs
-      defs.forEach(function(def) {
-        window[def.name] = new Function(
+      var funcGenerators = defs.map(function(def) {
+        var funcGenerator = new Function(
           def.params.map(function(param) { return param.name; }),
           def.body
-        )(); // invoke the function generator
+        );
+        window["_" + def.name] = funcGenerator;
+        return funcGenerator;
+      });
+      defs.forEach(function(def, index) {
+        window[def.name] = funcGenerators[index](); // invoke the function generator
       });
       // generate truth table for first def
       var preludeLength = 3;

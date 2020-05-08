@@ -2,8 +2,10 @@ module HdlEmitter exposing (emit, emitString, DefOutput, ParamOutput)
 
 import HdlParser exposing (Def(..), Expr(..), Param, Size(..), BindingTarget(..), bindingTargetToString)
 import HdlChecker exposing (getTargetNamesFromDef, getSourceNamesFromDef)
-import AssocList as Dict
+import AssocList as Dict exposing (Dict)
+import Set exposing (Set)
 import List.Extra
+import EverySet
 
 
 type alias DefOutput =
@@ -45,20 +47,32 @@ emit defs =
   let
     paramsToParamsOutput params =
       List.map (\p -> { name = p.name.value, size = p.size.value }) params
+    
+    topLevelDefsWithMutualRecursions =
+      List.filter
+        (\def ->
+          case def of
+            FuncDef { locals } ->
+              checkMutualRecursions locals
+            
+            BindingDef _ -> -- binding is not allowed at top level
+              False
+        )
+        defs
   in
   emitPrelude
   ++ List.map
     (\def ->
       case def of
-        FuncDef { name, params, outputs, locals } ->
+        FuncDef { name, params, outputs } ->
           let
             hasMutualRecursions =
-              checkMutualRecursions locals
+              List.member def topLevelDefsWithMutualRecursions
           in
           { name = name.value
           , params = paramsToParamsOutput params
           , outputs = paramsToParamsOutput outputs.value
-          , body = emitDef 0 0 hasMutualRecursions def
+          , body = emitDef 0 0 hasMutualRecursions defs def
           }
         BindingDef _ ->
           { name = "BINDING IS NOT ALLOWED AT TOP LEVEL"
@@ -75,14 +89,20 @@ checkMutualRecursions defs =
   List.any
   (\def ->
     let
+      _ = Debug.log "AL -> targetNames" <| targetNames
       targetNames =
         getTargetNamesFromDef def
-              
+
+      _ = Debug.log "AL -> sourceNames" <| sourceNames      
       sourceNames =
         getSourceNamesFromDef def
     in
     List.any
       (\name ->
+        let
+          _ = Debug.log "AL -> name" <| name
+          _ = Debug.log "AL -> checkMutualRecursionsHelper name sourceNames defs" <| checkMutualRecursionsHelper name sourceNames defs
+        in
         checkMutualRecursionsHelper name sourceNames defs
       )
       targetNames
@@ -93,6 +113,7 @@ checkMutualRecursions defs =
 checkMutualRecursionsHelper : String -> List String -> List Def -> Bool
 checkMutualRecursionsHelper targetName sourceNames allDefs =
   let
+    _ = Debug.log "AL -> sourceDefs" <| sourceDefs
     sourceDefs =
       List.filterMap identity <|
       List.map (getDef allDefs) sourceNames
@@ -103,7 +124,7 @@ checkMutualRecursionsHelper targetName sourceNames allDefs =
         nextSourceNames =
           getSourceNamesFromDef sourceDef
       in
-      (List.member targetName <| nextSourceNames)
+      List.member targetName nextSourceNames
       || checkMutualRecursionsHelper targetName nextSourceNames allDefs
     )
     sourceDefs
@@ -167,46 +188,90 @@ emitPrelude =
 --   var nand_a_b = nand(a, b);
 --   return nand(nand_a_b, nand_a_b);
 -- }
-emitDef : Int -> Int -> Bool -> Def -> String
-emitDef indent level hasMutualRecursions def =
+emitDef : Int -> Int -> Bool -> List Def -> Def -> String
+emitDef indent level hasMutualRecursions defsWithMutualRecursions def =
+  let
+    getDefNames : List Def -> List String
+    getDefNames defs =
+      List.map
+        (\mutualRecursiveDef ->
+          case mutualRecursiveDef of
+            FuncDef r ->
+              r.name.value
+            
+            BindingDef _ -> -- impossible
+              "Binding def can not contain mutual recursions."
+        )
+        defs
+  in
   case def of
     FuncDef { name, params, locals, body } ->
       let
+        defNamesWithMutualRecursions =
+          getDefNames defsWithMutualRecursions
+        
+        allUsedNamesWithMutualRecursions =
+          getNamesWithMutualRecursionsFromDefs defNamesWithMutualRecursions [ def ]
+
         paramDeclarations =
           String.join ", " (List.map emitParam params)
+
+        _ = Debug.log "AL -> name" <| name
+        _ = Debug.log "AL -> localDeclarations" <| localDeclarations
+
+        localDeclarations =
+          List.map
+            (\n ->
+              let
+                _ = Debug.log "AL -> n" <| n
+              in
+              "var " ++ processName defNamesWithMutualRecursions n ++ " = " ++ "_" ++ n.value ++ "();"
+            )
+            allUsedNamesWithMutualRecursions
+          ++ ( if hasMutualRecursions then
+            let
+              names =
+                List.concat <| List.Extra.unique <| List.map getTargetNamesFromDef locals
+            in
+            if List.length names > 0 then
+              [ "var "
+                ++ ( String.join ", " <|
+                  names
+                )
+                ++ ";"
+              ]
+            else
+              []
+          else
+            []
+          )
         
         emittedBody =
-          if List.isEmpty locals then
+          localDeclarations
+          ++ ( if List.isEmpty locals then
             [ "return function(" ++ paramDeclarations ++ ") {"
-            , "  return " ++ emitExpr body.value ++ ";"
+            , "  return " ++ emitExpr defNamesWithMutualRecursions body.value ++ ";"
             , "}"
             ]
           else if hasMutualRecursions then
-            let
-                localTargets =
-                  List.concat <| List.Extra.unique <| List.map getTargetNamesFromDef locals
-                
-                localDeclarations =
-                  "var " ++ String.join ", " localTargets ++ ";"
-            in
-            [ localDeclarations
-            , "return function(" ++ paramDeclarations ++ ") {"
+            [ "return function(" ++ paramDeclarations ++ ") {"
             , emitBlock 1 <|
               [ "for (var _ = 0; _ < 2; _++) {"
-              , emitLocals 1 (level + 1) False locals
+              , emitLocals 1 (level + 1) False defsWithMutualRecursions locals
               , "}"
-              , "return " ++ emitExpr body.value ++ ";"
+              , "return " ++ emitExpr defNamesWithMutualRecursions body.value ++ ";"
               ]
             , "}"
             ]
           else
             [ "return function(" ++ paramDeclarations ++ ") {"
             , emitBlock 1 <|
-              [ emitLocals 0 (level + 1) True locals
-              , "return " ++ emitExpr body.value ++ ";"
+              [ emitLocals 0 (level + 1) True defsWithMutualRecursions locals
+              , "return " ++ emitExpr defNamesWithMutualRecursions body.value ++ ";"
               ]
             , "}"
             ]
+          )
       in
       case level of
         0 ->
@@ -222,6 +287,9 @@ emitDef indent level hasMutualRecursions def =
     
     BindingDef { name, locals, body } ->
       let
+        defNamesWithMutualRecursions =
+          getDefNames defsWithMutualRecursions
+        
         emittedName =
           bindingTargetToString name.value
       in
@@ -234,7 +302,7 @@ emitDef indent level hasMutualRecursions def =
             else
               "("
           )
-          ++ emittedName ++ " = " ++ emitExpr body.value
+          ++ emittedName ++ " = " ++ emitExpr defNamesWithMutualRecursions body.value
           ++ (
             if hasMutualRecursions then
               ""
@@ -246,48 +314,132 @@ emitDef indent level hasMutualRecursions def =
           emitBlock indent
             [ if hasMutualRecursions then "var " else "(" ++ emittedName ++ " ="
             , "function () {"
-            , emitLocals (indent + 1) (level + 1) hasMutualRecursions locs
-            , "  return " ++ emitExpr body.value ++ ";"
+            , emitLocals (indent + 1) (level + 1) hasMutualRecursions defsWithMutualRecursions locs
+            , "  return " ++ emitExpr defNamesWithMutualRecursions body.value ++ ";"
             , "}()" ++ if hasMutualRecursions then "" else ")" ++  ";"
             ]
 
 
-emitLocals : Int -> Int -> Bool -> List Def -> String
-emitLocals indent level hasMutualRecursions defs =
+getNamesWithMutualRecursionsFromDefs : List String -> List Def -> List (HdlParser.Located String)
+getNamesWithMutualRecursionsFromDefs names defs =
+  List.concat <| List.map
+    (\d ->
+      let
+        (dLocals, dBody) =
+          case d of
+            FuncDef r ->
+              (r.locals, r.body)
+
+            BindingDef r ->
+              (r.locals, r.body)
+      in
+      getNamesWithMutualRecursionsFromDefs names dLocals
+      ++ getNamesWithMutualRecursionsFromExpr names dBody.value
+    )
+    defs
+
+getNamesWithMutualRecursionsFromExpr : List String -> Expr -> List (HdlParser.Located String)
+getNamesWithMutualRecursionsFromExpr names expr =
+  case expr of
+    Binding n ->
+      if List.member n.value names then
+        [ n ]
+      else
+        []
+    
+    Call callee args ->
+      ( if List.member callee.value names then
+        [ callee ]
+      else
+        []
+      )
+      ++ (List.concat <| List.map (getNamesWithMutualRecursionsFromExpr names << .value) args)
+
+    Indexing e _ ->
+      getNamesWithMutualRecursionsFromExpr names e.value
+
+    Record r ->
+      List.concat <| List.map (getNamesWithMutualRecursionsFromExpr names << .value) <| Dict.values r.value
+
+    BusLiteral l ->
+      List.concat <| List.map (getNamesWithMutualRecursionsFromExpr names << .value) <| l.value
+
+    Concat e1 e2 ->
+        List.concat
+          [ getNamesWithMutualRecursionsFromExpr names e1.value
+          , getNamesWithMutualRecursionsFromExpr names e2.value
+          ]
+    
+    _ ->
+      []
+
+
+emitLocals : Int -> Int -> Bool -> List Def -> List Def -> String
+emitLocals indent level hasMutualRecursions allDefsWithMutualRecursions defs =
+  String.join "\n" <| List.map (emitDef indent level hasMutualRecursions allDefsWithMutualRecursions) <| sortDefs defs
+
+
+type alias Dep =
+  Dict (List String) (List String)
+
+
+sortDefs : List Def -> List Def
+sortDefs defs =
   let
-    orderedLocals =
-      List.sortWith
-        (\d1 d2 ->
-          let
-            t1 =
-              getTargetNamesFromDef d1
-            
-            n1 =
-              getSourceNamesFromDef d1
-            
-            t2 =
-              getTargetNamesFromDef d2
-            
-            n2 =
-              getSourceNamesFromDef d2
-            
-            firstDependsOnSecond =
-              List.any (\n -> List.member n t2) n1
-            
-            secondDependsOnFirst =
-              List.any (\n -> List.member n t1) n2
-          in
-          if firstDependsOnSecond then
-            if secondDependsOnFirst then
-              EQ
-            else
-              GT
-          else
-            LT
+    targetNameList =
+      List.map getTargetNamesFromDef defs
+
+    allTargetNames =
+      List.concat targetNameList
+
+    sourceNameList =
+      List.map
+        (\def ->
+          List.filter
+          (\name ->
+            List.member name allTargetNames
+          )
+          (getSourceNamesFromDef def)
         )
         defs
+
+    sortedDefNames =
+      sortDependencies <|
+        Dict.fromList <|
+        List.map2 Tuple.pair targetNameList sourceNameList
   in
-  String.join "\n" <| List.map (emitDef indent level hasMutualRecursions) orderedLocals
+  List.reverse <| EverySet.toList <| EverySet.fromList <| List.filterMap identity <| List.map (getDef defs) sortedDefNames
+
+
+sortDependencies : Dep -> List String
+sortDependencies dep =
+  let
+    (result, _, _) =
+      sortDependenciesHelper ([], Set.empty, dep)
+  in
+  List.reverse result
+
+    
+sortDependenciesHelper : (List String, Set String, Dep) -> (List String, Set String, Dep)
+sortDependenciesHelper (result0, used0, dep0) =
+  let
+    (result1, used1, dep1) =
+      Dict.foldl
+      (\k v (result, used, dep) ->
+        if List.all (\value -> Set.member value used) v then
+          (k ++ result, List.foldl (\k1 set -> Set.insert k1 set) used k, Dict.filter (\k1 _ -> k /= k1) dep)
+        else
+          (result, used, dep)
+      )
+      (result0, used0, dep0)
+      dep0
+  in
+  if Dict.isEmpty dep1 then
+    (result1, used1, dep1)
+  else if Dict.size dep0 == Dict.size dep1 then
+    (List.concat (List.reverse <| Dict.keys dep1) ++ result1, used1, dep1)
+  else
+    sortDependenciesHelper (result1, used1, dep1)
 
 
 emitIndentation : Int -> String
@@ -309,13 +461,14 @@ emitBlock indent lines =
   )
 
 
-emitExpr : Expr -> String
-emitExpr e =
+emitExpr : List String -> Expr -> String
+emitExpr defNamesWithMutualRecursions e =
   case e of
     Binding name ->
-      name.value
+      processName defNamesWithMutualRecursions name
     Call callee args ->
-      callee.value ++ "(" ++ (String.join ", " <| List.map (emitExpr << .value) args) ++ ")"
+      processName defNamesWithMutualRecursions callee
+      ++ "(" ++ (String.join ", " <| List.map (emitExpr defNamesWithMutualRecursions << .value) args) ++ ")"
     Indexing expr (from, to) ->
       let
         shiftRightBinaryPlaces =
@@ -324,11 +477,11 @@ emitExpr e =
         andFilter =
           "0b" ++ String.repeat (to.value - from.value + 1) "1"
       in
-      "$b(" ++ emitExpr expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter
+      "$b(" ++ emitExpr defNamesWithMutualRecursions expr.value ++ ")" ++ " >>> " ++ shiftRightBinaryPlaces ++ " & " ++ andFilter
     Record r ->
       Dict.foldl
         (\k v str ->
-          str ++ k.value ++ " : " ++ emitExpr v.value ++ ", "
+          str ++ k.value ++ " : " ++ emitExpr defNamesWithMutualRecursions v.value ++ ", "
         )
         "{ "
         r.value
@@ -339,11 +492,24 @@ emitExpr e =
       "\"\" + " ++
       (String.join " + " <|
         List.map
-          (emitExpr << .value)
+          (emitExpr defNamesWithMutualRecursions << .value)
           l.value
       )
     Concat l r ->
-      "(" ++ emitExpr l.value ++ ").toString(2)" ++ " + " ++ "(" ++ emitExpr r.value ++ ").toString(2)"
+      "(" ++ emitExpr defNamesWithMutualRecursions l.value ++ ").toString(2)" ++ " + " ++ "(" ++ emitExpr defNamesWithMutualRecursions r.value ++ ").toString(2)"
+
+
+locationToString : (Int, Int) -> String
+locationToString (row, col) =
+  String.fromInt row ++ "_" ++ String.fromInt col
+
+
+processName : List String -> HdlParser.Located String -> String
+processName defNamesWithMutualRecursions name =
+  if List.member name.value defNamesWithMutualRecursions then
+    name.value ++ "$" ++ locationToString name.from
+  else
+    name.value
 
 
 emitParam : Param -> String
