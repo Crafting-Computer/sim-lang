@@ -152,7 +152,7 @@ emitPrelude =
   , { name = "fill"
     , params = [ isize "a" 1 ]
     , outputs = [ nsize "" ]
-    , body = "return function(a) { return -$b(a); }"
+    , body = "return function(a) { return (a === -1 ? -1 : -$b(a)); }"
     }
   ]
 
